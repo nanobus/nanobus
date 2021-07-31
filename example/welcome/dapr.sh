@@ -1,0 +1,3 @@
+# !/bin/sh
+#INVOKE_BASE_URL=http://localhost:8001 dapr run -d ../components --app-id welcome --app-port 32322 --dapr-http-port 3501 -- nanobus --http-listen-addr :8082 --rest-listen-addr :8092 --bus-listen-addr :32322 bus.yaml
+INVOKE_BASE_URL=http://localhost:8001 nanobus --components-path ../components --app-id welcome --metrics-port 9092 --placement-host-address localhost:50005 --http-listen-addr :8082 --rest-listen-addr :8092 --bus-listen-addr localhost:32322 bus.yaml

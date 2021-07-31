@@ -1,0 +1,26 @@
+schema: schema.widl
+config:
+  module: github.com/nanobus/nanobus/example/welcome
+  package: welcome
+  hostRoles:
+    - Outbound
+  handlerRoles:
+    - Inbound
+generates:
+  pkg/welcome/welcome.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: InterfaceVisitor
+  pkg/translator/translator.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: TranslatorVisitor
+    config:
+      package: translator
+      hostClassName: Functions
+      appPackage: welcome
+  cmd/main.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: EntryPointVisitor
+  welcome.go:
+    ifNotExists: true
+    module: '@nanobus/codegen/go'
+    visitorClass: ScaffoldVisitor

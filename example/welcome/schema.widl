@@ -1,0 +1,15 @@
+namespace "welcome.v1"
+
+role Inbound {
+  greetCustomer{customer: Customer}: void
+}
+
+role Outbound {
+  sendEmail(email: string, message: string): void
+}
+
+type Customer {
+  firstName: string
+  lastName: string
+  email: string @email
+}

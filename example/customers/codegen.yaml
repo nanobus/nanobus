@@ -1,0 +1,32 @@
+schema: schema.widl
+config:
+  module: github.com/nanobus/nanobus/example/customers
+  package: customers
+  hostRoles:
+    - Outbound
+  handlerRoles:
+    - Inbound
+generates:
+  # openapi.json:
+  #   module: '@widl/restapi'
+  #   visitorClass: OpenAPIV2Visitor
+  # proto/customers.proto:
+  #   module: '@widl/grpc'
+  #   visitorClass: GRPCVisitor
+  pkg/customers/customers.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: InterfaceVisitor
+  pkg/translator/translator.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: TranslatorVisitor
+    config:
+      hostClassName: Functions
+      package: translator
+      appPackage: customers
+  cmd/main.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: EntryPointVisitor
+  customers.go:
+    ifNotExists: true
+    module: '@nanobus/codegen/go'
+    visitorClass: ScaffoldVisitor

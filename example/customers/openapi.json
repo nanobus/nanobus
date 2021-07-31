@@ -1,0 +1,197 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Customers API",
+    "description": "This API contains operations that an application can perform on customers.",
+    "version": "1.0",
+    "contact": {
+      "name": "MyCompany API Team",
+      "email": "apiteam@mycompany.io",
+      "url": "http://mycompany.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "host": "mycompany.io",
+  "basePath": "/v1",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/customers": {
+      "post": {
+        "operationId": "createCustomer",
+        "description": "Creates a new customer.",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Customer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "examples": {
+              "application/json": "json"
+            },
+            "schema": {
+              "$ref": "#/definitions/Customer"
+            }
+          }
+        }
+      }
+    },
+    "/customers/{id}": {
+      "get": {
+        "operationId": "getCustomer",
+        "description": "Retrieve a customer by id.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "examples": {
+              "application/json": "json"
+            },
+            "schema": {
+              "$ref": "#/definitions/Customer"
+            }
+          },
+          "400": {
+            "description": "No customer with that identifier",
+            "examples": {
+              "application/json": "json"
+            },
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Customer": {
+      "description": "Customer information.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The customer identifer",
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        },
+        "firstName": {
+          "description": "The customer's first name",
+          "type": "string"
+        },
+        "middleName": {
+          "description": "The customer's middle name",
+          "type": "string"
+        },
+        "lastName": {
+          "description": "The customer's last name",
+          "type": "string"
+        },
+        "email": {
+          "description": "The customer's email address",
+          "type": "string"
+        },
+        "address": {
+          "description": "The customer's address",
+          "$ref": "#/definitions/Address"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "address"
+      ]
+    },
+    "Nested": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "string"
+        },
+        "bar": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "foo",
+        "bar"
+      ]
+    },
+    "Address": {
+      "description": "Address information.",
+      "type": "object",
+      "properties": {
+        "line1": {
+          "description": "The address line 1",
+          "type": "string"
+        },
+        "line2": {
+          "description": "The address line 2",
+          "type": "string"
+        },
+        "city": {
+          "description": "The city",
+          "type": "string"
+        },
+        "state": {
+          "description": "The state",
+          "type": "string"
+        },
+        "zip": {
+          "description": "The zipcode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "line1",
+        "city",
+        "state",
+        "zip"
+      ]
+    },
+    "Error": {
+      "description": "Error response.",
+      "type": "object",
+      "properties": {
+        "message": {
+          "description": "The detailed error message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ]
+    }
+  },
+  "externalDocs": {
+    "url": "http://mycompany.io/docs"
+  }
+}

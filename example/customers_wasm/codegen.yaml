@@ -1,0 +1,16 @@
+schema: schema.widl
+config:
+  hostRoles:
+    - Outbound
+  handlerRoles:
+    - Inbound
+generates:
+  assembly/module.ts:
+    module: '@nanobus/codegen/assemblyscript'
+    visitorClass: ModuleVisitor
+  assembly/index.ts:
+    ifNotExists: true
+    module: '@nanobus/codegen/assemblyscript'
+    visitorClass: ScaffoldVisitor
+    config:
+      package: './module'
