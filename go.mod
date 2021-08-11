@@ -16,7 +16,7 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/anko v0.1.8
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/nanobus/go-functions v0.0.0-20210802001124-d02d2c18021e
+	github.com/nanobus/go-functions v0.0.0-20210811180606-4acc97e47cad
 	github.com/oklog/run v1.1.0
 	github.com/sony/gobreaker v0.4.1
 	github.com/spf13/cast v1.4.0
