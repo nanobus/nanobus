@@ -42,3 +42,30 @@ func Integers(v interface{}) interface{} {
 
 	return v
 }
+
+func Unsigned(v interface{}) interface{} {
+	switch t := v.(type) {
+	case uint64:
+		return int64(t)
+	case uint32:
+		return int32(t)
+	case uint16:
+		return int32(t)
+	case uint8:
+		return int32(t)
+	case int16:
+		return int32(t)
+	case int8:
+		return int32(t)
+	case map[interface{}]interface{}:
+		for k, v := range t {
+			t[k] = Unsigned(v)
+		}
+	case map[string]interface{}:
+		for k, v := range t {
+			t[k] = Unsigned(v)
+		}
+	}
+
+	return v
+}

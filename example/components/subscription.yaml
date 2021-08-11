@@ -6,5 +6,7 @@ spec:
   topic: test_topic
   route: receiveMessage
   pubsubname: pubsub
+  metadata:
+    rawPayload: "true"
 scopes:
 - welcome

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -157,29 +158,33 @@ func main() {
 	var busInvoker compute.BusInvoker
 	httpClient := getHTTPClient()
 	env := getEnvironment()
+	dependencies := map[string]interface{}{
+		"client:http":     httpClient,
+		"codec:json":      jsoncodec,
+		"codec:msgpack":   msgpackcodec,
+		"spec:namespaces": namespaces,
+		"os:env":          env,
+		"dapr:components": &daprComponents,
+	}
 	resolver := func(name string) (interface{}, bool) {
-		switch name {
-		case "client:http":
-			return httpClient, true
-		case "client:invoker":
-			return invoker, true
-		case "codec:json":
-			return jsoncodec, true
-		case "codec:msgpack":
-			return msgpackcodec, true
-		case "bus:invoker":
-			return busInvoker, true
-		case "spec:namespaces":
-			return namespaces, true
-		case "os:env":
-			return env, true
-		case "dapr:components":
-			return &daprComponents, true
-		}
-
-		return nil, false
+		dep, ok := dependencies[name]
+		return dep, ok
 	}
 	resolveAs := resolve.ToResolveAs(resolver)
+
+	codecs := make(codec.Codecs)
+	for name, codec := range config.Codecs {
+		loader, ok := codecRegistry[codec.Type]
+		if !ok {
+			log.Fatal(fmt.Errorf("could not find codec type %q", codec.Type))
+		}
+		c, err := loader(codec.With, resolveAs)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error loading codec of type %q", codec.Type))
+		}
+		codecs[name] = c
+	}
+	dependencies["codec:lookup"] = codecs
 
 	// Create processor
 	processor, err := runtime.New(config, actionRegistry, resolver)
@@ -196,6 +201,7 @@ func main() {
 		env:        env,
 	}
 	busInvoker = rt.BusInvoker
+	dependencies["bus:invoker"] = busInvoker
 
 	// Internal invoker
 	computeLoader, ok := computeRegistry[config.Compute.Type]
@@ -204,6 +210,11 @@ func main() {
 	}
 	invoker, err = computeLoader(config.Compute.With, resolveAs)
 	if err != nil {
+		log.Fatal(err)
+	}
+	dependencies["client:invoker"] = invoker
+
+	if err = processor.Initialize(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -284,14 +295,30 @@ func main() {
 			log.Println("-->", function, string(jsonBytes)+"\n")
 		}
 
+		var input interface{} = event.CloudEvent
+		if event.RawPayload {
+			dataBase64String, ok := event.CloudEvent["data_base64"].(string)
+			if !ok {
+				log.Println("error decoding raw payload", err)
+				return embedded.EventResponseStatusRetry, err
+			}
+			inputBytes, err := base64.StdEncoding.DecodeString(dataBase64String)
+			if err != nil {
+				log.Println("error decoding raw payload", err)
+				return embedded.EventResponseStatusRetry, err
+			}
+			input = inputBytes
+		}
+
 		data := actions.Data{
-			"input":    event.CloudEvent,
+			"input":    input,
 			"metadata": event.Metadata,
 			"env":      env,
 		}
 
 		_, err := rt.processor.Inbound(ctx, function, data)
 		if err != nil {
+			log.Println("error processing event", err)
 			return embedded.EventResponseStatusRetry, err
 		}
 
@@ -303,9 +330,8 @@ func main() {
 			return nil, err
 		}
 
-		nsf := namespace + "." + service + "/" + function
 		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-			log.Println("-->", nsf, string(jsonBytes)+"\n")
+			log.Println("-->", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
 		}
 
 		data := actions.Data{
@@ -334,7 +360,7 @@ func main() {
 		g.Add(func() error {
 			return daprRuntime.WaitUntilShutdown()
 		}, func(error) {
-			daprRuntime.Shutdown(5 * time.Second)
+			daprRuntime.Shutdown(1 * time.Second)
 		})
 	}
 	{

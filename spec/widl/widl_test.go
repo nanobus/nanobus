@@ -1,8 +1,6 @@
 package widl_test
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -16,9 +14,9 @@ func TestParse(t *testing.T) {
 		t.FailNow()
 	}
 
-	ns, err := widl.Parse(schemaBytes)
+	_, err = widl.Parse(schemaBytes)
 	require.NoError(t, err)
-	jsonBytes, _ := json.MarshalIndent(ns, "", "  ")
-	fmt.Println(string(jsonBytes))
-	t.FailNow()
+	// jsonBytes, _ := json.MarshalIndent(ns, "", "  ")
+	// fmt.Println(string(jsonBytes))
+	// t.FailNow()
 }

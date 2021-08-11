@@ -97,7 +97,7 @@ func SQLExecConfigAction(
 		}
 
 		var response interface{}
-		if len(data) > 0 {
+		if len(resp.Data) > 0 {
 			err = json.Unmarshal(resp.Data, &response)
 		}
 

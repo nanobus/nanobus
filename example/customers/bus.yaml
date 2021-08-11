@@ -8,7 +8,15 @@ compute:
   # with:
   #   fileName: customers.wasm
   type: mux
-  with: {}
+  with:
+    baseUrl: http://localhost:8000
+
+codecs:
+  avro:
+    type: confluentavro
+    with:
+      schemaRegistryURLs:
+        - http://localhost:8081
 
 services:
 
@@ -37,12 +45,15 @@ services:
           with:
             pubsub: pubsub
             topic: test_topic
-            format: cloudevents+json
-            data: |
-              {
-                "type": "customer.created",
-                "data": input
-              }
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }
 
         - summary: Return the input as the response
           name: assign
@@ -88,9 +99,12 @@ outbound:
           with:
             pubsub: pubsub
             topic: test_topic
-            format: cloudevents+json
-            data: |
-              {
-                "type": "customer.created",
-                "data": input
-              }
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }

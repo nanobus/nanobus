@@ -2,12 +2,12 @@ package dapr
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/dapr/components-contrib/pubsub"
 
 	"github.com/nanobus/nanobus/actions"
+	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
@@ -18,8 +18,10 @@ type PublishMessageConfig struct {
 	Pubsub string `mapstructure:"pubsub"`
 	// Topic is the name of the topic to publish to.
 	Topic string `mapstructure:"topic"`
-	// Format is the format to write the data in.
-	Format string `mapstructure:"format"`
+	// Codec is the configured codec to use for encoding the message.
+	Codec string `mapstructure:"codec"`
+	// CodecArgs are the arguments for the codec, if any.
+	CodecArgs []interface{} `mapstructure:"codecArgs"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 	// Metadata is the input binding metadata
@@ -38,9 +40,16 @@ func PublishMessageLoader(with interface{}, resolver resolve.ResolveAs) (actions
 	}
 
 	var dapr *DaprComponents
+	var codecs codec.Codecs
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr); err != nil {
+		"dapr:components", &dapr,
+		"codec:lookup", &codecs); err != nil {
 		return nil, err
+	}
+
+	codec, ok := codecs[c.Codec]
+	if !ok {
+		return nil, fmt.Errorf("codec %q not found", c.Codec)
 	}
 
 	pubsub, ok := dapr.PubSubs[c.Pubsub]
@@ -48,16 +57,17 @@ func PublishMessageLoader(with interface{}, resolver resolve.ResolveAs) (actions
 		return nil, fmt.Errorf("pubsub %q not found", c.Pubsub)
 	}
 
-	return PublishMessageAction(pubsub, &c), nil
+	return PublishMessageAction(pubsub, codec, &c), nil
 }
 
 func PublishMessageAction(
 	component pubsub.PubSub,
+	codec codec.Codec,
 	config *PublishMessageConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var err error
 
-		var input interface{} = data
+		var input interface{} = data["input"]
 		if config.Data != nil {
 			input, err = config.Data.Eval(data)
 			if err != nil {
@@ -65,16 +75,18 @@ func PublishMessageAction(
 			}
 		}
 
-		var requestBytes []byte
-		// TODO: handle format
-		if requestBytes, err = json.Marshal(input); err != nil {
+		dataBytes, err := codec.Encode(input, config.CodecArgs...)
+		if err != nil {
 			return nil, err
 		}
 
 		err = component.Publish(&pubsub.PublishRequest{
-			Data:       requestBytes,
+			Data:       dataBytes,
 			PubsubName: config.Pubsub,
 			Topic:      config.Topic,
+			Metadata: map[string]string{
+				"rawPayload": "true",
+			},
 		})
 
 		return nil, err

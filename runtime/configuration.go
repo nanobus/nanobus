@@ -8,6 +8,7 @@ import (
 
 type Configuration struct {
 	Specs         []Spec            `json:"specs" yaml:"specs"`
+	Codecs        map[string]Codec  `json:"codecs" yaml:"codecs"`
 	Compute       Compute           `json:"compute" yaml:"compute"`
 	Resiliency    Resiliency        `json:"resiliency" yaml:"resiliency"`
 	Services      Services          `json:"services" yaml:"services"`
@@ -17,6 +18,11 @@ type Configuration struct {
 }
 
 type Spec struct {
+	Type string      `json:"type" yaml:"type"`
+	With interface{} `json:"with" yaml:"with"`
+}
+
+type Codec struct {
 	Type string      `json:"type" yaml:"type"`
 	With interface{} `json:"with" yaml:"with"`
 }

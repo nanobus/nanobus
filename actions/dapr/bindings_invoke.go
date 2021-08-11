@@ -81,7 +81,7 @@ func InvokeBindingAction(
 		}
 
 		var response interface{}
-		if len(data) > 0 {
+		if len(resp.Data) > 0 {
 			err = coalesce.JSONUnmarshal(resp.Data, &response)
 		}
 

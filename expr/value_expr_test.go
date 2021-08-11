@@ -8,22 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValueExpr3(t *testing.T) {
-	var ve expr.ValueExpr
-	err := ve.DecodeString3(`has(input.test) && result.test == 5678`)
-	require.NoError(t, err)
-	result, err := ve.Eval(map[string]interface{}{
-		"input": map[string]interface{}{
-			"test": 1234,
-		},
-		"result": map[string]interface{}{
-			"test": 5678,
-		},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, true, result)
-}
-
 func TestValueExpr(t *testing.T) {
 	var ve expr.ValueExpr
 	err := ve.DecodeString(`input.test != nil && result.test == 5678`)
@@ -41,26 +25,6 @@ func TestValueExpr(t *testing.T) {
 }
 
 var result interface{}
-
-func BenchmarkEval3(b *testing.B) {
-	var ve expr.ValueExpr
-	err := ve.DecodeString3(`has(input.test) && result.test == 5678`)
-	require.NoError(b, err)
-	data := map[string]interface{}{
-		"input": map[string]interface{}{
-			"test": 1234,
-		},
-		"result": map[string]interface{}{
-			"test": 5678,
-		},
-	}
-	var r interface{}
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		r, _ = ve.Eval(data)
-	}
-	result = r
-}
 
 func BenchmarkEval(b *testing.B) {
 	var ve expr.ValueExpr

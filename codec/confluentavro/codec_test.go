@@ -67,12 +67,13 @@ func TestEncodeDecode(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, []byte{0, 0, 0, 0, 1, 2, 6, 102, 111, 111, 6, 98, 97, 114}, encodedBytes)
 
-	var read map[string]interface{}
-	err = codec.Decode(encodedBytes, &read)
+	readI, _, err := codec.Decode(encodedBytes)
 	require.NoError(t, err)
+	read, ok := readI.(map[string]interface{})
+	require.True(t, ok)
 
-	assert.Equal(t, read["someProperty"], "foo")
+	assert.Equal(t, "foo", read["someProperty"])
 	otherProperty, ok := read["otherProperty"].(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, otherProperty["nestedProperty"], "bar")
+	assert.Equal(t, "bar", otherProperty["nestedProperty"])
 }

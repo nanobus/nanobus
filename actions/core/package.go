@@ -7,11 +7,12 @@ import (
 )
 
 var All = []actions.NamedLoader{
+	Assign,
+	Decode,
 	Filter,
 	Invoke,
 	Log,
 	Route,
-	Assign,
 }
 
 // Common dependencies

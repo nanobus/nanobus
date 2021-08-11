@@ -82,10 +82,6 @@ func New(configuration *Configuration, registry actions.Registry, resolver resol
 
 	p.resolveAs = resolve.ToResolveAs(p.resolver)
 
-	if err := p.initialize(); err != nil {
-		return nil, err
-	}
-
 	return &p, nil
 }
 
@@ -131,7 +127,7 @@ func (p *Processor) Inbound(ctx context.Context, function string, data actions.D
 	return pl.Run(ctx, data)
 }
 
-func (p *Processor) initialize() (err error) {
+func (p *Processor) Initialize() (err error) {
 	if p.services, err = p.loadServices(p.config.Services); err != nil {
 		return err
 	}
@@ -170,8 +166,9 @@ func (p *Processor) loadFunctionPipelines(fpl FunctionPipelines) (Functions, err
 
 func (p *Processor) LoadPipeline(pl *Pipeline) (*Runnable, error) {
 	steps := make([]step, len(pl.Actions))
-	for i, s := range pl.Actions {
-		step, err := p.loadStep(&s)
+	for i := range pl.Actions {
+		s := &pl.Actions[i]
+		step, err := p.loadStep(s)
 		if err != nil {
 			return nil, err
 		}
@@ -248,6 +245,9 @@ func (r *Runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 			}
 			return err
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return output, nil

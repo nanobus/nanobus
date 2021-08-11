@@ -1,12 +1,20 @@
 compute:
   type: mux
-  with: {}
+  with:
+    baseUrl: http://localhost:8001
 
 subscriptions:
 
   #- pubsub: pubsub
   #  topic: test_topic
   #  function: receiveMessage
+
+codecs:
+  avro:
+    type: confluentavro
+    with:
+      schemaRegistryURLs:
+        - http://localhost:8081
 
 resiliency:
   retries:
@@ -24,17 +32,23 @@ inbound:
   receiveMessage:
     summary: Receives the customer message
     actions:
-      - summary: Routing messages
+      - summary: Decode Avro
+        name: decode
+        with:
+          codec: avro
+      - summary: Routing message
         name: route
         with:
           routes:
-            - when: input.type == 'customer.created'
+            #- when: input.type == 'customer.created'
+            - when: type == 'io.nanobus.examples.customers.Customer'
               then:
                 - summary: Send to route
                   name: invoke
                   with:
-                    function: welcome.v1.Inbound/greetCustomer
-                    input: input.data
+                    namespace: welcome.v1.Inbound
+                    operation: greetCustomer
+                    #input: input.data
                   retry: pubsub
                   circuitBreaker: pubsub
 

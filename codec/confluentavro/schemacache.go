@@ -16,8 +16,9 @@ type (
 
 	// Schema encapsulates an identifier from the schema registry and avro schema.
 	Schema struct {
-		id     int
-		schema avro.Schema
+		id       int
+		typeName string
+		schema   avro.Schema
 	}
 
 	// schemaRegistry retrieves Avro schemas from a Confluent Schema Registry by ID.
@@ -32,9 +33,14 @@ func ParseSchema(id int, schema string) (*Schema, error) {
 	if err != nil {
 		return nil, err
 	}
+	var typeName string
+	if namedSchema, ok := avroSchema.(avro.NamedSchema); ok {
+		typeName = namedSchema.FullName()
+	}
 	return &Schema{
-		id:     id,
-		schema: avroSchema,
+		id:       id,
+		typeName: typeName,
+		schema:   avroSchema,
 	}, nil
 }
 

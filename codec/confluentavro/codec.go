@@ -9,6 +9,7 @@ import (
 	"github.com/hamba/avro"
 	"github.com/spf13/cast"
 
+	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
@@ -25,7 +26,9 @@ func ConfluentAvro() (string, codec.Loader) {
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {
-	var c Config
+	c := Config{
+		SchemaCacheSize: 200,
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -83,24 +86,29 @@ func (c *Codec) ContentType() string {
 }
 
 // Decode decodes the record into a map using the schema id and raw avro bytes from the message.
-func (c *Codec) Decode(msgValue []byte, v interface{}, args ...interface{}) error {
+func (c *Codec) Decode(msgValue []byte, args ...interface{}) (interface{}, string, error) {
 	if len(msgValue) < 5 {
-		return ErrBadMessage
+		return nil, "", ErrBadMessage
 	}
 	if msgValue[0] != 0 {
-		return ErrUnknownMagicByte
+		return nil, "", ErrUnknownMagicByte
 	}
 
 	schemaID := int(binary.BigEndian.Uint32(msgValue[1:]))
 	schema, err := c.schemaRetriever.GetSchema(schemaID)
 	if err != nil {
-		return fmt.Errorf("could not retrieve schema ID %d: %w", schemaID, err)
+		return nil, "", fmt.Errorf("could not retrieve schema ID %d: %w", schemaID, err)
 	}
 
 	reader := bytes.NewReader(msgValue[5:])
 	decoder := avro.NewDecoderForSchema(schema.schema, reader)
 
-	return decoder.Decode(v)
+	var v map[string]interface{}
+	if err = decoder.Decode(&v); err != nil {
+		return nil, "", fmt.Errorf("could not retrieve schema ID %d: %w", schemaID, err)
+	}
+
+	return v, schema.typeName, nil
 }
 
 // Encode validates and encodes a map into Avro encoded bytes.
@@ -130,6 +138,7 @@ func (c *Codec) Encode(value interface{}, args ...interface{}) ([]byte, error) {
 
 	decoder := avro.NewEncoderForSchema(schema.schema, &buf)
 
+	coalesce.Unsigned(value)
 	if err = decoder.Encode(value); err != nil {
 		return nil, err
 	}
