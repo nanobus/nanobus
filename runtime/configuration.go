@@ -15,6 +15,7 @@ type Configuration struct {
 	Outbound      Services          `json:"outbound" yaml:"outbound"`
 	Inbound       FunctionPipelines `json:"inbound" yaml:"inbound"`
 	Subscriptions interface{}       `json:"subscriptions" yaml:"subscriptions"`
+	Decoding      interface{}       `json:"decoding" yaml:"decoding"`
 }
 
 type Spec struct {

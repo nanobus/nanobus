@@ -46,6 +46,37 @@ import (
 
 var ErrInvalidURISyntax = errors.New("invalid invocation URI syntax")
 
+type decoding struct {
+	Pubsub  []pubsubDecoding  `mapstructure:"pubsub"`
+	Binding []bindingDecoding `mapstructure:"binding"`
+}
+
+type pubsubDecoding struct {
+	PubsubName string        `mapstructure:"pubsubname"`
+	Topic      string        `mapstructure:"topic"`
+	Codec      string        `mapstructure:"codec"`
+	Args       []interface{} `mapstructure:"args"`
+}
+
+type bindingDecoding struct {
+	BindingName string        `mapstructure:"bindingname"`
+	Codec       string        `mapstructure:"codec"`
+	Args        []interface{} `mapstructure:"args"`
+}
+
+type pubsubKey struct {
+	PubsubName string `mapstructure:"pubsubname"`
+	Topic      string `mapstructure:"topic"`
+}
+
+type codecConfig struct {
+	codec codec.Codec
+	args  []interface{}
+}
+
+type pubsubDecoders map[pubsubKey]codecConfig
+type bindingDecoders map[string]codecConfig
+
 type Runtime struct {
 	config     *runtime.Configuration
 	namespaces spec.Namespaces
@@ -186,6 +217,47 @@ func main() {
 	}
 	dependencies["codec:lookup"] = codecs
 
+	pubsubDecs := pubsubDecoders{}
+	bindingDecs := bindingDecoders{}
+	if config.Decoding != nil {
+		var dec decoding
+		err = mapstructure.Decode(config.Decoding, &dec)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error reading decoding config %w", err))
+		}
+
+		for _, psd := range dec.Pubsub {
+			codec, ok := codecs[psd.Codec]
+			if !ok {
+				log.Fatal(fmt.Errorf("codec %q is not configured", psd.Codec))
+			}
+			if psd.Args == nil {
+				psd.Args = []interface{}{}
+			}
+			pubsubDecs[pubsubKey{
+				PubsubName: psd.PubsubName,
+				Topic:      psd.Topic,
+			}] = codecConfig{
+				codec: codec,
+				args:  psd.Args,
+			}
+		}
+
+		for _, bd := range dec.Binding {
+			codec, ok := codecs[bd.Codec]
+			if !ok {
+				log.Fatal(fmt.Errorf("codec %q is not configured", bd.Codec))
+			}
+			if bd.Args == nil {
+				bd.Args = []interface{}{}
+			}
+			bindingDecs[bd.BindingName] = codecConfig{
+				codec: codec,
+				args:  bd.Args,
+			}
+		}
+	}
+
 	// Create processor
 	processor, err := runtime.New(config, actionRegistry, resolver)
 	if err != nil {
@@ -262,8 +334,17 @@ func main() {
 
 	daprComponents.InputBindingHandler(func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error) {
 		var input interface{}
-		// TODO: Decoder
-		if err := json.Unmarshal(event.Data, &input); err != nil {
+		if codec, ok := bindingDecs[event.BindingName]; ok {
+			decoded, typeName, err := codec.codec.Decode(event.Data, codec.args...)
+			if err != nil {
+				log.Println("error decoding input binding payload", err)
+				return nil, err
+			}
+			input = map[string]interface{}{
+				"data": decoded,
+				"type": typeName,
+			}
+		} else if err := json.Unmarshal(event.Data, &input); err != nil {
 			return nil, err
 		}
 
@@ -307,7 +388,23 @@ func main() {
 				log.Println("error decoding raw payload", err)
 				return embedded.EventResponseStatusRetry, err
 			}
-			input = inputBytes
+
+			if codec, ok := pubsubDecs[pubsubKey{
+				PubsubName: event.PubsubName,
+				Topic:      event.Topic,
+			}]; ok {
+				decoded, typeName, err := codec.codec.Decode(inputBytes, codec.args...)
+				if err != nil {
+					log.Println("error decoding raw payload", err)
+					return embedded.EventResponseStatusRetry, err
+				}
+				input = map[string]interface{}{
+					"data": decoded,
+					"type": typeName,
+				}
+			} else {
+				input = inputBytes
+			}
 		}
 
 		data := actions.Data{

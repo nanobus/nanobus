@@ -16,6 +16,12 @@ codecs:
       schemaRegistryURLs:
         - http://localhost:8081
 
+decoding:
+  pubsub:
+    - pubsubname: pubsub
+      topic: test_topic
+      codec: avro
+
 resiliency:
   retries:
     pubsub:
@@ -32,23 +38,19 @@ inbound:
   receiveMessage:
     summary: Receives the customer message
     actions:
-      - summary: Decode Avro
-        name: decode
-        with:
-          codec: avro
       - summary: Routing message
         name: route
         with:
           routes:
             #- when: input.type == 'customer.created'
-            - when: type == 'io.nanobus.examples.customers.Customer'
+            - when: input.type == 'io.nanobus.examples.customers.Customer'
               then:
                 - summary: Send to route
                   name: invoke
                   with:
                     namespace: welcome.v1.Inbound
                     operation: greetCustomer
-                    #input: input.data
+                    input: input.data
                   retry: pubsub
                   circuitBreaker: pubsub
 
