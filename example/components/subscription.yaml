@@ -9,4 +9,4 @@ spec:
   metadata:
     rawPayload: "true"
 scopes:
-- welcome
+- welcome_disabled

@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dapr/components-contrib/pubsub"
 	dapr_rt "github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
 	"github.com/gorilla/mux"
@@ -369,6 +370,78 @@ func main() {
 		return respData, err
 	})
 
+	type Subscription struct {
+		Pubsub    string            `mapstructure:"pubsub"`
+		Topic     string            `mapstructure:"topic"`
+		Metadata  map[string]string `mapstructure:"metadata"`
+		Function  string            `mapstructure:"function"`
+		Codec     string            `mapstructure:"codec"`
+		CodecArgs []interface{}     `mapstructure:"codecArgs"`
+	}
+
+	var subscriptions []Subscription
+	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
+		log.Fatal(err)
+	}
+
+	pubsubHandler := func(function string, codec codec.Codec, args []interface{}) pubsub.Handler {
+		return func(ctx context.Context, msg *pubsub.NewMessage) error {
+			target := function
+
+			decoded, typeName, err := codec.Decode(msg.Data, args...)
+			if err != nil {
+				log.Println("error decoding event payload", err)
+				return err
+			}
+			input := map[string]interface{}{
+				"data": decoded,
+				"type": typeName,
+			}
+
+			data := actions.Data{
+				"input":    input,
+				"metadata": msg.Metadata,
+				"env":      env,
+			}
+
+			if target == "" {
+				target = typeName
+			}
+
+			_, err = rt.processor.Inbound(ctx, target, data)
+			if err != nil {
+				log.Println("error processing event", err)
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	// Direct subscriptions
+	for _, sub := range subscriptions {
+		p, ok := daprComponents.PubSubs[sub.Pubsub]
+		if !ok {
+			log.Fatal(fmt.Errorf("pubsub %q is not configured", sub.Pubsub))
+		}
+		if sub.CodecArgs == nil {
+			sub.CodecArgs = []interface{}{}
+		}
+		codec, ok := codecs[sub.Codec]
+		if !ok {
+			log.Fatal(fmt.Errorf("codec %q is not configured", sub.Codec))
+		}
+		log.Printf("subscribing to pubsub %q, topic %q", sub.Pubsub, sub.Topic)
+		err = p.Subscribe(pubsub.SubscribeRequest{
+			Topic:    sub.Topic,
+			Metadata: sub.Metadata,
+		}, pubsubHandler(sub.Function, codec, sub.CodecArgs))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Subscriptions via the embedded app channel
 	daprComponents.PubSubHandler(func(ctx context.Context, event *embedded.TopicEvent) (embedded.EventResponseStatus, error) {
 		function := event.Path
 
@@ -465,7 +538,7 @@ func main() {
 		r := mux.NewRouter()
 		r.HandleFunc("/outbound/{namespace}/{function}", rt.OutboundHandler).Methods("POST")
 		r.HandleFunc("/inbound/{function}", rt.InboundHandler).Methods("POST")
-		r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
+		//r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
 
 		log.Printf("Bus listening on %s\n", busListenAddr)
 		ln, err := net.Listen("tcp", busListenAddr)
@@ -617,17 +690,17 @@ func (rt *Runtime) SubscriptionsHandler(w http.ResponseWriter, r *http.Request) 
 		Function string            `mapstructure:"function"`
 	}
 
+	var subscriptions []Subscription
+	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
+		handleError(err, w, http.StatusInternalServerError)
+		return
+	}
+
 	type DaprSupscription struct {
 		Pubsubname string            `json:"pubsubname"`
 		Topic      string            `json:"topic"`
 		Metadata   map[string]string `json:"metadata"`
 		Route      string            `json:"route"`
-	}
-
-	var subscriptions []Subscription
-	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
 	}
 
 	daprSubs := make([]DaprSupscription, len(subscriptions))

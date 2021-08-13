@@ -22,6 +22,7 @@ func init() {
 }
 
 var All = []actions.NamedLoader{
+	InvokeActor,
 	InvokeBinding,
 	SetState,
 	GetState,

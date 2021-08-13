@@ -4,10 +4,10 @@ compute:
     baseUrl: http://localhost:8001
 
 subscriptions:
-
-  #- pubsub: pubsub
-  #  topic: test_topic
-  #  function: receiveMessage
+  - pubsub: pubsub
+    topic: test_topic
+    function: receiveMessage
+    codec: avro
 
 codecs:
   avro:
