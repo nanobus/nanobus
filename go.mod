@@ -3,11 +3,12 @@ module github.com/nanobus/nanobus
 go 1.16
 
 require (
+	github.com/actgardner/gogen-avro/v9 v9.0.0
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
-	github.com/antonmedv/expr v1.8.9
+	github.com/antonmedv/expr v1.9.0
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/dapr/components-contrib v1.3.0-rc1.0.20210804022438-7496adf1102b
-	github.com/dapr/dapr v0.0.0-00010101000000-000000000000
+	github.com/dapr/dapr v1.3.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.7.3
@@ -25,7 +26,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.4
 	github.com/wapc/wapc-go v0.3.0
 	github.com/wapc/widl-go v0.0.0-20210618212248-bc153fd6a63d
-	google.golang.org/genproto v0.0.0-20210729151513-df9385d47c1b
+	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )

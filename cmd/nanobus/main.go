@@ -31,7 +31,10 @@ import (
 	"github.com/nanobus/nanobus/actions/dapr"
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
+	cloudevents_avro "github.com/nanobus/nanobus/codec/cloudevents/avro"
 	"github.com/nanobus/nanobus/codec/confluentavro"
+	codec_json "github.com/nanobus/nanobus/codec/json"
+	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
@@ -158,7 +161,10 @@ func main() {
 	// Codec registration
 	codecRegistry := codec.Registry{}
 	codecRegistry.Register(
+		codec_json.JSON,
+		codec_msgpack.MsgPack,
 		confluentavro.ConfluentAvro,
+		cloudevents_avro.CloudEventsAvro,
 	)
 
 	// Action registration
