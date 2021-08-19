@@ -1,4 +1,4 @@
-# Dapr nanobus Demo
+# NanoBus Demo
 
 ## How I want to build applications
 
