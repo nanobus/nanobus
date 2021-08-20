@@ -3,12 +3,6 @@ compute:
   with:
     baseUrl: http://localhost:8001
 
-subscriptions:
-  - pubsub: pubsub
-    topic: test_topic
-    function: receiveMessage
-    codec: avro
-
 codecs:
   avro:
     type: confluentavro
@@ -16,11 +10,11 @@ codecs:
       schemaRegistryURLs:
         - http://localhost:8081
 
-decoding:
-  pubsub:
-    - pubsubname: pubsub
-      topic: test_topic
-      codec: avro
+subscriptions:
+  - pubsub: pubsub
+    topic: test_topic
+    codec: avro
+    #function: receiveMessage
 
 resiliency:
   retries:
@@ -34,6 +28,17 @@ resiliency:
       timeout: 30s
 
 inbound:
+  "io.nanobus.examples.customers.Customer":
+    summary: Receives the customer message
+    actions:
+      - summary: Send to route
+        name: invoke
+        with:
+          namespace: welcome.v1.Inbound
+          operation: greetCustomer
+          input: input.data
+        retry: pubsub
+        circuitBreaker: pubsub
 
   receiveMessage:
     summary: Receives the customer message

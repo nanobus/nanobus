@@ -6,7 +6,7 @@ common tasks to composable flows that connect to transports, data stores, and ot
 ![NanoBus Architecture](docs/images/architecture.svg)
 
 NanoBus works jointly with [Dapr](https://dapr.io) to provide developers powerful building blocks such as service invocation,
-state management, publish and subscribe, secret stores, bindings, and actors. Inside flows, developer's use configurable
+state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are accessed using flows which act as connective data pipelines. Inside flows, developer's use configurable
 actions to decode, transform and route data between application logic and Dapr's components. No SDKs required.
 
 To expose services, NanoBus uses flexible interface definitions to automatically produce API endpoints, like HTTP-RPC, REST and gRPC.
@@ -42,7 +42,7 @@ The primary inspiration for NanoBus is the **Onion Architecture**, which is comp
 
 ### Flow-Based Programming
 
-Between the Endpoints, Core Logic and Stores layers, Nanobus passes data through developer-defined flows: a paradigm called **Flow-Based Programming (FBP)**.
+Between the Endpoints, Core Logic and Stores layers, NanoBus passes data through developer-defined flows: a paradigm called **Flow-Based Programming (FBP)**.
 
 ![Flow-Based Programming example](docs/images/fbp.svg)
 

@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dapr/components-contrib/bindings"
 	"github.com/dapr/components-contrib/pubsub"
 	dapr_rt "github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
@@ -339,6 +340,76 @@ func main() {
 		return respData, "", err
 	})
 
+	inputBindingHandler := func(function string, codec codec.Codec, args []interface{}) func(*bindings.ReadResponse) ([]byte, error) {
+		return func(msg *bindings.ReadResponse) ([]byte, error) {
+			target := function
+
+			decoded, typeName, err := codec.Decode(msg.Data, args...)
+			if err != nil {
+				log.Println("error decoding event payload", err)
+				return nil, err
+			}
+			input := map[string]interface{}{
+				"data": decoded,
+				"type": typeName,
+			}
+
+			data := actions.Data{
+				"input":    input,
+				"metadata": msg.Metadata,
+				"env":      env,
+			}
+
+			if target == "" {
+				target = typeName
+			}
+
+			result, err := rt.processor.Inbound(ctx, target, data)
+			if err != nil {
+				log.Println("error processing event", err)
+				return nil, err
+			}
+
+			var resultBytes []byte
+			if result != nil {
+				resultBytes, err = codec.Encode(result)
+			}
+
+			return resultBytes, err
+		}
+	}
+
+	type InputBinding struct {
+		Binding   string        `mapstructure:"binding"`
+		Codec     string        `mapstructure:"codec"`
+		CodecArgs []interface{} `mapstructure:"codecArgs"`
+		Function  string        `mapstructure:"function"`
+	}
+
+	var inputBindings []InputBinding
+	if err := mapstructure.Decode(rt.config.InputBindings, &inputBindings); err != nil {
+		log.Fatal(err)
+	}
+
+	// Direct input bindings
+	for _, binding := range inputBindings {
+		p, ok := daprComponents.InputBindings[binding.Binding]
+		if !ok {
+			log.Fatal(fmt.Errorf("input binding %q is not configured", binding.Binding))
+		}
+		if binding.CodecArgs == nil {
+			binding.CodecArgs = []interface{}{}
+		}
+		codec, ok := codecs[binding.Codec]
+		if !ok {
+			log.Fatal(fmt.Errorf("codec %q is not configured", binding.Codec))
+		}
+		log.Printf("reading from input binding %q", binding.Binding)
+		if err = p.Read(inputBindingHandler(binding.Function, codec, binding.CodecArgs)); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	daprComponents.InputBindingHandler(func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error) {
 		var input interface{}
 		if codec, ok := bindingDecs[event.BindingName]; ok {
@@ -376,20 +447,6 @@ func main() {
 		return respData, err
 	})
 
-	type Subscription struct {
-		Pubsub    string            `mapstructure:"pubsub"`
-		Topic     string            `mapstructure:"topic"`
-		Metadata  map[string]string `mapstructure:"metadata"`
-		Function  string            `mapstructure:"function"`
-		Codec     string            `mapstructure:"codec"`
-		CodecArgs []interface{}     `mapstructure:"codecArgs"`
-	}
-
-	var subscriptions []Subscription
-	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
-		log.Fatal(err)
-	}
-
 	pubsubHandler := func(function string, codec codec.Codec, args []interface{}) pubsub.Handler {
 		return func(ctx context.Context, msg *pubsub.NewMessage) error {
 			target := function
@@ -424,6 +481,20 @@ func main() {
 		}
 	}
 
+	type Subscription struct {
+		Pubsub    string            `mapstructure:"pubsub"`
+		Topic     string            `mapstructure:"topic"`
+		Metadata  map[string]string `mapstructure:"metadata"`
+		Codec     string            `mapstructure:"codec"`
+		CodecArgs []interface{}     `mapstructure:"codecArgs"`
+		Function  string            `mapstructure:"function"`
+	}
+
+	var subscriptions []Subscription
+	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
+		log.Fatal(err)
+	}
+
 	// Direct subscriptions
 	for _, sub := range subscriptions {
 		p, ok := daprComponents.PubSubs[sub.Pubsub]
@@ -438,11 +509,10 @@ func main() {
 			log.Fatal(fmt.Errorf("codec %q is not configured", sub.Codec))
 		}
 		log.Printf("subscribing to pubsub %q, topic %q", sub.Pubsub, sub.Topic)
-		err = p.Subscribe(pubsub.SubscribeRequest{
+		if err = p.Subscribe(pubsub.SubscribeRequest{
 			Topic:    sub.Topic,
 			Metadata: sub.Metadata,
-		}, pubsubHandler(sub.Function, codec, sub.CodecArgs))
-		if err != nil {
+		}, pubsubHandler(sub.Function, codec, sub.CodecArgs)); err != nil {
 			log.Fatal(err)
 		}
 	}
