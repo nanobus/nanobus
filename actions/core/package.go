@@ -10,6 +10,7 @@ var All = []actions.NamedLoader{
 	Assign,
 	Decode,
 	Filter,
+	HTTP,
 	Invoke,
 	Log,
 	Route,

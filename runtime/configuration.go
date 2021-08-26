@@ -51,6 +51,7 @@ type Step struct {
 	Summary        string      `json:"summary" yaml:"summary"`
 	Name           string      `json:"name" yaml:"name"`
 	With           interface{} `json:"with" yaml:"with"`
+	Returns        string      `json:"returns" yaml:"returns"`
 	Timeout        string      `json:"timeout" yaml:"timeout"`
 	Retry          string      `json:"retry" yaml:"retry"`
 	CircuitBreaker string      `json:"circuitBreaker" yaml:"circuitBreaker"`

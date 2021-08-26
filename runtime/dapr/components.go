@@ -13,7 +13,12 @@ import (
 
 	"github.com/dapr/dapr/pkg/runtime"
 
+	"github.com/dapr/components-contrib/secretstores"
+	secretstore_file "github.com/dapr/components-contrib/secretstores/local/file"
+	secretstores_loader "github.com/dapr/dapr/pkg/components/secretstores"
+
 	// State Stores.
+
 	"github.com/dapr/components-contrib/state"
 	state_redis "github.com/dapr/components-contrib/state/redis"
 
@@ -37,6 +42,7 @@ import (
 	// Bindings.
 	"github.com/dapr/components-contrib/bindings"
 	"github.com/dapr/components-contrib/bindings/postgres"
+	"github.com/dapr/components-contrib/bindings/twitter"
 
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 
@@ -60,32 +66,32 @@ var (
 
 func RegisterComponents(rt *Runtime) {
 	rt.AddOptions(
-		// runtime.WithSecretStores(
-		// 	secretstores_loader.New("kubernetes", func() secretstores.SecretStore {
-		// 		return sercetstores_kubernetes.NewKubernetesSecretStore(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("azure.keyvault", func() secretstores.SecretStore {
-		// 		return keyvault.NewAzureKeyvaultSecretStore(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("hashicorp.vault", func() secretstores.SecretStore {
-		// 		return vault.NewHashiCorpVaultSecretStore(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("aws.secretmanager", func() secretstores.SecretStore {
-		// 		return secretmanager.NewSecretManager(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("aws.parameterstore", func() secretstores.SecretStore {
-		// 		return parameterstore.NewParameterStore(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("gcp.secretmanager", func() secretstores.SecretStore {
-		// 		return gcp_secretmanager.NewSecreteManager(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("local.file", func() secretstores.SecretStore {
-		// 		return secretstore_file.NewLocalSecretStore(logContrib)
-		// 	}),
-		// 	secretstores_loader.New("local.env", func() secretstores.SecretStore {
-		// 		return secretstore_env.NewEnvSecretStore(logContrib)
-		// 	}),
-		// ),
+		runtime.WithSecretStores(
+			// 	secretstores_loader.New("kubernetes", func() secretstores.SecretStore {
+			// 		return sercetstores_kubernetes.NewKubernetesSecretStore(logContrib)
+			// 	}),
+			// 	secretstores_loader.New("azure.keyvault", func() secretstores.SecretStore {
+			// 		return keyvault.NewAzureKeyvaultSecretStore(logContrib)
+			// 	}),
+			// 	secretstores_loader.New("hashicorp.vault", func() secretstores.SecretStore {
+			// 		return vault.NewHashiCorpVaultSecretStore(logContrib)
+			// 	}),
+			// 	secretstores_loader.New("aws.secretmanager", func() secretstores.SecretStore {
+			// 		return secretmanager.NewSecretManager(logContrib)
+			// 	}),
+			// 	secretstores_loader.New("aws.parameterstore", func() secretstores.SecretStore {
+			// 		return parameterstore.NewParameterStore(logContrib)
+			// 	}),
+			// 	secretstores_loader.New("gcp.secretmanager", func() secretstores.SecretStore {
+			// 		return gcp_secretmanager.NewSecreteManager(logContrib)
+			// 	}),
+			secretstores_loader.New("local.file", func() secretstores.SecretStore {
+				return secretstore_file.NewLocalSecretStore(logContrib)
+			}),
+			// 	secretstores_loader.New("local.env", func() secretstores.SecretStore {
+			// 		return secretstore_env.NewEnvSecretStore(logContrib)
+			// 	}),
+		),
 		runtime.WithStates(
 			state_loader.New("redis", func() state.Store {
 				return state_redis.NewRedisStateStore(logContrib)
@@ -189,56 +195,56 @@ func RegisterComponents(rt *Runtime) {
 				return nr_consul.NewResolver(logContrib)
 			}),
 		),
-		// runtime.WithInputBindings(
-		// 	bindings_loader.NewInput("aws.sqs", func() bindings.InputBinding {
-		// 		return sqs.NewAWSSQS(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("aws.kinesis", func() bindings.InputBinding {
-		// 		return kinesis.NewAWSKinesis(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("azure.eventgrid", func() bindings.InputBinding {
-		// 		return eventgrid.NewAzureEventGrid(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("azure.eventhubs", func() bindings.InputBinding {
-		// 		return eventhubs.NewAzureEventHubs(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("azure.servicebusqueues", func() bindings.InputBinding {
-		// 		return servicebusqueues.NewAzureServiceBusQueues(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("azure.storagequeues", func() bindings.InputBinding {
-		// 		return storagequeues.NewAzureStorageQueues(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("cron", func() bindings.InputBinding {
-		// 		return cron.NewCron(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("dingtalk.webhook", func() bindings.InputBinding {
-		// 		return dingtalk_webhook.NewDingTalkWebhook(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("gcp.pubsub", func() bindings.InputBinding {
-		// 		return pubsub.NewGCPPubSub(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("kafka", func() bindings.InputBinding {
-		// 		return kafka.NewKafka(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("kubernetes", func() bindings.InputBinding {
-		// 		return kubernetes.NewKubernetes(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("mqtt", func() bindings.InputBinding {
-		// 		return mqtt.NewMQTT(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("rabbitmq", func() bindings.InputBinding {
-		// 		return bindings_rabbitmq.NewRabbitMQ(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("rethinkdb.statechange", func() bindings.InputBinding {
-		// 		return statechange.NewRethinkDBStateChangeBinding(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("twitter", func() bindings.InputBinding {
-		// 		return twitter.NewTwitter(logContrib)
-		// 	}),
-		// 	bindings_loader.NewInput("zeebe.jobworker", func() bindings.InputBinding {
-		// 		return bindings_zeebe_jobworker.NewZeebeJobWorker(logContrib)
-		// 	}),
-		// ),
+		runtime.WithInputBindings(
+			// 	bindings_loader.NewInput("aws.sqs", func() bindings.InputBinding {
+			// 		return sqs.NewAWSSQS(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("aws.kinesis", func() bindings.InputBinding {
+			// 		return kinesis.NewAWSKinesis(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("azure.eventgrid", func() bindings.InputBinding {
+			// 		return eventgrid.NewAzureEventGrid(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("azure.eventhubs", func() bindings.InputBinding {
+			// 		return eventhubs.NewAzureEventHubs(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("azure.servicebusqueues", func() bindings.InputBinding {
+			// 		return servicebusqueues.NewAzureServiceBusQueues(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("azure.storagequeues", func() bindings.InputBinding {
+			// 		return storagequeues.NewAzureStorageQueues(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("cron", func() bindings.InputBinding {
+			// 		return cron.NewCron(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("dingtalk.webhook", func() bindings.InputBinding {
+			// 		return dingtalk_webhook.NewDingTalkWebhook(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("gcp.pubsub", func() bindings.InputBinding {
+			// 		return pubsub.NewGCPPubSub(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("kafka", func() bindings.InputBinding {
+			// 		return kafka.NewKafka(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("kubernetes", func() bindings.InputBinding {
+			// 		return kubernetes.NewKubernetes(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("mqtt", func() bindings.InputBinding {
+			// 		return mqtt.NewMQTT(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("rabbitmq", func() bindings.InputBinding {
+			// 		return bindings_rabbitmq.NewRabbitMQ(logContrib)
+			// 	}),
+			// 	bindings_loader.NewInput("rethinkdb.statechange", func() bindings.InputBinding {
+			// 		return statechange.NewRethinkDBStateChangeBinding(logContrib)
+			// 	}),
+			bindings_loader.NewInput("twitter", func() bindings.InputBinding {
+				return twitter.NewTwitter(logContrib)
+			}),
+			// 	bindings_loader.NewInput("zeebe.jobworker", func() bindings.InputBinding {
+			// 		return bindings_zeebe_jobworker.NewZeebeJobWorker(logContrib)
+			// 	}),
+		),
 		runtime.WithOutputBindings(
 			// bindings_loader.NewOutput("alicloud.oss", func() bindings.OutputBinding {
 			// 	return oss.NewAliCloudOSS(logContrib)

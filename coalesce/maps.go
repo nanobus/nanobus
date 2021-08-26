@@ -7,6 +7,9 @@ func ToMapSI(v interface{}) (map[string]interface{}, bool) {
 	case map[interface{}]interface{}:
 		return MapIItoSI(t), true
 	case map[string]interface{}:
+		for k, v := range t {
+			t[k] = ValueIItoSI(v)
+		}
 		return t, true
 	case map[string]string:
 		return MapSStoSI(t), true
@@ -18,9 +21,24 @@ func ToMapSI(v interface{}) (map[string]interface{}, bool) {
 func MapIItoSI(m map[interface{}]interface{}) map[string]interface{} {
 	ret := make(map[string]interface{}, len(m))
 	for k, v := range m {
+		v = ValueIItoSI(v)
 		ret[interfaceToString(k)] = v
 	}
 	return ret
+}
+
+func ValueIItoSI(value interface{}) interface{} {
+	switch t := value.(type) {
+	case map[interface{}]interface{}:
+		value = MapIItoSI(t)
+	case map[string]string:
+		value = MapSStoSI(t)
+	case []interface{}:
+		for i := range t {
+			t[i] = ValueIItoSI(t[i])
+		}
+	}
+	return value
 }
 
 func MapSStoSI(m map[string]string) map[string]interface{} {

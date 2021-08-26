@@ -211,6 +211,19 @@ func main() {
 	}
 	resolveAs := resolve.ToResolveAs(resolver)
 
+	if config.Codecs == nil {
+		config.Codecs = map[string]runtime.Codec{}
+	}
+	if _, exists := config.Codecs["json"]; !exists {
+		config.Codecs["json"] = runtime.Codec{
+			Type: "json",
+		}
+	}
+	if _, exists := config.Codecs["msgpack"]; !exists {
+		config.Codecs["msgpack"] = runtime.Codec{
+			Type: "msgpack",
+		}
+	}
 	codecs := make(codec.Codecs)
 	for name, codec := range config.Codecs {
 		loader, ok := codecRegistry[codec.Type]
@@ -284,6 +297,9 @@ func main() {
 	dependencies["bus:invoker"] = busInvoker
 
 	// Internal invoker
+	if config.Compute.Type == "" {
+		config.Compute.Type = "mux"
+	}
 	computeLoader, ok := computeRegistry[config.Compute.Type]
 	if !ok {
 		log.Fatal(fmt.Errorf("could not find compute type %q", config.Compute.Type))
@@ -364,6 +380,10 @@ func main() {
 				target = typeName
 			}
 
+			// if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
+			// 	log.Println("-->", target, string(jsonBytes)+"\n")
+			// }
+
 			result, err := rt.processor.Inbound(ctx, target, data)
 			if err != nil {
 				log.Println("error processing event", err)
@@ -387,8 +407,10 @@ func main() {
 	}
 
 	var inputBindings []InputBinding
-	if err := mapstructure.Decode(rt.config.InputBindings, &inputBindings); err != nil {
-		log.Fatal(err)
+	if rt.config.InputBindings != nil {
+		if err := mapstructure.Decode(rt.config.InputBindings, &inputBindings); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Direct input bindings
@@ -400,14 +422,17 @@ func main() {
 		if binding.CodecArgs == nil {
 			binding.CodecArgs = []interface{}{}
 		}
-		codec, ok := codecs[binding.Codec]
+		c, ok := codecs[binding.Codec]
 		if !ok {
 			log.Fatal(fmt.Errorf("codec %q is not configured", binding.Codec))
 		}
-		log.Printf("reading from input binding %q", binding.Binding)
-		if err = p.Read(inputBindingHandler(binding.Function, codec, binding.CodecArgs)); err != nil {
-			log.Fatal(err)
-		}
+
+		go func(p bindings.InputBinding, binding InputBinding, c codec.Codec) {
+			log.Printf("reading from input binding %q", binding.Binding)
+			if err = p.Read(inputBindingHandler(binding.Function, c, binding.CodecArgs)); err != nil {
+				log.Println(err)
+			}
+		}(p, binding, c)
 	}
 
 	daprComponents.InputBindingHandler(func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error) {
@@ -571,7 +596,7 @@ func main() {
 		return embedded.EventResponseStatusSuccess, nil
 	})
 
-	inboundInvoker := func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
+	transportInvoker := func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
 		if err := coalesceInput(namespaces, namespace, service, function, input); err != nil {
 			return nil, err
 		}
@@ -629,7 +654,7 @@ func main() {
 	}
 	{
 		// Expose HTTP-RPC
-		transport, err := httprpc.New(httpListenAddr, namespaces, inboundInvoker, jsoncodec, msgpackcodec)
+		transport, err := httprpc.New(httpListenAddr, namespaces, transportInvoker, jsoncodec, msgpackcodec)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -642,7 +667,7 @@ func main() {
 	}
 	{
 		// Expose REST
-		transport, err := rest.New(restListenAddr, namespaces, inboundInvoker, jsoncodec, msgpackcodec)
+		transport, err := rest.New(restListenAddr, namespaces, transportInvoker, jsoncodec, msgpackcodec)
 		if err != nil {
 			log.Fatal(err)
 		}

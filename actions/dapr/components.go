@@ -10,17 +10,19 @@ import (
 	"github.com/dapr/dapr/pkg/actors"
 	"github.com/dapr/dapr/pkg/channel"
 	"github.com/dapr/dapr/pkg/config"
+	"github.com/dapr/dapr/pkg/messaging"
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
 )
 
 type DaprComponents struct {
-	Actors         actors.Actors
-	StateStores    map[string]state.Store
-	InputBindings  map[string]bindings.InputBinding
-	OutputBindings map[string]bindings.OutputBinding
-	SecretStores   map[string]secretstores.SecretStore
-	PubSubs        map[string]pubsub.PubSub
+	Actors          actors.Actors
+	DirectMessaging messaging.DirectMessaging
+	StateStores     map[string]state.Store
+	InputBindings   map[string]bindings.InputBinding
+	OutputBindings  map[string]bindings.OutputBinding
+	SecretStores    map[string]secretstores.SecretStore
+	PubSubs         map[string]pubsub.PubSub
 
 	invokeHandler       InvokeHandler
 	inputBindingHandler InputBindingHandler
@@ -33,6 +35,7 @@ type PubSubHandler func(ctx context.Context, event *embedded.TopicEvent) (embedd
 
 func (c *DaprComponents) RegisterComponents(reg *embedded.ComponentRegistry) error {
 	c.Actors = reg.Actors
+	c.DirectMessaging = reg.DirectMessaging
 	c.StateStores = reg.StateStores
 	c.InputBindings = reg.InputBindings
 	c.OutputBindings = reg.OutputBindings

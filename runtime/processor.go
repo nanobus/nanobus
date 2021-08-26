@@ -248,6 +248,9 @@ func (r *Runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 		if err != nil {
 			return nil, err
 		}
+		if s.config.Returns != "" {
+			data[s.config.Returns] = output
+		}
 	}
 
 	return output, nil
