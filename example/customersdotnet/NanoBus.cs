@@ -182,23 +182,29 @@ namespace NanoBus.Functions
                 listener.Close();
             } catch (Exception e)
             {
-                e.ToString();
+                Console.WriteLine(e);
             }
         }
     }
 
     public delegate void Starter();
 
-    public class HTTP
+    public class Server
     {
+        public static string GetEnvironmentVariable(string name, string defaultValue)
+            => Environment.GetEnvironmentVariable(name) is string v && v.Length > 0 ? v : defaultValue;
+
         public static (IHandlers, Invoker, Starter) Initialize()
         {
+            var outboundBaseURL = GetEnvironmentVariable("OUTBOUND_BASE_URL", "http://localhost:32321/outbound");
+            var host = GetEnvironmentVariable("HOST", "localhost");
+            var port = int.Parse(GetEnvironmentVariable("PORT", "9000"));
             var codec = new MsgPackCodec();
-            var invoke = new HTTPInvoker("http://localhost:32321/outbound");
+            var invoke = new HTTPInvoker(outboundBaseURL);
             var invoker = new Invoker(invoke.Invoke, codec);
             var handler = new HTTPHandlers(codec);
 
-            return (handler, invoker, () => handler.Listen(9000, "localhost"));
+            return (handler, invoker, () => handler.Listen(port, host));
         }
     }
 }
