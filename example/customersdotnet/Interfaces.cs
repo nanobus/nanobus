@@ -38,6 +38,8 @@ namespace Customers
         public string? Line2 { get; set; }
         [Key("city")]
         public string City { get; set; }
+        [Key("state")]
+        public string State { get; set; }
         [Key("zip")]
         public string Zip { get; set; }
     }

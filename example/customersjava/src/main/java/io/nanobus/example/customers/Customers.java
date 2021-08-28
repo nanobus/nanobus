@@ -1,18 +1,12 @@
 package io.nanobus.example.customers;
 
-import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.*;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-import reactor.core.publisher.Mono;
 import reactor.netty.http.Http11SslContextSpec;
 import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServer;
 import org.msgpack.jackson.dataformat.MessagePackFactory;
-
-import java.io.*;
-
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
 
 public final class Customers {
 

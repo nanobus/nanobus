@@ -3,7 +3,6 @@ package io.nanobus.example.customers;
 import io.netty.buffer.*;
 import reactor.core.publisher.*;
 
-import reactor.netty.*;
 import reactor.netty.http.client.HttpClient;
 
 public class OutboundImpl implements Outbound {

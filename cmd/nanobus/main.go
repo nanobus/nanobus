@@ -224,7 +224,9 @@ func main() {
 			Type: "msgpack",
 		}
 	}
+
 	codecs := make(codec.Codecs)
+	codecsByContentType := make(codec.Codecs)
 	for name, codec := range config.Codecs {
 		loader, ok := codecRegistry[codec.Type]
 		if !ok {
@@ -235,8 +237,10 @@ func main() {
 			log.Fatal(fmt.Errorf("error loading codec of type %q", codec.Type))
 		}
 		codecs[name] = c
+		codecsByContentType[c.ContentType()] = c
 	}
 	dependencies["codec:lookup"] = codecs
+	dependencies["codec:byContentType"] = codecsByContentType
 
 	pubsubDecs := pubsubDecoders{}
 	bindingDecs := bindingDecoders{}
