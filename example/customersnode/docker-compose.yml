@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  customers:
+    build:
+      context: .
+    container_name: nanobus_example_customers
+    image: api-server
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - OUTBOUND_URL=http://host.docker.internal:32321/outbound
+    volumes:
+      - ./logs:/logs
+    ports:
+      - "3000:3000"
