@@ -314,13 +314,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, data []byte, metadata map[string][]string) ([]byte, string, error) {
+	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, payload []byte, metadata map[string][]string) ([]byte, string, error) {
 		var input interface{}
 		// TODO: Decoder
-		if err := json.Unmarshal(data, &input); err != nil {
+		if err := json.Unmarshal(payload, &input); err != nil {
 			return nil, "", err
 		}
 
+		target := method
 		idx := strings.LastIndex(method, "/")
 		if idx < 0 {
 			return nil, "", fmt.Errorf("invalid method %q", method)
@@ -335,13 +336,17 @@ func main() {
 		service := method[lastDot+1:]
 		namespace := method[:lastDot]
 
-		actionData := actions.Data{
+		data := actions.Data{
 			"input":    input,
 			"metadata": metadata,
 			"env":      env,
 		}
 
-		output, _, err := rt.processor.Service(ctx, namespace, service, function, actionData)
+		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+			log.Println("-->", target, string(jsonBytes)+"\n")
+		}
+
+		output, _, err := rt.processor.Service(ctx, namespace, service, function, data)
 		if err != nil {
 			return nil, "", err
 		}
