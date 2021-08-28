@@ -1,31 +1,22 @@
-from nanobus import http_initialize
-from interfaces import Customer, InboundHandlers, Outbound, OutboundImpl
+from nanobus import start
+from spec import Customer, registerInboundHandlers, outbound
 
 
-class Inbound:
-    def __init__(self, outbound: Outbound):
-        self.outbound = outbound
+async def create_customer(customer: Customer) -> Customer:
+    await outbound.save_customer(customer)
+    await outbound.customer_created(customer)
+    return customer
 
-    async def create_customer(self, customer: Customer) -> Customer:
-        await self.outbound.save_customer(customer)
-        await self.outbound.customer_created(customer)
-        return customer
 
-    async def get_customer(self, id: int) -> Customer:
-        return await self.outbound.fetch_customer(id)
+async def get_customer(id: int) -> Customer:
+    return await outbound.fetch_customer(id)
 
 
 def main():
-    (handlers, invoker, start) = http_initialize()
-
-    outbound = OutboundImpl(invoker)
-    inbound = Inbound(outbound)
-
-    InboundHandlers(
-        create_customer=inbound.create_customer,
-        get_customer=inbound.get_customer,
-    ).register(handlers)
-
+    registerInboundHandlers(
+        create_customer=create_customer,
+        get_customer=get_customer,
+    )
     start()
 
 

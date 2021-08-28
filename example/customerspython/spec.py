@@ -1,4 +1,4 @@
-from nanobus import Handlers, Invoker
+from nanobus import Invoker, invoker, handlers
 from typing import Awaitable, Callable, Optional
 from dataclasses import dataclass
 
@@ -53,26 +53,27 @@ class OutboundImpl(Outbound):
         return await self.invoker.invokeWithReturn("/customers.v1.Outbound/fetchCustomer", args, Customer)
 
 
-@dataclass
-class InboundHandlers:
-    create_customer: Callable[[Customer], Awaitable[Customer]] = None
-    get_customer: Callable[[int], Awaitable[Customer]] = None
+def registerInboundHandlers(
+    create_customer: Callable[[Customer], Awaitable[Customer]] = None,
+    get_customer: Callable[[int], Awaitable[Customer]] = None,
+):
+    codec = handlers.codec
 
-    def register(self, handlers: Handlers):
-        codec = handlers.codec
+    if create_customer != None:
+        async def handler(input: bytes) -> bytes:
+            customer: Customer = codec.decode(input, Customer)
+            result = await create_customer(customer)
+            return codec.encode(result)
+        handlers.register_handler(
+            "/customers.v1.Inbound/createCustomer", handler)
 
-        if self.create_customer != None:
-            async def handler(input: bytes) -> bytes:
-                customer: Customer = codec.decode(input, Customer)
-                result = await self.create_customer(customer)
-                return codec.encode(result)
-            handlers.register_handler(
-                "/customers.v1.Inbound/createCustomer", handler)
+    if get_customer != None:
+        async def handler(input: bytes) -> bytes:
+            args: GetCustomerArgs = codec.decode(input, GetCustomerArgs)
+            result = await get_customer(args.id)
+            return codec.encode(result)
+        handlers.register_handler(
+            "/customers.v1.Inbound/getCustomer", handler)
 
-        if self.get_customer != None:
-            async def handler(input: bytes) -> bytes:
-                args: GetCustomerArgs = codec.decode(input, GetCustomerArgs)
-                result = await self.get_customer(args.id)
-                return codec.encode(result)
-            handlers.register_handler(
-                "/customers.v1.Inbound/getCustomer", handler)
+
+outbound = OutboundImpl(invoker)

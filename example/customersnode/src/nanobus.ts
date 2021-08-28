@@ -1,26 +1,32 @@
 import url from 'url';
+import logger from './logger';
+import dotenv from 'dotenv';
 import http, { RequestListener, Server } from 'http';
 import { encode, decode } from '@msgpack/msgpack';
 
-export type Encoder = (v: any) => ArrayBuffer
+export type Encoder = (v: any) => ArrayBuffer;
 export type Decoder = (v: ArrayBuffer) => any;
 export interface Codec {
-  encoder: Encoder
-  decoder: Decoder
+  encoder: Encoder;
+  decoder: Decoder;
 }
 
-export type Handler = (payload: ArrayBuffer) => Promise<ArrayBuffer>
+export type Handler = (payload: ArrayBuffer) => Promise<ArrayBuffer>;
 
 export interface Handlers {
-  registerHandler(uri: string, handler: Handler): void
-  registerHandlers(handlers: { [uri: string]: Handler }): void
+  readonly codec: Codec;
+  registerHandler(uri: string, handler: Handler): void;
+  registerHandlers(handlers: { [uri: string]: Handler }): void;
 }
 
 export class HTTPHandlers implements Handlers {
+  readonly codec: Codec;
   private handlers: Map<string, Handler> = new Map();
   private server: Server;
 
-  constructor() {
+  constructor(codec: Codec) {
+    this.codec = codec;
+
     const requestListener: RequestListener = async function (req, res) {
       const handler: Handler = this.handlers.get(req.url);
       if (!handler) {
@@ -53,7 +59,7 @@ export class HTTPHandlers implements Handlers {
         res.writeHead(500);
         res.end(e.message);
       }
-    }
+    };
 
     this.server = http.createServer(requestListener.bind(this));
   }
@@ -65,10 +71,16 @@ export class HTTPHandlers implements Handlers {
   }
 
   registerHandlers(handlers: { [uri: string]: Handler }): void {
-    Object.keys(handlers).map(uri => this.registerHandler(uri, handlers[uri]));
+    Object.keys(handlers).map(uri =>
+      this.registerHandler(uri, handlers[uri])
+    );
   }
 
-  listen(port?: number, hostname?: string, listeningListener?: () => void): void {
+  listen(
+    port?: number,
+    hostname?: string,
+    listeningListener?: () => void
+  ): void {
     this.server.listen(port, hostname, listeningListener);
   }
 }
@@ -90,17 +102,17 @@ export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
           'Content-Type': 'application/msgpack',
           'Content-Length': data.byteLength
         }
-      }
+      };
 
       const req = http.request(options, res => {
         const buffers: Uint8Array[] = [];
         res.on('data', chunk => {
           buffers.push(chunk);
-        })
+        });
 
         res.on('end', () => {
           try {
-            if (buffers.length == 0) {
+            if (buffers.length === 0) {
               resolve(null);
               return;
             }
@@ -112,21 +124,42 @@ export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
             console.error(error);
             reject(error);
           }
-        })
-      })
+        });
+      });
 
       req.on('error', error => {
         console.error(error);
         reject(error);
-      })
+      });
 
       req.write(Buffer.from(data));
       req.end();
     });
-  }
-};
+  };
+}
 
 export const msgpackCodec: Codec = {
-  encoder: (data) => encode(data).buffer,
-  decoder: (data) => decode(data)
+  encoder: data => encode(data).buffer,
+  decoder: data => decode(data)
+};
+
+const result = dotenv.config();
+if (result.error) {
+  dotenv.config({ path: '.env.default' });
+}
+
+const PORT = parseInt(process.env.PORT) || 9000;
+const HOST = process.env.HOST || 'localhost';
+
+export const invoker = HTTPInvoker(
+  process.env.OUTBOUND_BASE_URL || 'http://localhost:32321/outbound',
+  msgpackCodec
+);
+
+export const handlers = new HTTPHandlers(msgpackCodec);
+
+export function start(): void {
+  handlers.listen(PORT, HOST, () => {
+    logger.info(`🌏 Nanoprocess server started at http://${HOST}:${PORT}`);
+  });
 }

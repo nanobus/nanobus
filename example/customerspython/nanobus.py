@@ -1,12 +1,15 @@
-from typing import Awaitable, Callable, Dict, NoReturn, Tuple, Type, TypeVar, Generic
+from typing import Awaitable, Callable, Dict, NoReturn, Type, TypeVar, Generic
 import msgpack
 from dataclasses import asdict
 import dacite
 from aiohttp import web, ClientSession
+import os
 
 
-hostName = "localhost"
-serverPort = 9000
+hostName = os.getenv('HOST', "localhost")
+serverPort = int(os.getenv('PORT', "9000"))
+outboundBaseURL = os.getenv(
+    'OUTBOUND_BASE_URL', "http://localhost:32321/outbound")
 
 T = TypeVar('T')
 
@@ -92,23 +95,20 @@ async def client_session_ctx(app: web.Application) -> NoReturn:
     await session.close()
 
 
-def http_initialize() -> Tuple[Handlers, Invoker, Callable[[], None]]:
-    codec = MsgPackCodec()
-    handlers = Handlers(codec)
-    server = HTTPServer(handlers)
-    app = web.Application()
-    app.add_routes([web.post('/{namespace}/{operation}', server.handle)])
-    app.cleanup_ctx.append(client_session_ctx)
+codec = MsgPackCodec()
+handlers = Handlers(codec)
+server = HTTPServer(handlers)
+app = web.Application()
+app.add_routes([web.post('/{namespace}/{operation}', server.handle)])
+app.cleanup_ctx.append(client_session_ctx)
 
-    invoke = HTTPInvoker("http://localhost:32321/outbound").invoke
-    invoker = Invoker(invoke, codec)
+invoke = HTTPInvoker(outboundBaseURL).invoke
+invoker = Invoker(invoke, codec)
 
-    def start():
-        try:
-            web.run_app(app, host=hostName, port=serverPort)
-        except KeyboardInterrupt:
-            pass
+def start():
+    try:
+        web.run_app(app, host=hostName, port=serverPort)
+    except KeyboardInterrupt:
+        pass
 
-        print("Server stopped.")
-
-    return (handlers, invoker, start)
+    print("Server stopped.")

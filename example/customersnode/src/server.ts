@@ -1,6 +1,6 @@
 
-import { Customer } from './interfaces';
-import { outbound, service } from './dependencies'
+import { start } from './nanobus';
+import { Customer, registerInboundHanders, outbound } from './spec';
 
 async function createCustomer(customer: Customer): Promise<Customer> {
   await outbound.saveCustomer(customer);
@@ -13,9 +13,9 @@ async function getCustomer(id: number): Promise<Customer> {
   return outbound.fetchCustomer(id);
 };
 
-service.registerInboundHandlers({
+registerInboundHanders({
   createCustomer: createCustomer,
   getCustomer: getCustomer,
 });
 
-service.start();
+start();
