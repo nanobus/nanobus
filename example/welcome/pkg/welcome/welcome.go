@@ -2,18 +2,36 @@ package welcome
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"sync/atomic"
 )
 
-type Inbound interface {
-	GreetCustomer(ctx context.Context, customer Customer) error
+type Service struct {
+	Outbound
+	receiveCounter uint64
 }
 
-type Outbound interface {
-	SendEmail(ctx context.Context, email string, message string) error
+func New(outbound Outbound) *Service {
+	return &Service{
+		Outbound: outbound,
+	}
 }
 
-type Customer struct {
-	FirstName string `json:"firstName" msgpack:"firstName"`
-	LastName  string `json:"lastName" msgpack:"lastName"`
-	Email     string `json:"email" msgpack:"email"`
+func (s *Service) GreetCustomer(ctx context.Context, customer Customer) error {
+	counter := atomic.AddUint64(&s.receiveCounter, 1)
+	if counter%2 == 0 {
+		log.Printf("RETURNING SIMULATED ERROR")
+		return errors.New("simulated error")
+	}
+
+	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
+		log.Printf("RECEIVED: %s", string(jsonBytes))
+	}
+
+	message := fmt.Sprintf("Hello, %s %s", customer.FirstName, customer.LastName)
+
+	return s.SendEmail(ctx, customer.Email, message)
 }
