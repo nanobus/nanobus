@@ -15,8 +15,7 @@ export type Handler = (payload: ArrayBuffer) => Promise<ArrayBuffer>;
 
 export interface Handlers {
   readonly codec: Codec;
-  registerHandler(uri: string, handler: Handler): void;
-  registerHandlers(handlers: { [uri: string]: Handler }): void;
+  registerHandler(namespace: string, operation: string, handler: Handler): void;
 }
 
 export class HTTPHandlers implements Handlers {
@@ -64,16 +63,10 @@ export class HTTPHandlers implements Handlers {
     this.server = http.createServer(requestListener.bind(this));
   }
 
-  registerHandler(uri: string, handler: Handler): void {
+  registerHandler(namespace: string, operation: string, handler: Handler): void {
     if (handler) {
-      this.handlers.set(uri, handler);
+      this.handlers.set('/' + namespace + '/' + operation, handler);
     }
-  }
-
-  registerHandlers(handlers: { [uri: string]: Handler }): void {
-    Object.keys(handlers).map(uri =>
-      this.registerHandler(uri, handlers[uri])
-    );
   }
 
   listen(
@@ -85,18 +78,18 @@ export class HTTPHandlers implements Handlers {
   }
 }
 
-export type Invoker = (operation: string, payload: any) => Promise<any>;
+export type Invoker = (namespace: string, operation: string, payload: any) => Promise<any>;
 
 export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
   const u = url.parse(baseURL);
 
-  return async (operation: string, payload: any): Promise<any> => {
+  return async (namespace: string, operation: string, payload: any): Promise<any> => {
     return new Promise((resolve, reject) => {
       const data = codec.encoder(payload);
       const options = {
         hostname: u.hostname,
         port: u.port,
-        path: u.path + operation,
+        path: u.path + '/' + namespace + '/' + operation,
         method: 'POST',
         headers: {
           'Content-Type': 'application/msgpack',

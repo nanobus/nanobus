@@ -1,2 +1,2 @@
 # !/bin/sh
-go run cmd/main.go --http-listen-addr :8001 --outbound-base-uri http://localhost:32322/outbound
+OUTBOUND_BASE_URI=http://localhost:32322/outbound PORT=9001 go run cmd/main.go

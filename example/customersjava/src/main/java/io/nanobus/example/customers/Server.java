@@ -8,7 +8,7 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServer;
 import org.msgpack.jackson.dataformat.MessagePackFactory;
 
-public final class Customers {
+public final class Server {
 
   static final boolean SECURE = System.getProperty("secure") != null;
   static final int PORT = Integer.parseInt(System.getProperty("port", SECURE ? "8443" : "8080"));

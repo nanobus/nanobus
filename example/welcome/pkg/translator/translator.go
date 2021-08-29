@@ -25,11 +25,11 @@ func (m *Functions) SendEmail(ctx context.Context, email string, message string)
 	return m.invoker.Invoke(ctx, "welcome.v1.Outbound", "sendEmail", inputArgs)
 }
 
-type Handlers struct {
+type InboudHandlers struct {
 	GreetCustomer func(ctx context.Context, customer welcome.Customer) error
 }
 
-func (h Handlers) Register(codec functions.Codec, registerFn functions.Register) {
+func (h InboudHandlers) Register(codec functions.Codec, registerFn functions.Register) {
 	if h.GreetCustomer != nil {
 		registerFn("welcome.v1.Inbound", "greetCustomer", greetCustomerWrapper(codec, h.GreetCustomer))
 	}

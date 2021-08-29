@@ -14,5 +14,5 @@ dependencies {
 }
 
 application {
-    mainClass = 'io.nanobus.example.customers.Customers'
+    mainClass = 'io.nanobus.example.customers.Server'
 }

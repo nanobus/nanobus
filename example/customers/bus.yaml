@@ -9,7 +9,7 @@ compute:
   #   fileName: customers.wasm
   type: mux
   with:
-    baseUrl: http://localhost:8000
+    baseUrl: http://localhost:9000
 
 codecs:
   avro:

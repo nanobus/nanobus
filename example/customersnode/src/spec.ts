@@ -35,17 +35,17 @@ export class OutboundImpl implements Outbound {
   }
 
   async saveCustomer(customer: Customer): Promise<void> {
-    await this.invoker('/customers.v1.Outbound/saveCustomer', customer);
+    await this.invoker('customers.v1.Outbound', 'saveCustomer', customer);
   }
 
   async fetchCustomer(id: number): Promise<Customer> {
-    return this.invoker('/customers.v1.Outbound/fetchCustomer', {
+    return this.invoker('customers.v1.Outbound', 'fetchCustomer', {
       id: id
     });
   }
 
   async customerCreated(customer: Customer): Promise<void> {
-    await this.invoker('/customers.v1.Outbound/customerCreated', customer);
+    await this.invoker('customers.v1.Outbound', 'customerCreated', customer);
   }
 }
 
@@ -75,12 +75,12 @@ export interface InboundHanders {
 export function registerInboundHanders(params: InboundHanders): void {
   if (params.createCustomer) {
     handlers.registerHandler(
-        '/customers.v1.Inbound/createCustomer',
+        'customers.v1.Inbound', 'createCustomer',
         createCustomerWrapper(handlers.codec, params.createCustomer));
   }
   if (params.getCustomer) {
     handlers.registerHandler(
-      '/customers.v1.Inbound/getCustomer',
+      'customers.v1.Inbound', 'getCustomer',
         getCustomerWrapper(handlers.codec, params.getCustomer));
   }
 }
