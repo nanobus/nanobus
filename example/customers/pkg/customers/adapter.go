@@ -62,7 +62,7 @@ type Adapter struct {
 }
 
 func NewAdapter() *Adapter {
-	outboundBaseURI := lookupEnvOrString("OUTBOUND_BASE_URI", "http://localhost:9000/outbound/")
+	outboundBaseURI := lookupEnvOrString("OUTBOUND_BASE_URI", "http://localhost:32321/outbound/")
 	codec := msgpack.New()
 	m := mux.New(outboundBaseURI, codec.ContentType())
 	invoker := functions.NewInvoker(m.Invoke, codec)

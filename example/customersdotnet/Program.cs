@@ -1,24 +1,20 @@
-﻿using System.Threading.Tasks;
-using NanoBus.Functions;
-
-namespace Customers
+﻿namespace Customers
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-            var (handlers, invoker, start) = Server.Initialize();
+            var adapter = new Adapter();
+            var outbound = adapter.NewOutbound();
+            var service = new Service(outbound);
 
-            var outbound = new OutboundImpl(invoker);
-            var inbound = new Inbound(outbound);
-
-            new InboundHandlers
+            adapter.RegisterInboundHanders(new Inbound
             {
-                CreateCustomer = inbound.CreateCustomer,
-                GetCustomer = inbound.GetCustomer,
-            }.Register(handlers);
+                CreateCustomer = service.CreateCustomer,
+                GetCustomer = service.GetCustomer,
+            });
 
-            start();
+            adapter.Start();
         }
     }
 }

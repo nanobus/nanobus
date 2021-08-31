@@ -43,7 +43,7 @@ namespace NanoBus.Functions
         public async Task<byte[]> Invoke(string operation, byte[] input)
         {
             HttpContent content = new ByteArrayContent(input);
-            var response = await client.PostAsync(baseURL+operation, content);
+            var response = await client.PostAsync(baseURL + operation, content);
             var stream = await response.Content.ReadAsStreamAsync();
             var ms = new MemoryStream();
             stream.CopyTo(ms);
@@ -82,8 +82,6 @@ namespace NanoBus.Functions
     {
         ICodec Codec();
         void RegisterHandler(string operation, Handler handler);
-        void RegisterHandlers(Dictionary<string, Func<byte[], Task<byte[]>>> handlers);
-        
     }
 
     public class HTTPHandlers : IHandlers
@@ -104,14 +102,6 @@ namespace NanoBus.Functions
             if (handler != null)
             {
                 this.handlers[operation] = handler;
-            }
-        }
-
-        public void RegisterHandlers(Dictionary<string, Func<byte[], Task<byte[]>>> handlers)
-        {
-            foreach (KeyValuePair<string, Handler> entry in this.handlers)
-            {
-                this.RegisterHandler(entry.Key, entry.Value);
             }
         }
 
@@ -150,7 +140,8 @@ namespace NanoBus.Functions
                         req.InputStream.CopyTo(memoryStream);
                         input = memoryStream.ToArray();
                     }
-                } else
+                }
+                else
                 {
                     input = new byte[] { };
                 }
@@ -180,31 +171,11 @@ namespace NanoBus.Functions
 
                 // Close the listener
                 listener.Close();
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 Console.WriteLine(e);
             }
-        }
-    }
-
-    public delegate void Starter();
-
-    public class Server
-    {
-        public static string GetEnvironmentVariable(string name, string defaultValue)
-            => Environment.GetEnvironmentVariable(name) is string v && v.Length > 0 ? v : defaultValue;
-
-        public static (IHandlers, Invoker, Starter) Initialize()
-        {
-            var outboundBaseURL = GetEnvironmentVariable("OUTBOUND_BASE_URL", "http://localhost:32321/outbound");
-            var host = GetEnvironmentVariable("HOST", "localhost");
-            var port = int.Parse(GetEnvironmentVariable("PORT", "9000"));
-            var codec = new MsgPackCodec();
-            var invoke = new HTTPInvoker(outboundBaseURL);
-            var invoker = new Invoker(invoke.Invoke, codec);
-            var handler = new HTTPHandlers(codec);
-
-            return (handler, invoker, () => handler.Listen(port, host));
         }
     }
 }

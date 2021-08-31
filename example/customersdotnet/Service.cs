@@ -2,11 +2,11 @@ using System.Threading.Tasks;
 
 namespace Customers
 {
-    public class Inbound
+    public class Service
     {
         private Outbound outbound;
 
-        public Inbound(Outbound outbound)
+        public Service(Outbound outbound)
         {
             this.outbound = outbound;
         }
