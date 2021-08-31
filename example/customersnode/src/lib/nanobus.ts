@@ -1,6 +1,4 @@
 import url from 'url';
-import logger from './logger';
-import dotenv from 'dotenv';
 import http, { RequestListener, Server } from 'http';
 import { encode, decode } from '@msgpack/msgpack';
 
@@ -135,24 +133,3 @@ export const msgpackCodec: Codec = {
   encoder: data => encode(data).buffer,
   decoder: data => decode(data)
 };
-
-const result = dotenv.config();
-if (result.error) {
-  dotenv.config({ path: '.env.default' });
-}
-
-const PORT = parseInt(process.env.PORT) || 9000;
-const HOST = process.env.HOST || 'localhost';
-
-export const invoker = HTTPInvoker(
-  process.env.OUTBOUND_BASE_URL || 'http://localhost:32321/outbound',
-  msgpackCodec
-);
-
-export const handlers = new HTTPHandlers(msgpackCodec);
-
-export function start(): void {
-  handlers.listen(PORT, HOST, () => {
-    logger.info(`🌏 Nanoprocess server started at http://${HOST}:${PORT}`);
-  });
-}

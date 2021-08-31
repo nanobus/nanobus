@@ -14,7 +14,7 @@ type Service struct {
 	receiveCounter uint64
 }
 
-func New(outbound Outbound) *Service {
+func NewService(outbound Outbound) *Service {
 	return &Service{
 		Outbound: outbound,
 	}

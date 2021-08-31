@@ -30,7 +30,7 @@ import * from "@widl/grpc"
 """
 Operations that can be performed on a customer.
 """
-role Inbound @service @path("/customers") {
+role Inbound @service @uses([Outbound]) @path("/customers") {
   """
   Creates a new customer.
   """

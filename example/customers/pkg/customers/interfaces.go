@@ -5,11 +5,11 @@ import (
 )
 
 // Operations that can be performed on a customer.
-type Inbound interface {
+type Inbound struct {
 	// Creates a new customer.
-	CreateCustomer(ctx context.Context, customer Customer) (Customer, error)
+	CreateCustomer func(ctx context.Context, customer Customer) (Customer, error)
 	// Retrieve a customer by id.
-	GetCustomer(ctx context.Context, id uint64) (Customer, error)
+	GetCustomer func(ctx context.Context, id uint64) (Customer, error)
 }
 
 type Outbound interface {

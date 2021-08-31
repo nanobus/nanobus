@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type Inboud struct {
+type Inbound struct {
 	GreetCustomer func(ctx context.Context, customer Customer) error
 }
 

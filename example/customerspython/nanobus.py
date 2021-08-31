@@ -3,7 +3,6 @@ import msgpack
 from dataclasses import asdict
 import dacite
 from aiohttp import web, ClientSession
-import os
 
 
 T = TypeVar('T')
@@ -68,6 +67,10 @@ class Handlers:
 class HTTPServer:
     def __init__(self, handlers: Handlers):
         self.handlers = handlers
+        app = web.Application()
+        app.add_routes([web.post('/{namespace}/{operation}', self.handle)])
+        app.cleanup_ctx.append(self.client_session_ctx)
+        self.app = app
 
     async def handle(self, request):
         namespace = request.match_info['namespace']
@@ -81,33 +84,10 @@ class HTTPServer:
 
         return web.Response(body=result, content_type="application/msgpack")
 
+    async def client_session_ctx(self, app: web.Application) -> NoReturn:
+        app['client_session'] = session
+        yield
+        await session.close()
 
-async def client_session_ctx(app: web.Application) -> NoReturn:
-    app['client_session'] = session
-    yield
-    await session.close()
-
-
-codec = MsgPackCodec()
-handlers = Handlers(codec)
-server = HTTPServer(handlers)
-app = web.Application()
-app.add_routes([web.post('/{namespace}/{operation}', server.handle)])
-app.cleanup_ctx.append(client_session_ctx)
-
-serverHost = os.getenv('HOST', "localhost")
-serverPort = int(os.getenv('PORT', "9000"))
-outboundBaseURL = os.getenv(
-    'OUTBOUND_BASE_URL', "http://localhost:32321/outbound")
-
-invoke = HTTPInvoker(outboundBaseURL).invoke
-invoker = Invoker(invoke, codec)
-
-
-def start():
-    try:
-        web.run_app(app, host=serverHost, port=serverPort)
-    except KeyboardInterrupt:
-        pass
-
-    print("Server stopped.")
+    def run(self, host: str, port: int):
+        web.run_app(self.app, host=host, port=port)

@@ -1,6 +1,6 @@
 namespace "welcome.v1"
 
-role Inbound {
+role Inbound @uses([Outbound]) {
   greetCustomer{customer: Customer}: void
 }
 

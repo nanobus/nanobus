@@ -5,11 +5,11 @@ import (
 )
 
 func main() {
-	app := welcome.NewApplication()
-	outbound := app.NewOutbound()
-	service := welcome.New(outbound)
+	adapter := welcome.NewAdapter()
+	outbound := adapter.NewOutbound()
+	service := welcome.NewService(outbound)
 
-	app.RegisterInbound(welcome.Inboud{
+	adapter.RegisterInbound(welcome.Inbound{
 		GreetCustomer: service.GreetCustomer,
 	}).Run()
 }

@@ -40,7 +40,7 @@ type hostSendEmailArgs struct {
 	Message string `json:"message" msgpack:"message"`
 }
 
-type Application struct {
+type Adapter struct {
 	mux        *mux.Mux
 	codec      functions.Codec
 	invoker    *functions.Invoker
@@ -49,13 +49,13 @@ type Application struct {
 	ln net.Listener
 }
 
-func NewApplication() *Application {
+func NewAdapter() *Adapter {
 	outboundBaseURI := lookupEnvOrString("OUTBOUND_BASE_URI", "http://localhost:9000/outbound/")
 	codec := msgpack.New()
 	m := mux.New(outboundBaseURI, codec.ContentType())
 	invoker := functions.NewInvoker(m.Invoke, codec)
 
-	app := Application{
+	app := Adapter{
 		mux:        m,
 		codec:      codec,
 		invoker:    invoker,
@@ -65,7 +65,7 @@ func NewApplication() *Application {
 	return &app
 }
 
-func (a *Application) Start() (err error) {
+func (a *Adapter) Start() (err error) {
 	host := lookupEnvOrString("HOST", "localhost")
 	port := lookupEnvOrInt("PORT", 9000)
 	httpListenAddr := fmt.Sprintf("%s:%d", host, port)
@@ -76,40 +76,14 @@ func (a *Application) Start() (err error) {
 	return http.Serve(a.ln, a.mux.Router())
 }
 
-func (a *Application) Stop() error {
-	return a.ln.Close()
-}
-
-func (a *Application) Invoker() *functions.Invoker {
-	return a.invoker
-}
-
-func (a *Application) RegisterInbound(handlers Inboud) *Application {
-	if handlers.GreetCustomer != nil {
-		a.registerFn("welcome.v1.Inbound", "greetCustomer", a.greetCustomerWrapper(handlers.GreetCustomer))
+func (a *Adapter) Stop() (err error) {
+	if a.ln != nil {
+		err = a.ln.Close()
 	}
-	return a
+	return err
 }
 
-func (a *Application) greetCustomerWrapper(handler func(ctx context.Context, customer Customer) error) functions.Handler {
-	return func(ctx context.Context, payload []byte) ([]byte, error) {
-		var request Customer
-		if err := a.codec.Decode(payload, &request); err != nil {
-			return nil, err
-		}
-		err := handler(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-		return []byte{}, nil
-	}
-}
-
-func (a *Application) NewOutbound() Outbound {
-	return NewOutboundImpl(a.invoker)
-}
-
-func (a *Application) Run() {
+func (a *Adapter) Run() {
 	ctx := context.Background()
 	var g run.Group
 	{
@@ -126,6 +100,35 @@ func (a *Application) Run() {
 	if err := g.Run(); err.Error() != "received signal interrupt" {
 		log.Fatalln(err)
 	}
+}
+
+func (a *Adapter) Invoker() *functions.Invoker {
+	return a.invoker
+}
+
+func (a *Adapter) RegisterInbound(handlers Inbound) *Adapter {
+	if handlers.GreetCustomer != nil {
+		a.registerFn("welcome.v1.Inbound", "greetCustomer", a.greetCustomerWrapper(handlers.GreetCustomer))
+	}
+	return a
+}
+
+func (a *Adapter) greetCustomerWrapper(handler func(ctx context.Context, customer Customer) error) functions.Handler {
+	return func(ctx context.Context, payload []byte) ([]byte, error) {
+		var request Customer
+		if err := a.codec.Decode(payload, &request); err != nil {
+			return nil, err
+		}
+		err := handler(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		return []byte{}, nil
+	}
+}
+
+func (a *Adapter) NewOutbound() Outbound {
+	return NewOutboundImpl(a.invoker)
 }
 
 func lookupEnvOrInt(key string, defaultVal int) int {

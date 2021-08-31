@@ -4,21 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-
-	"github.com/nanobus/nanobus/example/customers/pkg/customers"
 )
 
-type MyApp struct {
-	customers.Outbound
+type Service struct {
+	Outbound
 }
 
-func New(outbound customers.Outbound) *MyApp {
-	return &MyApp{
+func NewService(outbound Outbound) *Service {
+	return &Service{
 		Outbound: outbound,
 	}
 }
 
-func (s *MyApp) CreateCustomer(ctx context.Context, customer customers.Customer) (customers.Customer, error) {
+func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (Customer, error) {
 	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
 		log.Printf("RECEIVED: %s\n", string(jsonBytes))
 	}
@@ -32,7 +30,7 @@ func (s *MyApp) CreateCustomer(ctx context.Context, customer customers.Customer)
 	return customer, err
 }
 
-func (s *MyApp) GetCustomer(ctx context.Context, id uint64) (customers.Customer, error) {
+func (s *Service) GetCustomer(ctx context.Context, id uint64) (Customer, error) {
 	log.Printf("RECEIVED: %d\n", id)
 
 	return s.FetchCustomer(ctx, id)

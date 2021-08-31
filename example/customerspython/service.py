@@ -1,5 +1,5 @@
-from nanobus import start
-from spec import Customer, registerInboundHandlers, outbound
+from adapter import registerInboundHandlers, start, outbound
+from interfaces import Customer
 
 
 async def create_customer(customer: Customer) -> Customer:
