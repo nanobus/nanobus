@@ -62,7 +62,7 @@ namespace Customers
             this.handlers.Listen(port, host);
         }
 
-        public void RegisterInboundHanders(Inbound handlers)
+        public Adapter RegisterInboundHanders(Inbound handlers)
         {
             if (handlers.CreateCustomer != null)
             {
@@ -82,6 +82,7 @@ namespace Customers
                     return codec.Encode(result);
                 });
             }
+            return this;
         }
 
         public Outbound NewOutbound()

@@ -98,51 +98,49 @@ namespace NanoBus.Functions
 
         private async Task HandleIncomingConnections()
         {
-            bool runServer = true;
-
-            // While a user hasn't visited the `shutdown` url, keep on handling requests
-            while (runServer)
+            while (listener.IsListening)
             {
-                // Will wait here until we hear from a connection
                 HttpListenerContext ctx = await listener.GetContextAsync();
-
-                // Peel out the requests and response objects
-                HttpListenerRequest req = ctx.Request;
-                HttpListenerResponse resp = ctx.Response;
-
-                if (req.HttpMethod != "POST")
-                {
-                    resp.Close();
-                    continue;
-                }
-
-                Handler handler = handlers[req.Url.AbsolutePath];
-                if (handler == null)
-                {
-                    resp.Close();
-                    continue;
-                }
-
-                byte[] input;
-                if (req.HasEntityBody)
-                {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        req.InputStream.CopyTo(memoryStream);
-                        input = memoryStream.ToArray();
-                    }
-                }
-                else
-                {
-                    input = new byte[] { };
-                }
-
-                byte[] output = await handler(input);
-
-                // Write out to the response stream (asynchronously), then close it
-                await resp.OutputStream.WriteAsync(output, 0, output.Length);
-                resp.Close();
+                ProcessRequest(ctx);
             }
+        }
+
+        private async void ProcessRequest(HttpListenerContext ctx) {
+            HttpListenerRequest req = ctx.Request;
+            HttpListenerResponse resp = ctx.Response;
+
+            if (req.HttpMethod != "POST")
+            {
+                resp.Close();
+                return;
+            }
+
+            Handler handler = handlers[req.Url.AbsolutePath];
+            if (handler == null)
+            {
+                resp.Close();
+                return;
+            }
+
+            byte[] input;
+            if (req.HasEntityBody)
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    req.InputStream.CopyTo(memoryStream);
+                    input = memoryStream.ToArray();
+                }
+            }
+            else
+            {
+                input = new byte[] { };
+            }
+
+            byte[] output = await handler(input);
+
+            // Write out to the response stream (asynchronously), then close it
+            await resp.OutputStream.WriteAsync(output, 0, output.Length);
+            resp.Close();
         }
 
         public void Listen(int port, string hostname)
@@ -161,11 +159,19 @@ namespace NanoBus.Functions
                 listenTask.GetAwaiter().GetResult();
 
                 // Close the listener
-                listener.Close();
+                if (listener.IsListening) {
+                    listener.Close();
+                }
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
+            }
+        }
+
+        public void Stop() {
+            if (listener != null && listener.IsListening) {
+                listener.Close();
             }
         }
     }
