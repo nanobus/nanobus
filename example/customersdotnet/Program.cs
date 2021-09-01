@@ -12,9 +12,7 @@
             {
                 CreateCustomer = service.CreateCustomer,
                 GetCustomer = service.GetCustomer,
-            });
-
-            adapter.Start();
+            }).Start();
         }
     }
 }

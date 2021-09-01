@@ -1,6 +1,8 @@
-package io.nanobus.example.customers;
+package io.nanobus.example.customers.service;
 
 import reactor.core.publisher.*;
+
+import io.nanobus.example.customers.models.*;
 
 public interface Outbound {
   Mono<Void> saveCustomer(Customer customer);

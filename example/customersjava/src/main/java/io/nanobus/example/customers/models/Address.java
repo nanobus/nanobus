@@ -1,4 +1,4 @@
-package io.nanobus.example.customers;
+package io.nanobus.example.customers.models;
 
 import java.util.*;
 

@@ -1,8 +1,10 @@
-package io.nanobus.example.customers;
+package io.nanobus.example.customers.service;
 
 import reactor.core.publisher.*;
 
-public class InboundImpl implements Inbound {
+import io.nanobus.example.customers.models.*;
+
+public class InboundImpl extends Inbound {
   private Outbound outbound;
 
   public InboundImpl(Outbound outbound) {

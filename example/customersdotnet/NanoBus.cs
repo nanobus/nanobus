@@ -80,22 +80,13 @@ namespace NanoBus.Functions
 
     public interface IHandlers
     {
-        ICodec Codec();
         void RegisterHandler(string operation, Handler handler);
     }
 
     public class HTTPHandlers : IHandlers
     {
-        private ICodec codec;
         private HttpListener listener;
         private Dictionary<string, Handler> handlers = new Dictionary<string, Handler>();
-
-        public HTTPHandlers(ICodec codec)
-        {
-            this.codec = codec;
-        }
-
-        public ICodec Codec() { return codec; }
 
         public void RegisterHandler(string operation, Handler handler)
         {

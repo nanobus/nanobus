@@ -1,6 +1,6 @@
-package io.nanobus.example.customers;
+package io.nanobus.example.customers.adapter;
 
-public class GetCustomerArgs {
+class GetCustomerArgs {
   private long id;
 
   public long getId() {

@@ -52,7 +52,7 @@ namespace Customers
             this.codec = new MsgPackCodec();
             var invoke = new HTTPInvoker(outboundBaseURL);
             this.invoker = new Invoker(invoke.Invoke, this.codec);
-            this.handlers = new HTTPHandlers(this.codec);
+            this.handlers = new HTTPHandlers();
         }
 
         public void Start()
