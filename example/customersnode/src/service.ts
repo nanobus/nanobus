@@ -1,21 +1,19 @@
+import { registerInboundHanders, start, outbound } from "./adapter";
+import { Customer } from "./interfaces";
 
-import { registerInboundHanders, start, outbound } from './adapter';
-import { Customer } from './interfaces';
+class InboundHandlers {
+  async createCustomer(customer: Customer): Promise<Customer> {
+    await outbound.saveCustomer(customer);
+    await outbound.customerCreated(customer);
 
-async function createCustomer(customer: Customer): Promise<Customer> {
-  await outbound.saveCustomer(customer);
-  await outbound.customerCreated(customer);
+    return customer;
+  }
 
-  return customer;
-};
+  async getCustomer(id: number): Promise<Customer> {
+    return outbound.fetchCustomer(id);
+  };
+}
 
-// async function getCustomer(id: number): Promise<Customer> {
-//   return outbound.fetchCustomer(id);
-// };
-
-registerInboundHanders({
-  createCustomer: createCustomer,
-  getCustomer: outbound.fetchCustomer
-});
+registerInboundHanders(new InboundHandlers());
 
 start();

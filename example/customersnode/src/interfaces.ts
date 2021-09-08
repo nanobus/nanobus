@@ -15,12 +15,9 @@ export interface Address {
   zip: string;
 }
 
-export type createCustomerHandler = (customer: Customer) => Promise<Customer>;
-export type getCustomerHandler = (id: number) => Promise<Customer>;
-
-export interface InboundHanders {
-  createCustomer?: createCustomerHandler;
-  getCustomer?: getCustomerHandler;
+export interface Inbound {
+  createCustomer?: (customer: Customer) => Promise<Customer>;
+  getCustomer?: (id: number) => Promise<Customer>;
 }
 
 export interface Outbound {

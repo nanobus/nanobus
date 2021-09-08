@@ -1,6 +1,6 @@
 import os
 from interfaces import Customer, Outbound
-from nanobus import HTTPInvoker, HTTPServer, Handlers, Invoker, MsgPackCodec
+from nanobus import AIOHTTPServer, UvicornServer, HTTPInvoker, Handlers, Invoker, MsgPackCodec
 from typing import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -21,7 +21,9 @@ class OutboundImpl(Outbound):
         await self.invoker.invoke('customers.v1.Outbound', 'customerCreated', customer)
 
     async def fetch_customer(self, id: int) -> Customer:
-        args = _GetCustomerArgs(id=id)
+        args = _GetCustomerArgs(
+            id=id,
+        )
         return await self.invoker.invoke_with_return('customers.v1.Outbound', 'fetchCustomer', args, Customer)
 
 
@@ -48,21 +50,22 @@ def registerInboundHandlers(
             'customers.v1.Inbound', 'getCustomer', handler)
 
 
-serverHost = os.getenv('HOST', "localhost")
-serverPort = int(os.getenv('PORT', "9000"))
-outboundBaseURL = os.getenv(
+server_host = os.getenv('HOST', "localhost")
+server_port = int(os.getenv('PORT', "9000"))
+outbound_base_url = os.getenv(
     'OUTBOUND_BASE_URL', "http://localhost:32321/outbound")
 
 codec = MsgPackCodec()
 handlers = Handlers(codec)
-server = HTTPServer(handlers)
-invoke = HTTPInvoker(outboundBaseURL).invoke
-invoker = Invoker(invoke, codec)
+#server = AIOHTTPServer(handlers)
+server = UvicornServer(handlers)
+http_invoker = HTTPInvoker(outbound_base_url)
+invoker = Invoker(http_invoker.invoke, codec)
 
 
 def start():
     try:
-        server.run(serverHost, serverPort)
+        server.run(server_host, server_port)
     except KeyboardInterrupt:
         pass
 

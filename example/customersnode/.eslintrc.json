@@ -51,8 +51,7 @@
       "never"
     ],
     "arrow-parens": [
-      "error",
-      "as-needed"
+      "error"
     ],
     "semi": "error",
     "no-extra-semi": 0,
@@ -65,17 +64,13 @@
       "error",
       {
         "arrays": "never",
-        "objects": "never",
-        "imports": "never",
+        "objects": "ignore",
+        "imports": "ignore",
         "exports": "never",
         "functions": "ignore"
       }
     ],
-    "handle-callback-err": "error",
-    "quotes": [
-      "error",
-      "single"
-    ]
+    "handle-callback-err": "error"
   },
   "overrides": [
     {

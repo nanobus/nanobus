@@ -47,5 +47,5 @@ Integration w/ non-Dapr apps
 
 ## As a product/marketing manager I want to...
 
-Product management / Marketing
+Product/Marketing management
 * create A/B tests for specific users / personas

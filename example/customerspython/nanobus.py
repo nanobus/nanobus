@@ -1,13 +1,16 @@
+import asyncio
+from logging import WARNING
 from typing import Awaitable, Callable, Dict, NoReturn, Type, TypeVar, Generic
 import msgpack
 from dataclasses import asdict
 import dacite
 from aiohttp import web, ClientSession
+import uvicorn
 
 
 T = TypeVar('T')
 
-session = ClientSession()
+session: ClientSession = None
 
 
 class Codec(Generic[T]):
@@ -64,8 +67,10 @@ class Handlers:
         return self.handlers.get(namespace + '/' + operation, operation)
 
 
-class HTTPServer:
+class AIOHTTPServer:
     def __init__(self, handlers: Handlers):
+        global session
+        session = ClientSession()
         self.handlers = handlers
         app = web.Application()
         app.add_routes([web.post('/{namespace}/{operation}', self.handle)])
@@ -91,3 +96,85 @@ class HTTPServer:
 
     def run(self, host: str, port: int):
         web.run_app(self.app, host=host, port=port)
+
+
+class UvicornServer:
+    def __init__(self, handlers: Handlers):
+        global session
+        self.handlers = handlers
+
+    async def read_body(self, receive):
+        """
+        Read and return the entire body from an incoming ASGI message.
+        """
+        body = b''
+        more_body = True
+
+        while more_body:
+            message = await receive()
+            body += message.get('body', b'')
+            more_body = message.get('more_body', False)
+
+        return body
+
+    async def __call__(self, scope, receive, send):
+        parts = scope["path"].split('/')
+        if (len(parts) < 3):
+            await send({
+                'type': 'http.response.start',
+                'status': 400,
+                'headers': [
+                    [b'content-type', b'text/plain'],
+                ]
+            })
+            await send({
+                'type': 'http.response.body',
+                'body': b'Bad request',
+            })
+            return
+
+        namespace = parts[1]
+        operation = parts[2]
+
+        handler = self.handlers.get_handler(namespace, operation)
+        if handler == None:
+            await send({
+                'type': 'http.response.start',
+                'status': 404,
+                'headers': [
+                    [b'content-type', b'text/plain'],
+                ]
+            })
+            await send({
+                'type': 'http.response.body',
+                'body': b'Not found',
+            })
+            return
+
+        body = await self.read_body(receive)
+        result = await handler(body)
+
+        await send({
+            'type': 'http.response.start',
+            'status': 200,
+            'headers': [
+                [b'content-type', b'application/msgpack'],
+            ]
+        })
+        await send({
+            'type': 'http.response.body',
+            'body': result,
+        })
+
+    async def _serve(self, config: uvicorn.Config):
+        global session
+        session = ClientSession()
+        server = uvicorn.Server(config)
+        await server.serve()
+        await session.close()
+
+    def run(self, host: str, port: int):
+        loop = asyncio.new_event_loop()
+        config = uvicorn.Config(app=self, host=host,
+                                port=port, loop=loop, log_level=WARNING)
+        loop.run_until_complete(self._serve(config))
