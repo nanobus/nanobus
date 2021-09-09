@@ -1,13 +1,16 @@
 import os
-from interfaces import Customer, Outbound
 from nanobus import AIOHTTPServer, UvicornServer, HTTPInvoker, Handlers, Invoker, MsgPackCodec
 from typing import Awaitable, Callable
-from dataclasses import dataclass
+from serde import serialize, deserialize
+from dataclasses import dataclass, field
+from interfaces import Customer, Outbound
 
 
+@deserialize
+@serialize
 @dataclass
 class _GetCustomerArgs:
-    id: int = 0
+    id: int = field(metadata={'serde_rename': 'id'})
 
 
 class OutboundImpl(Outbound):

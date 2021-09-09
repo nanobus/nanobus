@@ -1,9 +1,7 @@
 import asyncio
 from logging import WARNING
 from typing import Awaitable, Callable, Dict, NoReturn, Type, TypeVar, Generic
-import msgpack
-from dataclasses import asdict
-import dacite
+from serde.msgpack import from_msgpack, to_msgpack
 from aiohttp import web, ClientSession
 import uvicorn
 
@@ -23,10 +21,10 @@ class Codec(Generic[T]):
 
 class MsgPackCodec(Codec):
     def encode(self, value: T) -> bytes:
-        return msgpack.packb(asdict(value))
+        return to_msgpack(value)
 
     def decode(self, data: bytes, data_class: Type[T]) -> T:
-        return dacite.from_dict(data_class, msgpack.unpackb(data))
+        return from_msgpack(data_class, data)
 
 
 class HTTPInvoker:
