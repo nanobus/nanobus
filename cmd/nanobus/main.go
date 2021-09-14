@@ -17,6 +17,8 @@ import (
 
 	"github.com/dapr/components-contrib/bindings"
 	"github.com/dapr/components-contrib/pubsub"
+	"github.com/dapr/dapr/pkg/actors"
+	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	dapr_rt "github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
 	"github.com/gorilla/mux"
@@ -24,6 +26,7 @@ import (
 	"github.com/nanobus/go-functions"
 	json_codec "github.com/nanobus/go-functions/codecs/json"
 	msgpack_codec "github.com/nanobus/go-functions/codecs/msgpack"
+	"github.com/nanobus/go-functions/stateful"
 	"github.com/oklog/run"
 	"github.com/vmihailenco/msgpack/v5"
 
@@ -137,20 +140,51 @@ func main() {
 		log.Fatal(err)
 	}
 
-	daprComponents := dapr.DaprComponents{}
-	dapr_runtime.RegisterComponents(daprRuntime)
-	daprRuntime.AddOptions(dapr_rt.WithEmbeddedHandlers(&daprComponents))
-	if err = daprRuntime.Run(); err != nil {
-		log.Fatal(err)
-	}
-
-	ctx := context.Background()
-
 	// Spec registration
 	specRegistry := spec.Registry{}
 	specRegistry.Register(
 		spec_widl.WIDL,
 	)
+
+	namespaces := make(spec.Namespaces)
+	for _, spec := range config.Specs {
+		loader, ok := specRegistry[spec.Type]
+		if !ok {
+			log.Fatal(fmt.Errorf("could not find spec type %q", spec.Type))
+		}
+		nss, err := loader(spec.With)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error loading spec of type %q: %w", spec.Type, err))
+		}
+		for _, ns := range nss {
+			namespaces[ns.Name] = ns
+		}
+	}
+
+	actorEntities := []string{}
+	for namespaceName, ns := range namespaces {
+		for serviceName, s := range ns.Services {
+			if _, ok := s.Annotations["stateful"]; ok {
+				entityName := namespaceName + "." + serviceName
+				log.Printf("Found actor %s", entityName)
+				actorEntities = append(actorEntities, entityName)
+			}
+		}
+	}
+
+	daprComponents := dapr.DaprComponents{
+		Entities: actorEntities,
+	}
+	dapr_runtime.RegisterComponents(daprRuntime)
+	daprRuntime.AddOptions(
+		dapr_rt.WithComponentsCallback(daprComponents.RegisterComponents),
+		dapr_rt.WithEmbeddedHandlers(&daprComponents),
+	)
+	if err = daprRuntime.Run(); err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
 
 	// Compute registration
 	computeRegistry := compute.Registry{}
@@ -172,21 +206,6 @@ func main() {
 	actionRegistry := actions.Registry{}
 	actionRegistry.Register(core.All...)
 	actionRegistry.Register(dapr.All...)
-
-	namespaces := make(spec.Namespaces)
-	for _, spec := range config.Specs {
-		loader, ok := specRegistry[spec.Type]
-		if !ok {
-			log.Fatal(fmt.Errorf("could not find spec type %q", spec.Type))
-		}
-		nss, err := loader(spec.With)
-		if err != nil {
-			log.Fatal(fmt.Errorf("error loading spec of type %q", spec.Type))
-		}
-		for _, ns := range nss {
-			namespaces[ns.Name] = ns
-		}
-	}
 
 	// Codecs
 	jsoncodec := json_codec.New()
@@ -319,40 +338,165 @@ func main() {
 	}
 
 	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, payload []byte, metadata map[string][]string) ([]byte, string, error) {
+		//log.Printf("INVOKE HANDLER %s", method)
 		var input interface{}
-		// TODO: Decoder
-		if err := json.Unmarshal(payload, &input); err != nil {
-			return nil, "", err
-		}
+		var output interface{}
 
-		target := method
-		idx := strings.LastIndex(method, "/")
-		if idx < 0 {
-			return nil, "", fmt.Errorf("invalid method %q", method)
-		}
-		function := method[idx+1:]
-		method = method[:idx]
+		if strings.HasPrefix(method, "actors/") {
+			// TODO: Decoder
+			if len(payload) > 0 {
+				if err := msgpack.Unmarshal(payload, &input); err != nil {
+					return nil, "", err
+				}
+			}
 
-		lastDot := strings.LastIndexByte(method, '.')
-		if lastDot < 0 {
-			return nil, "", fmt.Errorf("invalid method %q", method)
-		}
-		service := method[lastDot+1:]
-		namespace := method[:lastDot]
+			parts := strings.Split(method, "/")
+			if len(parts) == 5 && parts[3] == "method" {
+				actorType := parts[1]
+				actorID := parts[2]
+				function := parts[4]
 
-		data := actions.Data{
-			"input":    input,
-			"metadata": metadata,
-			"env":      env,
-		}
+				lastDot := strings.LastIndexByte(actorType, '.')
+				if lastDot < 0 {
+					return nil, "", fmt.Errorf("invalid method %q", actorType)
+				}
+				service := actorType[lastDot+1:]
+				namespace := actorType[:lastDot]
 
-		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-			log.Println("-->", target, string(jsonBytes)+"\n")
-		}
+				data := actions.Data{
+					"input":    input,
+					"metadata": metadata,
+					"env":      env,
+				}
 
-		output, _, err := rt.processor.Service(ctx, namespace, service, function, data)
-		if err != nil {
-			return nil, "", err
+				target := actorType + "/" + actorID
+
+				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+					log.Println("-->", target, string(jsonBytes)+"\n")
+				}
+
+				output, ok, err = rt.processor.Service(ctx, namespace, service, function, data)
+				if err != nil {
+					return nil, "", err
+				}
+				if ok && output != nil {
+					input = output
+				}
+
+				var statefulResponse stateful.Response
+				if err = invoker.InvokeWithReturn(ctx, target, function, input, &statefulResponse); err != nil {
+					return nil, "", err
+				}
+
+				mutation := statefulResponse.Mutation
+				operations := make([]actors.TransactionalOperation, len(mutation.Set)+len(mutation.Remove))
+				if len(statefulResponse.Mutation.Set) > 0 {
+					i := 0
+					for key, value := range statefulResponse.Mutation.Set {
+						operations[i] = actors.TransactionalOperation{
+							Operation: actors.Upsert,
+							Request: actors.TransactionalUpsert{
+								Key:   key,
+								Value: value,
+							},
+						}
+						i++
+					}
+				}
+
+				if len(statefulResponse.Mutation.Remove) > 0 {
+					i := len(mutation.Set)
+					for _, key := range statefulResponse.Mutation.Remove {
+						operations[i] = actors.TransactionalOperation{
+							Operation: actors.Delete,
+							Request: actors.TransactionalDelete{
+								Key: key,
+							},
+						}
+						i++
+					}
+				}
+
+				if err = daprComponents.Actors.TransactionalStateOperation(ctx, &actors.TransactionalRequest{
+					Operations: operations,
+					ActorType:  actorType,
+					ActorID:    actorID,
+				}); err != nil {
+					return nil, "", fmt.Errorf("could not update state for actor %s/%s: %w", actorType, actorID, err)
+				}
+
+				var respData []byte
+				if statefulResponse.Result != nil {
+					if respData, err = msgpack.Marshal(&statefulResponse.Result); err != nil {
+						return nil, "", err
+					}
+				}
+
+				return respData, "application/msgpack", nil
+			} else if len(parts) == 6 && parts[3] == "method" {
+				actorType := parts[1]
+				actorID := parts[2]
+				callback := parts[4] // "timer" or "remind"
+				function := parts[5] // timer or reminder name
+
+				if err = invoker.Invoke(ctx, actorType+"/"+actorID, callback+"."+function, input); err != nil {
+					return nil, "", err
+				}
+
+				return []byte{}, "application/msgpack", nil
+			} else if len(parts) == 3 {
+				actorType := parts[1]
+				actorID := parts[2]
+
+				fmt.Println("Deactivating " + actorType + "/" + actorID)
+				if err = invoker.Invoke(ctx, actorType+"/"+actorID, "deactivate", input); err != nil {
+					return nil, "", err
+				}
+
+				return []byte{}, "application/msgpack", nil
+			}
+		} else {
+			// TODO: Decoder
+			if err := json.Unmarshal(payload, &input); err != nil {
+				return nil, "", err
+			}
+
+			target := method
+			idx := strings.LastIndex(method, "/")
+			if idx < 0 {
+				return nil, "", fmt.Errorf("invalid method %q", method)
+			}
+			function := method[idx+1:]
+			method = method[:idx]
+
+			lastDot := strings.LastIndexByte(method, '.')
+			if lastDot < 0 {
+				return nil, "", fmt.Errorf("invalid method %q", method)
+			}
+			service := method[lastDot+1:]
+			namespace := method[:lastDot]
+
+			data := actions.Data{
+				"input":    input,
+				"metadata": metadata,
+				"env":      env,
+			}
+
+			if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+				log.Println("-->", target, string(jsonBytes)+"\n")
+			}
+
+			output, ok, err = rt.processor.Service(ctx, namespace, service, function, data)
+			if err != nil {
+				return nil, "", err
+			}
+
+			if !ok {
+				// No pipeline exits for the operation so invoke directly.
+				if err = invoker.InvokeWithReturn(ctx, namespace+"."+service, function, input, &output); err != nil {
+					return nil, "", err
+				}
+			}
 		}
 
 		var respData []byte
@@ -362,7 +506,7 @@ func main() {
 			}
 		}
 
-		return respData, "", err
+		return respData, "application/json", err
 	})
 
 	inputBindingHandler := func(function string, codec codec.Codec, args []interface{}) func(*bindings.ReadResponse) ([]byte, error) {
@@ -442,6 +586,35 @@ func main() {
 				log.Println(err)
 			}
 		}(p, binding, c)
+	}
+
+	stateHandler := func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		namespace := mux.Vars(r)["namespace"]
+		id := mux.Vars(r)["id"]
+		key := mux.Vars(r)["key"]
+
+		resp, err := daprComponents.Actors.GetState(r.Context(), &actors.GetStateRequest{
+			ActorType: namespace,
+			ActorID:   id,
+			Key:       key,
+		})
+		if err != nil {
+			log.Println(err)
+			handleError(err, w, http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(resp.Data)
+	}
+
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
+		//fmt.Println("HEALTH HANDLER CALLED")
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("OK"))
 	}
 
 	daprComponents.InputBindingHandler(func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error) {
@@ -605,13 +778,9 @@ func main() {
 		return embedded.EventResponseStatusSuccess, nil
 	})
 
-	transportInvoker := func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
+	transportInvoker := func(ctx context.Context, namespace, service, id, function string, input interface{}) (interface{}, error) {
 		if err := coalesceInput(namespaces, namespace, service, function, input); err != nil {
 			return nil, err
-		}
-
-		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-			log.Println("-->", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
 		}
 
 		data := actions.Data{
@@ -627,8 +796,35 @@ func main() {
 		if !ok {
 			// No pipeline exits for the operation so invoke directly.
 			ns := namespace + "." + service
-			if err = invoker.InvokeWithReturn(ctx, ns, function, input, &response); err != nil {
-				return nil, err
+			if id == "" {
+				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+					log.Println("-->", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+				}
+
+				if err = invoker.InvokeWithReturn(ctx, ns, function, input, &response); err != nil {
+					return nil, err
+				}
+			} else {
+				data, err := msgpack.Marshal(input)
+				if err != nil {
+					return nil, err
+				}
+
+				req := invokev1.NewInvokeMethodRequest(function).
+					WithActor(ns, id).
+					WithRawData(data, "application/msgpack")
+				res, err := daprComponents.Actors.Call(ctx, req)
+				if err != nil {
+					return nil, err
+				}
+				_, respBytes := res.RawData()
+
+				var response interface{}
+				if err = msgpack.Unmarshal(respBytes, &response); err != nil {
+					return nil, err
+				}
+
+				return response, nil
 			}
 		}
 
@@ -648,6 +844,8 @@ func main() {
 		r := mux.NewRouter()
 		r.HandleFunc("/outbound/{namespace}/{function}", rt.OutboundHandler).Methods("POST")
 		r.HandleFunc("/inbound/{function}", rt.InboundHandler).Methods("POST")
+		r.HandleFunc("/state/{namespace}/{id}/{key}", stateHandler).Methods("GET")
+		r.HandleFunc("/healthz", healthHandler).Methods("GET")
 		//r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
 
 		log.Printf("Bus listening on %s\n", busListenAddr)

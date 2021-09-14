@@ -5,11 +5,13 @@ import (
 )
 
 func main() {
-	adapter := welcome.NewAdapter()
+	adapter := welcome.NewAdapter(nil)
 	outbound := adapter.NewOutbound()
 	service := welcome.NewService(outbound)
 
 	adapter.RegisterInbound(welcome.Inbound{
 		GreetCustomer: service.GreetCustomer,
-	}).Run()
+	})
+
+	adapter.Run()
 }

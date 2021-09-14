@@ -1,4 +1,4 @@
-from adapter import registerInboundHandlers, start, outbound
+from adapter import register_inbound_handlers, start, outbound
 from interfaces import Customer
 
 
@@ -13,7 +13,7 @@ async def get_customer(id: int) -> Customer:
 
 
 def main():
-    registerInboundHandlers(
+    register_inbound_handlers(
         create_customer=create_customer,
         get_customer=get_customer,
     )

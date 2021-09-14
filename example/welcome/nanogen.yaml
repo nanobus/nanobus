@@ -1,0 +1,18 @@
+spec: spec.widl
+config:
+  module: github.com/nanobus/nanobus/example/welcome
+  package: welcome
+generates:
+  cmd/main.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: EntryPointVisitor
+  pkg/welcome/adapter.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: AdapterVisitor
+  pkg/welcome/interfaces.go:
+    module: '@nanobus/codegen/go'
+    visitorClass: InterfacesVisitor
+  pkg/welcome/service.go:
+    ifNotExists: true
+    module: '@nanobus/codegen/go'
+    visitorClass: ScaffoldVisitor

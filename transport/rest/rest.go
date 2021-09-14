@@ -192,7 +192,7 @@ func (t *Rest) handler(namespace, service, operation string, hasBody bool, bodyP
 			input[name] = value
 		}
 
-		response, err := t.invoker(r.Context(), namespace, service, operation, input)
+		response, err := t.invoker(r.Context(), namespace, service, "", operation, input)
 		if err != nil {
 			code := http.StatusInternalServerError
 			if errors.Is(err, transport.ErrBadInput) {

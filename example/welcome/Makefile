@@ -5,7 +5,7 @@ all: deps codegen tidy build
 deps:
 
 codegen:
-	wapc generate codegen.yaml
+	nanogen generate
 
 tidy:
 	go mod tidy

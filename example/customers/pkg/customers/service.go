@@ -4,34 +4,68 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+
+	"github.com/nanobus/go-functions/stateful"
 )
 
 type Service struct {
-	Outbound
+	outbound Outbound
 }
 
 func NewService(outbound Outbound) *Service {
 	return &Service{
-		Outbound: outbound,
+		outbound: outbound,
 	}
 }
 
-func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (Customer, error) {
+func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (*Customer, error) {
 	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
 		log.Printf("RECEIVED: %s\n", string(jsonBytes))
 	}
 
-	err := s.SaveCustomer(ctx, customer)
+	err := s.outbound.SaveCustomer(ctx, customer)
 	if err != nil {
-		return customer, err
+		return nil, err
 	}
-	err = s.CustomerCreated(ctx, customer)
+	err = s.outbound.CustomerCreated(ctx, customer)
 
-	return customer, err
+	return &customer, err
 }
 
-func (s *Service) GetCustomer(ctx context.Context, id uint64) (Customer, error) {
+func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error) {
 	log.Printf("RECEIVED: %d\n", id)
 
-	return s.FetchCustomer(ctx, id)
+	return s.outbound.FetchCustomer(ctx, id)
+}
+
+type CustomerActorImpl struct{}
+
+func NewCustomerActorImpl() *CustomerActorImpl {
+	return &CustomerActorImpl{}
+}
+
+func (c *CustomerActorImpl) CreateCustomer(ctx stateful.Context, customer Customer) (*Customer, error) {
+	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
+		log.Printf("ACTOR RECEIVED: %s\n", string(jsonBytes))
+	}
+
+	log.Printf("Actor Type/ID = %s", &ctx.Self)
+
+	ctx.Set("customer", &customer)
+
+	return &customer, nil
+}
+
+func (c *CustomerActorImpl) GetCustomer(ctx stateful.Context) (*Customer, error) {
+	log.Printf("RECEIVED\n")
+
+	var customer Customer
+	if _, err := ctx.Get("customer", &customer); err != nil {
+		return nil, err
+	}
+	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
+		log.Printf("ACTOR RETURNING: %s\n", string(jsonBytes))
+	}
+
+	return &customer, nil
 }

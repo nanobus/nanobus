@@ -16,6 +16,8 @@ import (
 )
 
 type DaprComponents struct {
+	Entities []string
+
 	Actors          actors.Actors
 	DirectMessaging messaging.DirectMessaging
 	StateStores     map[string]state.Store
@@ -33,7 +35,7 @@ type InvokeHandler func(ctx context.Context, method, contentType string, data []
 type InputBindingHandler func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error)
 type PubSubHandler func(ctx context.Context, event *embedded.TopicEvent) (embedded.EventResponseStatus, error)
 
-func (c *DaprComponents) RegisterComponents(reg *embedded.ComponentRegistry) error {
+func (c *DaprComponents) RegisterComponents(reg embedded.ComponentRegistry) error {
 	c.Actors = reg.Actors
 	c.DirectMessaging = reg.DirectMessaging
 	c.StateStores = reg.StateStores
@@ -49,11 +51,13 @@ func (c *DaprComponents) CreateLocalChannel(port, maxConcurrency int, spec confi
 }
 
 func (c *DaprComponents) GetBaseAddress() string {
-	return "embedded"
+	return "http://localhost:32321"
 }
 
 func (c *DaprComponents) GetAppConfig() (*config.ApplicationConfig, error) {
-	return nil, nil
+	return &config.ApplicationConfig{
+		Entities: c.Entities,
+	}, nil
 }
 
 func (c *DaprComponents) InvokeMethod(ctx context.Context, req *invokev1.InvokeMethodRequest) (*invokev1.InvokeMethodResponse, error) {

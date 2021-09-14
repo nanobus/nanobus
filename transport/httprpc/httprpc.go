@@ -49,6 +49,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 func (t *HTTPRPC) Listen() error {
 	r := mux.NewRouter()
 	r.HandleFunc("/{namespace}/{function}", t.handler).Methods("POST")
+	r.HandleFunc("/{namespace}/{id}/{function}", t.handler).Methods("POST")
 	r.Use(mux.CORSMethodMiddleware(r))
 	ln, err := net.Listen("tcp", t.address)
 	if err != nil {
@@ -72,6 +73,7 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	namespace := mux.Vars(r)["namespace"]
 	function := mux.Vars(r)["function"]
+	id := mux.Vars(r)["id"]
 
 	lastDot := strings.LastIndexByte(namespace, '.')
 	if lastDot < 0 {
@@ -99,12 +101,16 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input interface{}
-	if err := codec.Decode(requestBytes, &input); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
+	if len(requestBytes) > 0 {
+		if err := codec.Decode(requestBytes, &input); err != nil {
+			handleError(err, w, http.StatusInternalServerError)
+			return
+		}
+	} else {
+		input = map[string]interface{}{}
 	}
 
-	response, err := t.invoker(r.Context(), namespace, service, function, input)
+	response, err := t.invoker(r.Context(), namespace, service, id, function, input)
 	if err != nil {
 		code := http.StatusInternalServerError
 		if errors.Is(err, transport.ErrBadInput) {

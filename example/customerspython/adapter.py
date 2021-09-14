@@ -6,6 +6,19 @@ from dataclasses import dataclass, field
 from interfaces import Customer, Outbound
 
 
+server_host = os.getenv('HOST', "localhost")
+server_port = int(os.getenv('PORT', "9000"))
+outbound_base_url = os.getenv(
+    'OUTBOUND_BASE_URL', "http://localhost:32321/outbound")
+
+codec = MsgPackCodec()
+handlers = Handlers(codec)
+#server = AIOHTTPServer(handlers)
+server = UvicornServer(handlers)
+http_invoker = HTTPInvoker(outbound_base_url)
+invoker = Invoker(http_invoker.invoke, codec)
+
+
 @deserialize
 @serialize
 @dataclass
@@ -25,45 +38,34 @@ class OutboundImpl(Outbound):
 
     async def fetch_customer(self, id: int) -> Customer:
         args = _GetCustomerArgs(
-            id=id,
+            id,
         )
         return await self.invoker.invoke_with_return('customers.v1.Outbound', 'fetchCustomer', args, Customer)
 
 
-def registerInboundHandlers(
+outbound = OutboundImpl(invoker)
+
+
+def register_inbound_handlers(
     create_customer: Callable[[Customer], Awaitable[Customer]] = None,
     get_customer: Callable[[int], Awaitable[Customer]] = None,
 ):
-    codec = handlers.codec
-
-    if create_customer != None:
+    if not create_customer is None:
         async def handler(input: bytes) -> bytes:
-            customer: Customer = codec.decode(input, Customer)
+            customer: Customer = handlers.codec.decode(input, Customer)
             result = await create_customer(customer)
-            return codec.encode(result)
+            return handlers.codec.encode(result)
         handlers.register_handler(
             'customers.v1.Inbound', 'createCustomer', handler)
 
-    if get_customer != None:
+    if not get_customer is None:
         async def handler(input: bytes) -> bytes:
-            args: _GetCustomerArgs = codec.decode(input, _GetCustomerArgs)
+            args: _GetCustomerArgs = handlers.codec.decode(
+                input, _GetCustomerArgs)
             result = await get_customer(args.id)
-            return codec.encode(result)
+            return handlers.codec.encode(result)
         handlers.register_handler(
             'customers.v1.Inbound', 'getCustomer', handler)
-
-
-server_host = os.getenv('HOST', "localhost")
-server_port = int(os.getenv('PORT', "9000"))
-outbound_base_url = os.getenv(
-    'OUTBOUND_BASE_URL', "http://localhost:32321/outbound")
-
-codec = MsgPackCodec()
-handlers = Handlers(codec)
-#server = AIOHTTPServer(handlers)
-server = UvicornServer(handlers)
-http_invoker = HTTPInvoker(outbound_base_url)
-invoker = Invoker(http_invoker.invoke, codec)
 
 
 def start():
@@ -73,6 +75,3 @@ def start():
         pass
 
     print("Server stopped.")
-
-
-outbound = OutboundImpl(invoker)

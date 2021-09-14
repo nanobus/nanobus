@@ -1,4 +1,5 @@
 namespace "customers.v1"
+  @version("0.1.0")
   @path("/v1")
   @info(
     title: "Customers API",
@@ -24,8 +25,8 @@ namespace "customers.v1"
     url: "http://mycompany.io/docs"
   )
 
-import * from "@widl/restapi"
-import * from "@widl/grpc"
+#import * from "@widl/restapi"
+#import * from "@widl/grpc"
 
 """
 Operations that can be performed on a customer.
@@ -66,7 +67,18 @@ role Inbound @service @uses([Outbound]) @path("/customers") {
     )
 }
 
-role Outbound {
+role CustomerActor @stateful {
+  """
+  Creates the customer state.
+  """
+  createCustomer{customer: Customer}: Customer
+  """
+  Retrieve the customer state.
+  """
+  getCustomer(): Customer
+}
+
+role Outbound @provider {
   saveCustomer{customer: Customer}: void
   fetchCustomer(id: u64): Customer
   customerCreated{customer: Customer}: void
