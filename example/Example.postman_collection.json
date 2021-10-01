@@ -1,137 +1,351 @@
 {
 	"info": {
 		"_postman_id": "310db4a6-ec02-4956-975c-745f763b287c",
-		"name": "NanoBus",
+		"name": "NanoBus Example",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "HTTP-RPC",
+			"name": "Service",
 			"item": [
 				{
-					"name": "Create Customer",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Blah\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    },\n    \"mapValue4\": {\n        \"1234\": \"5678\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "HTTP-RPC",
+					"item": [
+						{
+							"name": "Create Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Redmond\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    },\n    \"mapValue4\": {\n        \"1234\": \"5678\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:18081/customers.v1.Inbound/createCustomer",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "18081",
+									"path": [
+										"customers.v1.Inbound",
+										"createCustomer"
+									]
 								}
-							}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "http://localhost:8081/customers.v1.Inbound/createCustomer",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8081",
-							"path": [
-								"customers.v1.Inbound",
-								"createCustomer"
-							]
+						{
+							"name": "Get Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"id\": 1234\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:18081/customers.v1.Inbound/getCustomer",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "18081",
+									"path": [
+										"customers.v1.Inbound",
+										"getCustomer"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Customers",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"offset\": 10,\n    \"limit\": 100\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:18081/customers.v1.Inbound/listCustomers",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "18081",
+									"path": [
+										"customers.v1.Inbound",
+										"listCustomers"
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "Get Customer",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id\": 1234\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "REST",
+					"item": [
+						{
+							"name": "Create Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Blah\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8091/v1/customers",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8091",
+									"path": [
+										"v1",
+										"customers"
+									]
 								}
-							}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "http://localhost:8081/customers.v1.Inbound/getCustomer",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8081",
-							"path": [
-								"customers.v1.Inbound",
-								"getCustomer"
-							]
+						{
+							"name": "Get Customer",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8091/v1/customers/1234",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8091",
+									"path": [
+										"v1",
+										"customers",
+										"1234"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Customers",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8091/v1/customers?offset=10&limit=100",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8091",
+									"path": [
+										"v1",
+										"customers"
+									],
+									"query": [
+										{
+											"key": "offset",
+											"value": "10"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				}
 			]
 		},
 		{
-			"name": "REST",
+			"name": "Actors",
 			"item": [
 				{
-					"name": "Create Customer",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Blah\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    },\n    \"mapValue4\": {\n        \"1234\": \"5678\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "HTTP-RPC",
+					"item": [
+						{
+							"name": "Create Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Redmond\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    },\n    \"mapValue4\": {\n        \"1234\": \"5678\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:18081/customers.v1.CustomerActor/1234/createCustomer",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "18081",
+									"path": [
+										"customers.v1.CustomerActor",
+										"1234",
+										"createCustomer"
+									]
 								}
-							}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "http://localhost:8091/v1/customers",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8091",
-							"path": [
-								"v1",
-								"customers"
-							]
+						{
+							"name": "Get Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:18081/customers.v1.CustomerActor/1234/getCustomer",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "18081",
+									"path": [
+										"customers.v1.CustomerActor",
+										"1234",
+										"getCustomer"
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "Get Customer",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id\": 1234\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "REST",
+					"item": [
+						{
+							"name": "Create Customer",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"id\":        1234,\n    \"firstName\": \"John\",\n    \"lastName\":  \"Doe\",\n    \"email\":     \"john.doe@gmail.com\",\n    \"address\": {\n        \"line1\": \"1234 Main St.\",\n        \"city\": \"Redmond\",\n        \"state\": \"XX\",\n        \"zip\": \"12345\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8091/v1/actor/1234",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8091",
+									"path": [
+										"v1",
+										"actor",
+										"1234"
+									]
 								}
-							}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "http://localhost:8091/v1/customers/1234",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8091",
-							"path": [
-								"v1",
-								"customers",
-								"1234"
-							]
+						{
+							"name": "Get Customer",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:8091/v1/actor/1234",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8091",
+									"path": [
+										"v1",
+										"actor",
+										"1234"
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				}
 			]
 		}
