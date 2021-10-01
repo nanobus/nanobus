@@ -1,5 +1,6 @@
-from adapter import register_inbound_handlers, start, outbound
-from interfaces import Customer
+#!/usr/bin/env python3
+from adapter import start, register_inbound_handlers, outbound
+from interfaces import Inbound, Customer, CustomerPage, CustomerQuery
 
 
 async def create_customer(customer: Customer) -> Customer:
@@ -12,11 +13,21 @@ async def get_customer(id: int) -> Customer:
     return await outbound.fetch_customer(id)
 
 
+async def list_customers(query: CustomerQuery) -> CustomerPage:
+    return CustomerPage(
+        offset=query.offset,
+        limit=query.limit,
+    )
+
+
 def main():
     register_inbound_handlers(
-        create_customer=create_customer,
-        get_customer=get_customer,
-    )
+        Inbound(
+            create_customer=create_customer,
+            get_customer=get_customer,
+            list_customers=list_customers,
+        ))
+
     start()
 
 
