@@ -22,6 +22,8 @@ type Inbound struct {
 	CreateCustomer func(ctx context.Context, customer Customer) (*Customer, error)
 	// Retrieve a customer by id.
 	GetCustomer func(ctx context.Context, id uint64) (*Customer, error)
+	// Return a page of customers using optional search filters.
+	ListCustomers func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
 }
 
 type CustomerActor interface {
@@ -45,7 +47,7 @@ type Customer struct {
 	// The customer's first name
 	FirstName string `json:"firstName" msgpack:"firstName"`
 	// The customer's middle name
-	MiddleName *string `json:"middleName" msgpack:"middleName"`
+	MiddleName *string `json:"middleName,omitempty" msgpack:"middleName,omitempty"`
 	// The customer's last name
 	LastName string `json:"lastName" msgpack:"lastName"`
 	// The customer's email address
@@ -56,6 +58,37 @@ type Customer struct {
 
 func (c *Customer) Type() string {
 	return "Customer"
+}
+
+type CustomerQuery struct {
+	ns
+	// The customer identifer
+	ID *uint64 `json:"id,omitempty" msgpack:"id,omitempty"`
+	// The customer's first name
+	FirstName *string `json:"firstName,omitempty" msgpack:"firstName,omitempty"`
+	// The customer's middle name
+	MiddleName *string `json:"middleName,omitempty" msgpack:"middleName,omitempty"`
+	// The customer's last name
+	LastName *string `json:"lastName,omitempty" msgpack:"lastName,omitempty"`
+	// The customer's email address
+	Email  *string `json:"email,omitempty" msgpack:"email,omitempty"`
+	Offset uint64  `json:"offset" msgpack:"offset"`
+	Limit  uint64  `json:"limit" msgpack:"limit"`
+}
+
+func (c *CustomerQuery) Type() string {
+	return "CustomerQuery"
+}
+
+type CustomerPage struct {
+	ns
+	Offset uint64     `json:"offset" msgpack:"offset"`
+	Limit  uint64     `json:"limit" msgpack:"limit"`
+	Items  []Customer `json:"items" msgpack:"items"`
+}
+
+func (c *CustomerPage) Type() string {
+	return "CustomerPage"
 }
 
 type Nested struct {
@@ -74,7 +107,7 @@ type Address struct {
 	// The address line 1
 	Line1 string `json:"line1" msgpack:"line1"`
 	// The address line 2
-	Line2 *string `json:"line2" msgpack:"line2"`
+	Line2 *string `json:"line2,omitempty" msgpack:"line2,omitempty"`
 	// The city
 	City string `json:"city" msgpack:"city"`
 	// The state

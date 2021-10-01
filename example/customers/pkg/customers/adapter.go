@@ -177,6 +177,9 @@ func (a *Adapter) RegisterInbound(handlers Inbound) *Adapter {
 	if handlers.GetCustomer != nil {
 		a.registerFn("customers.v1.Inbound", "getCustomer", a.inbound_getCustomerWrapper(handlers.GetCustomer))
 	}
+	if handlers.ListCustomers != nil {
+		a.registerFn("customers.v1.Inbound", "listCustomers", a.inbound_listCustomersWrapper(handlers.ListCustomers))
+	}
 	return a
 }
 
@@ -208,6 +211,20 @@ func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, i
 			return nil, err
 		}
 		response, err := handler(ctx, inputArgs.ID)
+		if err != nil {
+			return nil, err
+		}
+		return a.codec.Encode(response)
+	}
+}
+
+func (a *Adapter) inbound_listCustomersWrapper(handler func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)) functions.Handler {
+	return func(ctx context.Context, payload []byte) ([]byte, error) {
+		var request CustomerQuery
+		if err := a.codec.Decode(payload, &request); err != nil {
+			return nil, err
+		}
+		response, err := handler(ctx, request)
 		if err != nil {
 			return nil, err
 		}

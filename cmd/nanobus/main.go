@@ -372,7 +372,7 @@ func main() {
 				target := actorType + "/" + actorID
 
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("-->", target, string(jsonBytes)+"\n")
+					log.Println("-->", target+"/"+function, string(jsonBytes)+"\n")
 				}
 
 				output, ok, err = rt.processor.Service(ctx, namespace, service, function, data)

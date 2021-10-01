@@ -44,6 +44,7 @@ role Inbound @service @uses([Outbound]) @path("/customers") {
         "application/json": "json"
       }
     )
+
   """
   Retrieve a customer by id.
   """
@@ -65,17 +66,25 @@ role Inbound @service @uses([Outbound]) @path("/customers") {
         "application/json": "json"
       }
     )
+
+  """
+  Return a page of customers using optional search filters.
+  """
+  listCustomers{query: CustomerQuery @query}: CustomerPage
+    @GET
+  
+  somethingSimple(customer: Customer): void @nocode
 }
 
-role CustomerActor @stateful {
+role CustomerActor @stateful @path("/actor/{id}") {
   """
   Creates the customer state.
   """
-  createCustomer{customer: Customer}: Customer
+  createCustomer{customer: Customer}: Customer @POST
   """
   Retrieve the customer state.
   """
-  getCustomer(): Customer
+  getCustomer(): Customer @GET
 }
 
 role Outbound @provider {
@@ -100,6 +109,28 @@ type Customer {
   email: string @email @fieldnum(5)
   "The customer's address"
   address: Address @fieldnum(6)
+}
+
+type CustomerQuery {
+  "The customer identifer"
+  id: u64? @fieldnum(1)
+  "The customer's first name"
+  firstName: string? @fieldnum(2)
+  "The customer's middle name"
+  middleName: string? @fieldnum(3)
+  "The customer's last name"
+  lastName: string? @fieldnum(4)
+  "The customer's email address"
+  email: string? @email @fieldnum(5)
+  ""
+  offset: u64 @fieldnum(10)
+  limit: u64 @fieldnum(11)
+}
+
+type CustomerPage {
+  offset: u64 @fieldnum(1)
+  limit: u64 @fieldnum(2)
+  items: [Customer] @fieldnum(3)
 }
 
 type Nested {

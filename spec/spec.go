@@ -36,8 +36,9 @@ type (
 	}
 
 	Service struct {
-		Name       string                `json:"name"`
-		Operations map[string]*Operation `json:"operations"`
+		Name             string                `json:"name"`
+		Operations       []*Operation          `json:"operations"`
+		OperationsByName map[string]*Operation `json:"-"`
 		Annotated
 	}
 
@@ -127,8 +128,16 @@ func (ns Namespaces) Operation(namespace, service, operation string) (*Operation
 	if !ok {
 		return nil, false
 	}
-	o, ok := s.Operations[operation]
+	o, ok := s.OperationsByName[operation]
 	return o, ok
+}
+
+func (t *TypeRef) IsPrimitive() bool {
+	switch t.Kind {
+	case KindOptional:
+		return t.OptionalType.IsPrimitive()
+	}
+	return t.Kind.IsPrimitive()
 }
 
 func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, error) {
@@ -235,7 +244,7 @@ func (t *Type) doField(tt *TypeRef, f *Field, fieldName string, v map[string]int
 		return t.doField(tt.OptionalType, f, fieldName, v, value, validate)
 	case KindString, KindDateTime:
 		if _, ok := value.(string); !ok {
-			err = fmt.Errorf("field %q of type %q must be an integer", f.Name, t.Name)
+			err = fmt.Errorf("field %q of type %q must be a string", f.Name, t.Name)
 		}
 	case KindU64:
 		if _, ok := value.(uint64); !ok {
@@ -377,6 +386,15 @@ func (k Kind) String() string {
 		return "union"
 	}
 	return "unknown"
+}
+
+func (k Kind) IsPrimitive() bool {
+	switch k {
+	case KindString, KindU64, KindU32, KindU16, KindU8, KindI64,
+		KindI32, KindI16, KindI8, KindF64, KindF32, KindBool, KindDateTime:
+		return true
+	}
+	return false
 }
 
 func (k Kind) MarshalJSON() ([]byte, error) {

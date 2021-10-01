@@ -77,14 +77,18 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
+		case *ast.TypeDefinition:
+			p.convertType(d)
+		}
+	}
+
+	for _, def := range doc.Definitions {
+		switch d := def.(type) {
 		case *ast.RoleDefinition:
 			//if a := d.Annotation("service"); a != nil {
 			s := p.convertService(d)
 			n.Services[s.Name] = s
 			//}
-
-		case *ast.TypeDefinition:
-			p.convertType(d)
 		}
 	}
 
@@ -130,30 +134,56 @@ func (p *nsParser) convertFields(fields []*ast.FieldDefinition) map[string]*spec
 }
 
 func (p *nsParser) convertService(role *ast.RoleDefinition) *spec.Service {
+	operations := p.convertOperations(role.Operations)
+	operationsByName := make(map[string]*spec.Operation, len(operations))
+	for _, oper := range operations {
+		operationsByName[oper.Name] = oper
+	}
 	s := spec.Service{
-		Name:       role.Name.Value,
-		Operations: p.convertOperations(role.Operations),
-		Annotated:  p.convertAnnotations(role.Annotations),
+		Name:             role.Name.Value,
+		Operations:       operations,
+		OperationsByName: operationsByName,
+		Annotated:        p.convertAnnotations(role.Annotations),
 	}
 	return &s
 }
 
-func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) map[string]*spec.Operation {
+func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*spec.Operation {
 	if operations == nil {
 		return nil
 	}
 
-	o := make(map[string]*spec.Operation, len(operations))
-	for _, operation := range operations {
+	o := make([]*spec.Operation, len(operations))
+	for i, operation := range operations {
 		var params *spec.Type
 		if operation.Unary {
 			if named, ok := operation.Parameters[0].Type.(*ast.Named); ok {
-				params = p.n.Types[named.Name.Value]
+				pt := p.n.Types[named.Name.Value]
+				annotations := map[string]*spec.Annotation{}
+				for k, v := range pt.Annotations {
+					annotations[k] = v
+				}
+				other := p.convertAnnotations(operation.Parameters[0].Annotations)
+				for k, v := range other.Annotations {
+					annotations[k] = v
+				}
+				params = &spec.Type{
+					Namespace: pt.Namespace,
+					Name:      pt.Name,
+					Fields:    pt.Fields,
+					Annotated: spec.Annotated{
+						Annotations: annotations,
+					},
+					Validations: pt.Validations,
+				}
+			} else {
+				// TODO
+				//params = p.convertTypeRef(operation.Parameters[0].Type)
 			}
 		} else {
 			params = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)
 		}
-		o[operation.Name.Value] = &spec.Operation{
+		o[i] = &spec.Operation{
 			Name:       operation.Name.Value,
 			Unary:      operation.Unary,
 			Parameters: params,

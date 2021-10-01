@@ -21,6 +21,7 @@ func main() {
 	adapter.RegisterInbound(customers.Inbound{
 		CreateCustomer: service.CreateCustomer,
 		GetCustomer:    service.GetCustomer,
+		ListCustomers:  service.ListCustomers,
 	})
 	adapter.RegisterCustomerActor(customers.NewCustomerActorImpl())
 

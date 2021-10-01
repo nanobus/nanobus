@@ -3,7 +3,7 @@ module github.com/nanobus/nanobus/example/welcome
 go 1.17
 
 require (
-	github.com/nanobus/go-functions v0.0.0-20210802001124-d02d2c18021e
+	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
 	github.com/oklog/run v1.1.0
 )
 

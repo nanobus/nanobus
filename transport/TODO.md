@@ -40,6 +40,8 @@
   * [x] Path parameters
   * [x] Body parameters
   * [ ] Query parameters
+    * [x] Single values
+    * [ ] Arrays
   * [ ] Content negotiation?
   * [x] Pluggable codecs?
   * [ ] Expose OpenAPI spec doc

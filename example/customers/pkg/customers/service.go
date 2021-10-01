@@ -38,10 +38,34 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 	return s.outbound.FetchCustomer(ctx, id)
 }
 
+func (s *Service) ListCustomers(ctx context.Context, query CustomerQuery) (*CustomerPage, error) {
+	if jsonBytes, err := json.MarshalIndent(&query, "", "  "); err == nil {
+		log.Printf("RECEIVED: %s\n", string(jsonBytes))
+	}
+
+	return &CustomerPage{
+		Offset: query.Offset,
+		Limit:  query.Limit,
+		Items:  []Customer{},
+	}, nil
+}
+
 type CustomerActorImpl struct{}
 
 func NewCustomerActorImpl() *CustomerActorImpl {
 	return &CustomerActorImpl{}
+}
+
+func (c *CustomerActorImpl) Activate(ctx stateful.Context) error {
+	log.Printf("Activated %s", &ctx.Self)
+
+	return nil
+}
+
+func (c *CustomerActorImpl) Deactivate(ctx stateful.Context) error {
+	log.Printf("Deactivated %s", &ctx.Self)
+
+	return nil
 }
 
 func (c *CustomerActorImpl) CreateCustomer(ctx stateful.Context, customer Customer) (*Customer, error) {
