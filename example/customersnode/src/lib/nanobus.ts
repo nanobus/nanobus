@@ -76,14 +76,14 @@ export class HTTPHandlers implements Handlers {
   }
 }
 
-export type Invoker = (namespace: string, operation: string, payload: any) => Promise<any>;
+export type Invoker = (namespace: string, operation: string, payload?: any) => Promise<any>;
 
 export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
   const u = url.parse(baseURL);
 
-  return async (namespace: string, operation: string, payload: any): Promise<any> => {
+  return async (namespace: string, operation: string, payload?: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      const data = codec.encoder(payload);
+      const data = (payload) ? codec.encoder(payload) : new ArrayBuffer(0);
       const options = {
         hostname: u.hostname,
         port: u.port,

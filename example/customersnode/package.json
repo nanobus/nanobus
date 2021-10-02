@@ -1,21 +1,11 @@
 {
   "name": "customersnode",
-  "version": "1.0.0",
-  "description": "A node.js customers nanoprocess",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/nanobus/nanobus.git"
-  },
-  "keywords": [
-    "NanoBus",
-    "TypeScript",
-    "nodejs"
-  ],
-  "author": "Phil Kedy",
+  "version": "0.0.1",
+  "description": "Customers service in Node.js/TypeScript",
+  "author": "",
   "main": "dist/index.js",
   "scripts": {
     "eslint": "eslint src/service.ts",
-    "postinstall": "chmod +x ./scripts/dev.sh",
     "build": "tsc",
     "lint": "./node_modules/eslint/bin/eslint.js  src --ext .ts",
     "dev": "./scripts/dev.sh",
@@ -45,10 +35,5 @@
     "ts-jest": "27.0.4",
     "ts-node": "10.1.0",
     "typescript": "4.3.5"
-  },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/nanobus/nanobus/issues"
-  },
-  "homepage": "https://github.com/nanobus/nanobus#readme"
+  }
 }

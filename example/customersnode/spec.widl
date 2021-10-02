@@ -1,0 +1,163 @@
+namespace "customers.v1"
+  @version("0.1.0")
+  @path("/v1")
+  @info(
+    title: "Customers API",
+    description: """
+    This API contains operations that an application can perform on customers.
+    """,
+    version: "1.0",
+    contact: {
+      name: "MyCompany API Team",
+      email: "apiteam@mycompany.io",
+      url: "http://mycompany.io"
+    },
+    license: {
+      name: "Apache 2.0",
+      url: "https://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  )
+  @host("mycompany.io")
+  @schemes(["https"])
+  @consumes(["application/json"])
+  @produces(["application/json"])
+  @externalDocs(
+    url: "http://mycompany.io/docs"
+  )
+
+#import * from "@widl/restapi"
+#import * from "@widl/grpc"
+
+"""
+Operations that can be performed on a customer.
+"""
+role Inbound @service @uses([Outbound]) @path("/customers") {
+  """
+  Creates a new customer.
+  """
+  createCustomer{customer: Customer}: Customer
+    @POST
+    @response(
+      status: CREATED,
+      description: "Successful response",
+      examples: {
+        "application/json": "json"
+      }
+    )
+
+  """
+  Retrieve a customer by id.
+  """
+  getCustomer(id: u64 @fieldnum(1)): Customer
+    @GET
+    @path("/{id}")
+    @response(
+      status: OK,
+      description: "Successful response",
+      examples: {
+        "application/json": "json"
+      }
+    )
+    @response(
+      status: NOT_FOUND,
+      returns: "Error",
+      description: "No customer with that identifier",
+      examples: {
+        "application/json": "json"
+      }
+    )
+
+  """
+  Return a page of customers using optional search filters.
+  """
+  listCustomers{query: CustomerQuery @query}: CustomerPage
+    @GET
+  
+  somethingSimple(customer: Customer): void @nocode
+}
+
+role CustomerActor @stateful @path("/actor/{id}") {
+  """
+  Creates the customer state.
+  """
+  createCustomer{customer: Customer}: Customer @POST
+  """
+  Retrieve the customer state.
+  """
+  getCustomer(): Customer @GET
+}
+
+role Outbound @provider {
+  saveCustomer{customer: Customer}: void
+  fetchCustomer(id: u64): Customer
+  customerCreated{customer: Customer}: void
+}
+
+"""
+Customer information.
+"""
+type Customer {
+  "The customer identifer"
+  id: u64 @key @fieldnum(1)
+  "The customer's first name"
+  firstName: string @fieldnum(2)
+  "The customer's middle name"
+  middleName: string? @fieldnum(3)
+  "The customer's last name"
+  lastName: string @fieldnum(4)
+  "The customer's email address"
+  email: string @email @fieldnum(5)
+  "The customer's address"
+  address: Address @fieldnum(6)
+}
+
+type CustomerQuery {
+  "The customer identifer"
+  id: u64? @fieldnum(1)
+  "The customer's first name"
+  firstName: string? @fieldnum(2)
+  "The customer's middle name"
+  middleName: string? @fieldnum(3)
+  "The customer's last name"
+  lastName: string? @fieldnum(4)
+  "The customer's email address"
+  email: string? @email @fieldnum(5)
+  ""
+  offset: u64 @fieldnum(10)
+  limit: u64 @fieldnum(11)
+}
+
+type CustomerPage {
+  offset: u64 @fieldnum(1)
+  limit: u64 @fieldnum(2)
+  items: [Customer] @fieldnum(3)
+}
+
+type Nested {
+  foo: string @fieldnum(1)
+  bar: string @fieldnum(2)
+}
+
+"""
+Address information.
+"""
+type Address {
+  "The address line 1"
+  line1: string @fieldnum(1)
+  "The address line 2"
+  line2: string? @fieldnum(2)
+  "The city"
+  city: string @fieldnum(3)
+  "The state"
+  state: string @fieldnum(4) @length(min: 2, max: 2)
+  "The zipcode"
+  zip: string @fieldnum(5) @length(min: 5)
+}
+
+"""
+Error response.
+"""
+type Error {
+  "The detailed error message"
+  message: string @fieldnum(1)
+}

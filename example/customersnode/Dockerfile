@@ -19,7 +19,4 @@ FROM gcr.io/distroless/nodejs:14
 # Copy node modules and build directory
 COPY --from=base ./node_modules ./node_modules
 COPY --from=base /dist /dist
-
-# Expose port 3000
-EXPOSE 3000
-CMD ["dist/server.js"]
+CMD ["dist/service.js"]

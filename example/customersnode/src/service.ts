@@ -1,5 +1,5 @@
-import { registerInboundHanders, start, outbound } from "./adapter";
-import { Customer } from "./interfaces";
+import { start, registerInboundHandlers, outbound } from "./adapter";
+import { Customer, CustomerPage, CustomerQuery } from "./interfaces";
 
 class InboundHandlers {
   async createCustomer(customer: Customer): Promise<Customer> {
@@ -11,9 +11,17 @@ class InboundHandlers {
 
   async getCustomer(id: number): Promise<Customer> {
     return outbound.fetchCustomer(id);
-  };
+  }
+
+  async listCustomers(query: CustomerQuery): Promise<CustomerPage> {
+    return new CustomerPage({
+      offset: query.offset,
+      limit: query.limit,
+      items: [new Customer()],
+    });
+  }
 }
 
-registerInboundHanders(new InboundHandlers());
+registerInboundHandlers(new InboundHandlers());
 
 start();
