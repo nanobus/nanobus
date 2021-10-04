@@ -1,3 +1,18 @@
+import { Expose } from "class-transformer";
+
+export interface LogicalAddress {
+  readonly type: string;
+  readonly id: string;
+  toString(): string;
+}
+
+export interface Context {
+  readonly self: LogicalAddress;
+  get<T>(key: string): Promise<T | undefined>;
+  set<T>(key: string, data: T): void;
+  remove(key: string): void;
+}
+
 // Operations that can be performed on a customer.
 export interface Inbound {
   // Creates a new customer.
@@ -6,6 +21,14 @@ export interface Inbound {
   getCustomer?: (id: number) => Promise<Customer>;
   // Return a page of customers using optional search filters.
   listCustomers?: (query: CustomerQuery) => Promise<CustomerPage>;
+}
+
+// Stateful operations that can be performed on a customer.
+export interface CustomerActor {
+  // Creates the customer state.
+  createCustomer(ctx: Context, customer: Customer): Promise<Customer>;
+  // Retrieve the customer state.
+  getCustomer(ctx: Context): Promise<Customer>;
 }
 
 export interface Outbound {
@@ -17,17 +40,17 @@ export interface Outbound {
 // Customer information.
 export class Customer {
   // The customer identifer
-  id: number;
+  @Expose() id: number;
   // The customer's first name
-  firstName: string;
+  @Expose() firstName: string;
   // The customer's middle name
-  middleName: string | undefined;
+  @Expose() middleName: string | undefined;
   // The customer's last name
-  lastName: string;
+  @Expose() lastName: string;
   // The customer's email address
-  email: string;
+  @Expose() email: string;
   // The customer's address
-  address: Address;
+  @Expose() address: Address;
 
   constructor({
     id = 0,
@@ -55,17 +78,17 @@ export class Customer {
 
 export class CustomerQuery {
   // The customer identifer
-  id: number | undefined;
+  @Expose() id: number | undefined;
   // The customer's first name
-  firstName: string | undefined;
+  @Expose() firstName: string | undefined;
   // The customer's middle name
-  middleName: string | undefined;
+  @Expose() middleName: string | undefined;
   // The customer's last name
-  lastName: string | undefined;
+  @Expose() lastName: string | undefined;
   // The customer's email address
-  email: string | undefined;
-  offset: number;
-  limit: number;
+  @Expose() email: string | undefined;
+  @Expose() offset: number;
+  @Expose() limit: number;
 
   constructor({
     id = null,
@@ -95,9 +118,9 @@ export class CustomerQuery {
 }
 
 export class CustomerPage {
-  offset: number;
-  limit: number;
-  items: Array<Customer>;
+  @Expose() offset: number;
+  @Expose() limit: number;
+  @Expose() items: Array<Customer>;
 
   constructor({
     offset = 0,
@@ -111,8 +134,8 @@ export class CustomerPage {
 }
 
 export class Nested {
-  foo: string;
-  bar: string;
+  @Expose() foo: string;
+  @Expose() bar: string;
 
   constructor({ foo = "", bar = "" }: { foo?: string; bar?: string } = {}) {
     this.foo = foo;
@@ -123,15 +146,15 @@ export class Nested {
 // Address information.
 export class Address {
   // The address line 1
-  line1: string;
+  @Expose() line1: string;
   // The address line 2
-  line2: string | undefined;
+  @Expose() line2: string | undefined;
   // The city
-  city: string;
+  @Expose() city: string;
   // The state
-  state: string;
+  @Expose() state: string;
   // The zipcode
-  zip: string;
+  @Expose() zip: string;
 
   constructor({
     line1 = "",
@@ -157,7 +180,7 @@ export class Address {
 // Error response.
 export class Error {
   // The detailed error message
-  message: string;
+  @Expose() message: string;
 
   constructor({ message = "" }: { message?: string } = {}) {
     this.message = message;

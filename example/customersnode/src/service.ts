@@ -1,7 +1,12 @@
-import { start, registerInboundHandlers, outbound } from "./adapter";
-import { Customer, CustomerPage, CustomerQuery } from "./interfaces";
+import {
+  start,
+  registerInbound,
+  registerCustomerActor,
+  outbound,
+} from "./adapter";
+import { Context, Customer, CustomerPage, CustomerQuery } from "./interfaces";
 
-class InboundHandlers {
+class InboundImpl {
   async createCustomer(customer: Customer): Promise<Customer> {
     await outbound.saveCustomer(customer);
     await outbound.customerCreated(customer);
@@ -22,6 +27,20 @@ class InboundHandlers {
   }
 }
 
-registerInboundHandlers(new InboundHandlers());
+registerInbound(new InboundImpl());
+
+class CustomerActorImpl {
+  async createCustomer(ctx: Context, customer: Customer): Promise<Customer> {
+    ctx.set("customer", customer);
+    return customer;
+  }
+
+  async getCustomer(ctx: Context): Promise<Customer> {
+    const customer: Customer = await ctx.get("customer");
+    return customer;
+  }
+}
+
+registerCustomerActor(new CustomerActorImpl());
 
 start();

@@ -76,6 +76,9 @@ role Inbound @service @uses([Outbound]) @path("/customers") {
   somethingSimple(customer: Customer): void @nocode
 }
 
+"""
+Stateful operations that can be performed on a customer.
+"""
 role CustomerActor @stateful @path("/actor/{id}") {
   """
   Creates the customer state.

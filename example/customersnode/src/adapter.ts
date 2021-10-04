@@ -4,32 +4,37 @@ import {
   HTTPHandlers,
   HTTPInvoker,
   Invoker,
+  jsonCodec,
   msgpackCodec,
 } from "./lib/nanobus";
+import { Manager, Storage, LRUCache } from "./lib/stateful";
+import { Expose } from "class-transformer";
 import {
   Inbound,
   Customer,
   CustomerPage,
   CustomerQuery,
+  CustomerActor,
   Outbound,
 } from "./interfaces";
 
-export const invoker = HTTPInvoker(
-  process.env.OUTBOUND_BASE_URL || "http://localhost:32321/outbound",
-  msgpackCodec
-);
+const busUrl = process.env.BUS_URL || "http://localhost:32321";
 
-export const handlers = new HTTPHandlers(msgpackCodec);
+const invoker = HTTPInvoker(busUrl + "/outbound", msgpackCodec);
+const handlers = new HTTPHandlers(msgpackCodec);
+const cache = new LRUCache();
+const storage = new Storage(busUrl, jsonCodec);
+const stateManager = new Manager(cache, storage, jsonCodec);
 
 class InboundGetCustomerArgs {
-  id: number;
+  @Expose() id: number;
 
   constructor({ id = 0 }: { id?: number } = {}) {
     this.id = id;
   }
 }
 
-export function registerInboundHandlers(h: Inbound): void {
+export function registerInbound(h: Inbound): void {
   if (h.createCustomer) {
     handlers.registerHandler(
       "customers.v1.Inbound",
@@ -70,8 +75,39 @@ export function registerInboundHandlers(h: Inbound): void {
   }
 }
 
+export function registerCustomerActor(h: CustomerActor): void {
+  handlers.registerStatefulHandler(
+    "customers.v1.CustomerActor",
+    "deactivate",
+    stateManager.deactivateHandler("customers.v1.CustomerActor", h)
+  );
+  handlers.registerStatefulHandler(
+    "customers.v1.CustomerActor",
+    "createCustomer",
+    (id: string, input: ArrayBuffer): Promise<ArrayBuffer> => {
+      const payload = handlers.codec.decoder(input) as Customer;
+      const sctx = stateManager.toContext("customers.v1.CustomerActor", id, h);
+      return h
+        .createCustomer(sctx, payload)
+        .then((result) => sctx.response(result))
+        .then((result) => handlers.codec.encoder(result));
+    }
+  );
+  handlers.registerStatefulHandler(
+    "customers.v1.CustomerActor",
+    "getCustomer",
+    (id: string, input: ArrayBuffer): Promise<ArrayBuffer> => {
+      const sctx = stateManager.toContext("customers.v1.CustomerActor", id, h);
+      return h
+        .getCustomer(sctx)
+        .then((result) => sctx.response(result))
+        .then((result) => handlers.codec.encoder(result));
+    }
+  );
+}
+
 class OutboundFetchCustomerArgs {
-  id: number;
+  @Expose() id: number;
 
   constructor({ id = 0 }: { id?: number } = {}) {
     this.id = id;
@@ -117,7 +153,7 @@ if (result.error) {
 }
 
 const PORT = parseInt(process.env.PORT) || 9000;
-const HOST = process.env.HOST || "localhost";
+const HOST = process.env.HOST || "127.0.0.1";
 
 export function start(): void {
   handlers.listen(PORT, HOST, () => {

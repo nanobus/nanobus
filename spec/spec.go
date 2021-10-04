@@ -224,11 +224,23 @@ func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 	for fieldName, value := range v {
 		f, ok := t.Fields[fieldName]
 		if !ok {
+			// Exclude extraneous values.
+			delete(v, fieldName)
 			continue
 		}
 
 		if err := t.doField(f.Type, f, fieldName, v, value, validate); err != nil {
 			return err
+		}
+	}
+
+	if validate {
+		for fieldName, f := range t.Fields {
+			if f.Type.Kind != KindOptional {
+				if _, ok := v[fieldName]; !ok {
+					return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
+				}
+			}
 		}
 	}
 

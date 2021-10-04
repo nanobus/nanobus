@@ -1,6 +1,6 @@
-import url from 'url';
-import http, { RequestListener, Server } from 'http';
-import { encode, decode } from '@msgpack/msgpack';
+import url from "url";
+import http, { RequestListener, Server } from "http";
+import { encode, decode } from "@msgpack/msgpack";
 
 export type Encoder = (v: any) => ArrayBuffer;
 export type Decoder = (v: ArrayBuffer) => any;
@@ -10,6 +10,10 @@ export interface Codec {
 }
 
 export type Handler = (payload: ArrayBuffer) => Promise<ArrayBuffer>;
+export type StatefulHandler = (
+  id: string,
+  payload: ArrayBuffer
+) => Promise<ArrayBuffer>;
 
 export interface Handlers {
   readonly codec: Codec;
@@ -19,16 +23,31 @@ export interface Handlers {
 export class HTTPHandlers implements Handlers {
   readonly codec: Codec;
   private handlers: Map<string, Handler> = new Map();
+  private statefulHandlers: Map<string, StatefulHandler> = new Map();
   private server: Server;
 
   constructor(codec: Codec) {
     this.codec = codec;
 
     const requestListener: RequestListener = async function (req, res) {
-      const handler: Handler = this.handlers.get(req.url);
+      const parts = req.url.split("/");
+      var handler: Handler = undefined;
+
+      if (parts.length === 3) {
+        handler = this.handlers.get(parts[1] + "/" + parts[2]);
+      } else if (parts.length === 4) {
+        const id = parts[2];
+        const shandler = this.statefulHandlers.get(parts[1] + "/" + parts[3]);
+        if (shandler) {
+          handler = (payload) => {
+            return shandler(id, payload);
+          };
+        }
+      }
+
       if (!handler) {
         res.writeHead(404);
-        res.end('Not found');
+        res.end("Not found");
         return;
       }
 
@@ -48,7 +67,7 @@ export class HTTPHandlers implements Handlers {
           responseBuffer = Buffer.alloc(0);
         }
 
-        res.setHeader('Content-Type', 'application/msgpack');
+        res.setHeader("Content-Type", "application/msgpack");
         res.writeHead(200);
         res.end(responseBuffer);
       } catch (e) {
@@ -61,9 +80,23 @@ export class HTTPHandlers implements Handlers {
     this.server = http.createServer(requestListener.bind(this));
   }
 
-  registerHandler(namespace: string, operation: string, handler: Handler): void {
+  registerHandler(
+    namespace: string,
+    operation: string,
+    handler: Handler
+  ): void {
     if (handler) {
-      this.handlers.set('/' + namespace + '/' + operation, handler);
+      this.handlers.set(namespace + "/" + operation, handler);
+    }
+  }
+
+  registerStatefulHandler(
+    namespace: string,
+    operation: string,
+    handler: StatefulHandler
+  ): void {
+    if (handler) {
+      this.statefulHandlers.set(namespace + "/" + operation, handler);
     }
   }
 
@@ -76,32 +109,40 @@ export class HTTPHandlers implements Handlers {
   }
 }
 
-export type Invoker = (namespace: string, operation: string, payload?: any) => Promise<any>;
+export type Invoker = (
+  namespace: string,
+  operation: string,
+  payload?: any
+) => Promise<any>;
 
 export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
   const u = url.parse(baseURL);
 
-  return async (namespace: string, operation: string, payload?: any): Promise<any> => {
+  return async (
+    namespace: string,
+    operation: string,
+    payload?: any
+  ): Promise<any> => {
     return new Promise((resolve, reject) => {
-      const data = (payload) ? codec.encoder(payload) : new ArrayBuffer(0);
+      const data = payload ? codec.encoder(payload) : new ArrayBuffer(0);
       const options = {
         hostname: u.hostname,
         port: u.port,
-        path: u.path + '/' + namespace + '/' + operation,
-        method: 'POST',
+        path: u.path + "/" + namespace + "/" + operation,
+        method: "POST",
         headers: {
-          'Content-Type': 'application/msgpack',
-          'Content-Length': data.byteLength
-        }
+          "Content-Type": "application/msgpack",
+          "Content-Length": data.byteLength,
+        },
       };
 
-      const req = http.request(options, res => {
+      const req = http.request(options, (res) => {
         const buffers: Uint8Array[] = [];
-        res.on('data', chunk => {
+        res.on("data", (chunk) => {
           buffers.push(chunk);
         });
 
-        res.on('end', () => {
+        res.on("end", () => {
           try {
             if (buffers.length === 0) {
               resolve(null);
@@ -118,7 +159,7 @@ export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
         });
       });
 
-      req.on('error', error => {
+      req.on("error", (error) => {
         console.error(error);
         reject(error);
       });
@@ -130,6 +171,13 @@ export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
 }
 
 export const msgpackCodec: Codec = {
-  encoder: data => encode(data).buffer,
-  decoder: data => decode(data)
+  encoder: (data) => encode(data).buffer,
+  decoder: (data) => decode(data),
+};
+
+export const jsonCodec: Codec = {
+  encoder: (data) => Buffer.from(JSON.stringify(data)),
+  decoder: (data) => {
+    return JSON.parse(Buffer.from(data).toString());
+  },
 };
