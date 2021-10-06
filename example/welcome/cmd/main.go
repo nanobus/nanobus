@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	adapter := welcome.NewAdapter(nil)
+	adapter := welcome.NewAdapter()
 	outbound := adapter.NewOutbound()
 	service := welcome.NewService(outbound)
 

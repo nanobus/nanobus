@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-
-	"github.com/nanobus/go-functions/stateful"
 )
 
 type Service struct {
@@ -56,31 +54,31 @@ func NewCustomerActorImpl() *CustomerActorImpl {
 	return &CustomerActorImpl{}
 }
 
-func (c *CustomerActorImpl) Activate(ctx stateful.Context) error {
-	log.Printf("Activated %s", &ctx.Self)
+func (c *CustomerActorImpl) Activate(ctx Context) error {
+	log.Printf("Activated %s", ctx.Self())
 
 	return nil
 }
 
-func (c *CustomerActorImpl) Deactivate(ctx stateful.Context) error {
-	log.Printf("Deactivated %s", &ctx.Self)
+func (c *CustomerActorImpl) Deactivate(ctx Context) error {
+	log.Printf("Deactivated %s", ctx.Self())
 
 	return nil
 }
 
-func (c *CustomerActorImpl) CreateCustomer(ctx stateful.Context, customer Customer) (*Customer, error) {
+func (c *CustomerActorImpl) CreateCustomer(ctx Context, customer Customer) (*Customer, error) {
 	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
 		log.Printf("ACTOR RECEIVED: %s\n", string(jsonBytes))
 	}
 
-	log.Printf("Actor Type/ID = %s", &ctx.Self)
+	log.Printf("Actor Type/ID = %s", ctx.Self())
 
 	ctx.Set("customer", &customer)
 
 	return &customer, nil
 }
 
-func (c *CustomerActorImpl) GetCustomer(ctx stateful.Context) (*Customer, error) {
+func (c *CustomerActorImpl) GetCustomer(ctx Context) (*Customer, error) {
 	log.Printf("RECEIVED\n")
 
 	var customer Customer

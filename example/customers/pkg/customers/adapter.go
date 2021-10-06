@@ -21,6 +21,18 @@ import (
 
 var busURI = lookupEnvOrString("BUS_URI", "http://localhost:32321")
 
+type AdapterContext struct {
+	*stateful.Context
+}
+
+func (c *AdapterContext) Self() LogicalAddress {
+	self := c.Context.Self()
+	return LogicalAddress{
+		Type: self.Type,
+		ID:   self.ID,
+	}
+}
+
 type OutboundImpl struct {
 	invoker *functions.Invoker
 }
@@ -242,7 +254,7 @@ func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) fu
 		if err != nil {
 			return nil, err
 		}
-		response, err := stateful.CreateCustomer(sctx, request)
+		response, err := stateful.CreateCustomer(&AdapterContext{&sctx}, request)
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +272,7 @@ func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) funct
 		if err != nil {
 			return nil, err
 		}
-		response, err := stateful.GetCustomer(sctx)
+		response, err := stateful.GetCustomer(&AdapterContext{&sctx})
 		if err != nil {
 			return nil, err
 		}

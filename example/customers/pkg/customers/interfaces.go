@@ -2,8 +2,6 @@ package customers
 
 import (
 	"context"
-
-	"github.com/nanobus/go-functions/stateful"
 )
 
 type ns struct{}
@@ -16,6 +14,23 @@ func (n *ns) Version() string {
 	return "0.1.0"
 }
 
+type LogicalAddress struct {
+	Type string `json:"type,omitempty" msgpack:"type,omitempty"`
+	ID   string `json:"id,omitempty" msgpack:"id,omitempty"`
+}
+
+func (a LogicalAddress) String() string {
+	return a.Type + "/" + a.ID
+}
+
+type Context interface {
+	context.Context
+	Self() LogicalAddress
+	Get(key string, dst interface{}) (bool, error)
+	Set(key string, data interface{})
+	Remove(key string)
+}
+
 // Operations that can be performed on a customer.
 type Inbound struct {
 	// Creates a new customer.
@@ -26,11 +41,12 @@ type Inbound struct {
 	ListCustomers func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
 }
 
+// Stateful operations that can be performed on a customer.
 type CustomerActor interface {
 	// Creates the customer state.
-	CreateCustomer(ctx stateful.Context, customer Customer) (*Customer, error)
+	CreateCustomer(ctx Context, customer Customer) (*Customer, error)
 	// Retrieve the customer state.
-	GetCustomer(ctx stateful.Context) (*Customer, error)
+	GetCustomer(ctx Context) (*Customer, error)
 }
 
 type Outbound interface {

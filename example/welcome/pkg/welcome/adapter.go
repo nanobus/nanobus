@@ -3,7 +3,6 @@ package welcome
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 
 	functions "github.com/nanobus/go-functions"
 	"github.com/nanobus/go-functions/codecs/msgpack"
-	"github.com/nanobus/go-functions/stateful"
 	"github.com/nanobus/go-functions/transports/mux"
 )
 
@@ -58,43 +56,8 @@ func lookupEnvOrString(key string, defaultVal string) string {
 	return defaultVal
 }
 
-type Storage struct {
-	codec functions.Codec
-}
-
-func NewStorage(codec functions.Codec) *Storage {
-	return &Storage{
-		codec: codec,
-	}
-}
-
-func (s *Storage) Get(namespace, id, key string) (stateful.RawItem, bool, error) {
-	var item stateful.RawItem
-	url := busURI + "/state/" + namespace + "/" + id + "/" + key
-	resp, err := http.Get(url)
-	if err != nil {
-		return item, false, err
-	}
-	defer resp.Body.Close()
-
-	payload, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return item, false, err
-	}
-
-	if len(payload) == 0 {
-		return item, false, nil
-	}
-	if err = s.codec.Decode(payload, &item); err != nil {
-		return item, false, err
-	}
-
-	return item, true, nil
-}
-
 type Adapter struct {
 	mux                *mux.Mux
-	stateManager       *stateful.Manager
 	codec              functions.Codec
 	invoker            *functions.Invoker
 	registerFn         functions.Register
@@ -103,14 +66,13 @@ type Adapter struct {
 	ln net.Listener
 }
 
-func NewAdapter(stateManager *stateful.Manager) *Adapter {
+func NewAdapter() *Adapter {
 	codec := msgpack.New()
 	m := mux.New(busURI+"/outbound/", codec.ContentType())
 	invoker := functions.NewInvoker(m.Invoke, codec)
 
 	app := Adapter{
 		mux:                m,
-		stateManager:       stateManager,
 		codec:              codec,
 		invoker:            invoker,
 		registerFn:         m.Register,
