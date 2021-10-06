@@ -36,7 +36,7 @@ class CustomerActorImpl {
   }
 
   async getCustomer(ctx: Context): Promise<Customer> {
-    const customer: Customer = await ctx.get("customer");
+    const customer = await ctx.get("customer", Customer);
     return customer;
   }
 }

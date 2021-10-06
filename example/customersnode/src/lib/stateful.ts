@@ -2,6 +2,7 @@ import url, { UrlWithStringQuery } from "url";
 import http from "http";
 import { LRUCache as LRU } from "typescript-lru-cache";
 import { Codec, StatefulHandler } from "./nanobus";
+import { plainToClass } from "class-transformer";
 
 export class LogicalAddress {
   type: string;
@@ -27,6 +28,10 @@ export class Response {
   }
 }
 
+export declare type ClassConstructor<T> = {
+  new (...args: any[]): T;
+};
+
 export class Context {
   // context.Context;
   readonly self: LogicalAddress;
@@ -37,12 +42,12 @@ export class Context {
     this.state = state;
   }
 
-  async get<T>(key: string): Promise<T | undefined> {
-    return this.state.get(key);
+  async get<T>(key: string, cls: ClassConstructor<T>): Promise<T | undefined> {
+    return this.state.get(key, cls);
   }
 
-  async getItem<T>(key: string): Promise<Item<T> | undefined> {
-    return this.state.getItem(key);
+  async getItem<T>(key: string, cls: ClassConstructor<T>): Promise<Item<T> | undefined> {
+    return this.state.getItem(key, cls);
   }
 
   set<T>(key: string, data: T) {
@@ -256,15 +261,15 @@ export class State {
     this.removed = null;
   }
 
-  async get<T>(key: string): Promise<T | undefined> {
-    const item = await this.getItem<T>(key);
+  async get<T>(key: string, cls: ClassConstructor<T>): Promise<T | undefined> {
+    const item = await this.getItem<T>(key, cls);
     if (item) {
       return item.data;
     }
     return undefined;
   }
 
-  async getItem<T>(key: string): Promise<Item<T> | undefined> {
+  async getItem<T>(key: string, cls: ClassConstructor<T>): Promise<Item<T> | undefined> {
     if (this.removed && this.removed.has(key)) {
       return undefined;
     }
@@ -290,11 +295,12 @@ export class State {
     }
 
     const data = this.codec.decoder(rawItem.data);
+    const value = plainToClass(cls, data);
     item = new Item({
       namespace: rawItem.namespace,
       type: rawItem.type,
       version: rawItem.version,
-      data: data,
+      data: value,
     });
     this.state.set(key, item);
 

@@ -6,9 +6,13 @@ export interface LogicalAddress {
   toString(): string;
 }
 
+export declare type ClassConstructor<T> = {
+  new (...args: any[]): T;
+};
+
 export interface Context {
   readonly self: LogicalAddress;
-  get<T>(key: string): Promise<T | undefined>;
+  get<T>(key: string, cls: ClassConstructor<T>): Promise<T | undefined>;
   set<T>(key: string, data: T): void;
   remove(key: string): void;
 }
