@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/nanobus/go-functions"
 
@@ -53,7 +54,12 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	r := mux.NewRouter()
+	r.Use(handlers.ProxyHeaders)
 	r.Use(mux.CORSMethodMiddleware(r))
+
+	if err := RegisterSwaggerRoutes(r, namespaces); err != nil {
+		return nil, err
+	}
 
 	rest := Rest{
 		address:    address,
@@ -133,9 +139,9 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 									typeRef: param.Type,
 								}
 							} else if param.Type.Type != nil {
-								for fname, f := range param.Type.Type.Fields {
-									queryParams[fname] = queryParam{
-										name:    fname,
+								for _, f := range param.Type.Type.Fields {
+									queryParams[f.Name] = queryParam{
+										name:    f.Name,
 										arg:     param.Name,
 										isArray: false, // TODO
 										typeRef: f.Type,
@@ -158,9 +164,9 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 									typeRef: param.Type,
 								}
 							} else {
-								for fname, f := range param.Type.Type.Fields {
-									queryParams[fname] = queryParam{
-										name:    fname,
+								for _, f := range param.Type.Type.Fields {
+									queryParams[f.Name] = queryParam{
+										name:    f.Name,
 										isArray: false, // TODO
 										typeRef: f.Type,
 									}

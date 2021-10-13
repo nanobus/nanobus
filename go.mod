@@ -10,8 +10,10 @@ require (
 	github.com/dapr/components-contrib v1.4.0-rc2
 	github.com/dapr/dapr v1.3.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
+	github.com/getkin/kin-openapi v0.61.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.7.3
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/hamba/avro v1.5.6
 	github.com/mattn/anko v0.1.8
@@ -63,9 +65,12 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/fasthttp-contrib/sessions v0.0.0-20160905201309-74f6ac73d5d5 // indirect
 	github.com/fasthttp/router v1.3.8 // indirect
+	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/swag v0.19.5 // indirect
 	github.com/go-redis/redis/v8 v8.8.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -100,6 +105,7 @@ require (
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.12.2 // indirect
+	github.com/mailru/easyjson v0.7.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect

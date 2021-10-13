@@ -45,10 +45,10 @@ type nsParser struct {
 
 func Parse(schema []byte) (*spec.Namespace, error) {
 	n := spec.Namespace{
-		Services: make(map[string]*spec.Service),
-		Types:    make(map[string]*spec.Type),
-		Enums:    make(map[string]*spec.Enum),
-		Unions:   make(map[string]*spec.Union),
+		ServicesByName: make(map[string]*spec.Service),
+		TypesByName:    make(map[string]*spec.Type),
+		Enums:          make(map[string]*spec.Enum),
+		Unions:         make(map[string]*spec.Union),
 	}
 	doc, err := parser.Parse(parser.ParseParams{
 		Source: string(schema),
@@ -71,7 +71,8 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 
 		case *ast.TypeDefinition:
 			t := p.createType(d)
-			n.Types[t.Name] = t
+			n.Types = append(n.Types, t)
+			n.TypesByName[t.Name] = t
 		}
 	}
 
@@ -87,7 +88,8 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 		case *ast.RoleDefinition:
 			//if a := d.Annotation("service"); a != nil {
 			s := p.convertService(d)
-			n.Services[s.Name] = s
+			n.Services = append(n.Services, s)
+			n.ServicesByName[s.Name] = s
 			//}
 		}
 	}
@@ -103,27 +105,35 @@ func (p *nsParser) createType(tt *ast.TypeDefinition) *spec.Type {
 }
 
 func (p *nsParser) convertType(tt *ast.TypeDefinition) {
-	t := p.n.Types[tt.Name.Value]
+	t := p.n.TypesByName[tt.Name.Value]
+	fields := p.convertFields(tt.Fields)
+	fieldsByName := make(map[string]*spec.Field, len(fields))
+	for _, field := range fields {
+		fieldsByName[field.Name] = field
+	}
 	*t = spec.Type{
-		Name:      tt.Name.Value,
-		Fields:    p.convertFields(tt.Fields),
-		Annotated: p.convertAnnotations(tt.Annotations),
+		Name:         tt.Name.Value,
+		Description:  stringValue(tt.Description),
+		Fields:       fields,
+		FieldsByName: fieldsByName,
+		Annotated:    p.convertAnnotations(tt.Annotations),
 	}
 }
 
-func (p *nsParser) convertFields(fields []*ast.FieldDefinition) map[string]*spec.Field {
+func (p *nsParser) convertFields(fields []*ast.FieldDefinition) []*spec.Field {
 	if fields == nil {
 		return nil
 	}
 
-	o := make(map[string]*spec.Field, len(fields))
-	for _, field := range fields {
+	o := make([]*spec.Field, len(fields))
+	for i, field := range fields {
 		var dv interface{}
 		if field.Default != nil {
 			dv = field.Default.GetValue()
 		}
-		o[field.Name.Value] = &spec.Field{
+		o[i] = &spec.Field{
 			Name:         field.Name.Value,
+			Description:  stringValue(field.Description),
 			Type:         p.convertTypeRef(field.Type),
 			DefaultValue: dv,
 			Annotated:    p.convertAnnotations(field.Annotations),
@@ -141,6 +151,7 @@ func (p *nsParser) convertService(role *ast.RoleDefinition) *spec.Service {
 	}
 	s := spec.Service{
 		Name:             role.Name.Value,
+		Description:      stringValue(role.Description),
 		Operations:       operations,
 		OperationsByName: operationsByName,
 		Annotated:        p.convertAnnotations(role.Annotations),
@@ -158,7 +169,7 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 		var params *spec.Type
 		if operation.Unary {
 			if named, ok := operation.Parameters[0].Type.(*ast.Named); ok {
-				pt := p.n.Types[named.Name.Value]
+				pt := p.n.TypesByName[named.Name.Value]
 				annotations := map[string]*spec.Annotation{}
 				for k, v := range pt.Annotations {
 					annotations[k] = v
@@ -168,9 +179,11 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 					annotations[k] = v
 				}
 				params = &spec.Type{
-					Namespace: pt.Namespace,
-					Name:      pt.Name,
-					Fields:    pt.Fields,
+					Namespace:    pt.Namespace,
+					Name:         pt.Name,
+					Description:  pt.Description,
+					Fields:       pt.Fields,
+					FieldsByName: pt.FieldsByName,
 					Annotated: spec.Annotated{
 						Annotations: annotations,
 					},
@@ -184,11 +197,12 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 			params = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)
 		}
 		o[i] = &spec.Operation{
-			Name:       operation.Name.Value,
-			Unary:      operation.Unary,
-			Parameters: params,
-			Returns:    p.convertTypeRef(operation.Type),
-			Annotated:  p.convertAnnotations(operation.Annotations),
+			Name:        operation.Name.Value,
+			Description: stringValue(operation.Description),
+			Unary:       operation.Unary,
+			Parameters:  params,
+			Returns:     p.convertTypeRef(operation.Type),
+			Annotated:   p.convertAnnotations(operation.Annotations),
 		}
 	}
 
@@ -196,27 +210,34 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 }
 
 func (p *nsParser) convertParameterType(name string, params []*ast.ParameterDefinition) *spec.Type {
+	fields := p.convertParameters(params)
+	fieldsByName := make(map[string]*spec.Field, len(fields))
+	for _, field := range fields {
+		fieldsByName[field.Name] = field
+	}
 	t := spec.Type{
-		Namespace: p.n,
-		Name:      name,
-		Fields:    p.convertParameters(params),
+		Namespace:    p.n,
+		Name:         name,
+		Fields:       fields,
+		FieldsByName: fieldsByName,
 	}
 	return &t
 }
 
-func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) map[string]*spec.Field {
+func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) []*spec.Field {
 	if parameters == nil {
 		return nil
 	}
 
-	o := make(map[string]*spec.Field, len(parameters))
-	for _, parameter := range parameters {
+	o := make([]*spec.Field, len(parameters))
+	for i, parameter := range parameters {
 		var dv interface{}
 		if parameter.Default != nil {
 			dv = parameter.Default.GetValue()
 		}
-		o[parameter.Name.Value] = &spec.Field{
+		o[i] = &spec.Field{
 			Name:         parameter.Name.Value,
+			Description:  stringValue(parameter.Description),
 			Type:         p.convertTypeRef(parameter.Type),
 			DefaultValue: dv,
 			Annotated:    p.convertAnnotations(parameter.Annotations),
@@ -309,7 +330,7 @@ func (p *nsParser) convertTypeRef(t ast.Type) *spec.TypeRef {
 		if prim, ok := typeRefMap[tt.Name.Value]; ok {
 			return prim
 		}
-		if t, ok := p.n.Types[tt.Name.Value]; ok {
+		if t, ok := p.n.TypesByName[tt.Name.Value]; ok {
 			return &spec.TypeRef{
 				Kind: spec.KindType,
 				Type: t,
@@ -346,4 +367,12 @@ func (p *nsParser) convertTypeRef(t ast.Type) *spec.TypeRef {
 	}
 
 	panic("unreachable")
+}
+
+func stringValue(v *ast.StringValue) string {
+	if v == nil {
+		return ""
+	}
+
+	return v.Value
 }

@@ -163,9 +163,9 @@ func main() {
 
 	actorEntities := []string{}
 	for namespaceName, ns := range namespaces {
-		for serviceName, s := range ns.Services {
+		for _, s := range ns.Services {
 			if _, ok := s.Annotations["stateful"]; ok {
-				entityName := namespaceName + "." + serviceName
+				entityName := namespaceName + "." + s.Name
 				log.Printf("Found actor %s", entityName)
 				actorEntities = append(actorEntities, entityName)
 			}

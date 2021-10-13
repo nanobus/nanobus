@@ -126,8 +126,8 @@ type CustomerQuery {
   "The customer's email address"
   email: string? @email @fieldnum(5)
   ""
-  offset: u64 @fieldnum(10)
-  limit: u64 @fieldnum(11)
+  offset: u64 = 0 @fieldnum(10)
+  limit: u64 = 100 @fieldnum(11)
 }
 
 type CustomerPage {

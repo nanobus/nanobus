@@ -44,5 +44,5 @@
     * [ ] Arrays
   * [ ] Content negotiation?
   * [x] Pluggable codecs?
-  * [ ] Expose OpenAPI spec doc
-  * [ ] Swagger UI
+  * [x] Expose OpenAPI spec doc
+  * [x] Swagger UI

@@ -27,62 +27,72 @@ type (
 	Namespaces map[string]*Namespace
 
 	Namespace struct {
-		Name     string              `json:"name"`
-		Services map[string]*Service `json:"services"`
-		Types    map[string]*Type    `json:"types"`
-		Enums    map[string]*Enum    `json:"enums"`
-		Unions   map[string]*Union   `json:"unions"`
+		Name           string              `json:"name"`
+		Services       []*Service          `json:"services"`
+		ServicesByName map[string]*Service `json:"-"`
+		Types          []*Type             `json:"types"`
+		TypesByName    map[string]*Type    `json:"-"`
+		Enums          map[string]*Enum    `json:"enums"`
+		Unions         map[string]*Union   `json:"unions"`
 		Annotated
 	}
 
 	Service struct {
 		Name             string                `json:"name"`
+		Description      string                `json:"description,omitempty"`
 		Operations       []*Operation          `json:"operations"`
 		OperationsByName map[string]*Operation `json:"-"`
 		Annotated
 	}
 
 	Operation struct {
-		Name       string   `json:"name"`
-		Unary      bool     `json:"unary"`
-		Parameters *Type    `json:"parameters,omitempty"`
-		Returns    *TypeRef `json:"returns,omitempty"`
+		Name        string   `json:"name"`
+		Description string   `json:"description,omitempty"`
+		Unary       bool     `json:"unary"`
+		Parameters  *Type    `json:"parameters,omitempty"`
+		Returns     *TypeRef `json:"returns,omitempty"`
 		Annotated
 	}
 
 	Type struct {
-		Namespace *Namespace        `json:"-"`
-		Name      string            `json:"name"`
-		Fields    map[string]*Field `json:"fields"`
+		Namespace    *Namespace        `json:"-"`
+		Name         string            `json:"name"`
+		Description  string            `json:"description,omitempty"`
+		Fields       []*Field          `json:"fields"`
+		FieldsByName map[string]*Field `json:"-"`
 		Annotated
 		Validations []Validation `json:"-"`
 	}
 
 	Field struct {
 		Name         string      `json:"name"`
+		Description  string      `json:"description,omitempty"`
 		Type         *TypeRef    `json:"type"`
 		DefaultValue interface{} `json:"defaultValue,omitempty"`
 		Annotated
 	}
 
 	Enum struct {
-		Namespace *Namespace   `json:"-"`
-		Name      string       `json:"name"`
-		Values    []*EnumValue `json:"values"`
+		Namespace   *Namespace   `json:"-"`
+		Name        string       `json:"name"`
+		Description string       `json:"description,omitempty"`
+		Values      []*EnumValue `json:"values"`
 		Annotated
 	}
 
 	EnumValue struct {
 		Name        string `json:"name"`
+		Description string `json:"description,omitempty"`
 		StringValue string `json:"stringValue"`
 		IndexValue  int    `json:"indexValue"`
 		Annotated
 	}
 
 	Union struct {
-		Namespace *Namespace `json:"-"`
-		Name      string     `json:"name"`
-		Types     []*TypeRef `json:"types"`
+		Namespace   *Namespace `json:"-"`
+		Name        string     `json:"name"`
+		Description string     `json:"description,omitempty"`
+		Types       []*TypeRef `json:"types"`
 		Annotated
 	}
 
@@ -117,6 +127,10 @@ type (
 		Fields   []string `json:"fields"`
 		Messages []string `json:"messages"`
 	}
+
+	Annotator interface {
+		Annotation(name string) (*Annotation, bool)
+	}
 )
 
 func (ns Namespaces) Operation(namespace, service, operation string) (*Operation, bool) {
@@ -124,7 +138,7 @@ func (ns Namespaces) Operation(namespace, service, operation string) (*Operation
 	if !ok {
 		return nil, false
 	}
-	s, ok := n.Services[service]
+	s, ok := n.ServicesByName[service]
 	if !ok {
 		return nil, false
 	}
@@ -222,7 +236,7 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, error
 
 func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 	for fieldName, value := range v {
-		f, ok := t.Fields[fieldName]
+		f, ok := t.FieldsByName[fieldName]
 		if !ok {
 			// Exclude extraneous values.
 			delete(v, fieldName)
@@ -235,7 +249,7 @@ func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 	}
 
 	if validate {
-		for fieldName, f := range t.Fields {
+		for fieldName, f := range t.FieldsByName {
 			if f.Type.Kind != KindOptional {
 				if _, ok := v[fieldName]; !ok {
 					return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
@@ -323,6 +337,11 @@ func (t *Type) doField(tt *TypeRef, f *Field, fieldName string, v map[string]int
 	}
 
 	return err
+}
+
+func (a *Annotated) Annotation(name string) (*Annotation, bool) {
+	anno, ok := a.Annotations[name]
+	return anno, ok
 }
 
 type Kind int

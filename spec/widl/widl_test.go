@@ -9,7 +9,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	schemaBytes, err := os.ReadFile("../../example/customers/schema.widl")
+	schemaBytes, err := os.ReadFile("../../example/customers/spec.widl")
 	if err != nil {
 		t.FailNow()
 	}

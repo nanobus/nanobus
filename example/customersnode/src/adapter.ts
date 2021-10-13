@@ -12,7 +12,6 @@ import { Expose } from "class-transformer";
 import {
   Inbound,
   Customer,
-  CustomerPage,
   CustomerQuery,
   CustomerActor,
   Outbound,
