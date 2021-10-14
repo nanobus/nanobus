@@ -1,7 +1,5 @@
 compute:
   type: mux
-  with:
-    baseUrl: http://localhost:9001
 
 codecs:
   avro:

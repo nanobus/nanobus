@@ -43,10 +43,12 @@ func NewOutboundImpl(invoker *functions.Invoker) *OutboundImpl {
 	}
 }
 
+// Saves a customer to the backend database
 func (m *OutboundImpl) SaveCustomer(ctx context.Context, customer Customer) error {
 	return m.invoker.Invoke(ctx, "customers.v1.Outbound", "saveCustomer", customer)
 }
 
+// Fetches a customer from the backend database
 func (m *OutboundImpl) FetchCustomer(ctx context.Context, id uint64) (*Customer, error) {
 	var ret Customer
 	inputArgs := outboundFetchCustomerArgs{
@@ -56,6 +58,7 @@ func (m *OutboundImpl) FetchCustomer(ctx context.Context, id uint64) (*Customer,
 	return &ret, err
 }
 
+// Sends a customer creation event
 func (m *OutboundImpl) CustomerCreated(ctx context.Context, customer Customer) error {
 	return m.invoker.Invoke(ctx, "customers.v1.Outbound", "customerCreated", customer)
 }

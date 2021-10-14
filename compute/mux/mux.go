@@ -12,14 +12,7 @@ import (
 	"github.com/nanobus/nanobus/resolve"
 )
 
-var defaultInvokeURL string
-
-func init() {
-	defaultInvokeURL = os.Getenv("INVOKE_BASE_URL")
-	if defaultInvokeURL == "" {
-		defaultInvokeURL = "http://localhost:8000"
-	}
-}
+const defaultInvokeURL = "http://127.0.0.1:9000"
 
 type MuxConfig struct {
 	BaseURL string `mapstructure:"baseUrl"`
@@ -31,8 +24,12 @@ func Mux() (string, compute.Loader) {
 }
 
 func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker, error) {
+	baseURL := os.Getenv("APP_URL")
+	if baseURL == "" {
+		baseURL = defaultInvokeURL
+	}
 	c := MuxConfig{
-		BaseURL: defaultInvokeURL,
+		BaseURL: baseURL,
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

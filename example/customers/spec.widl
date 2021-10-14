@@ -91,8 +91,11 @@ role CustomerActor @stateful @path("/actor/{id}") {
 }
 
 role Outbound @provider {
+  "Saves a customer to the backend database"
   saveCustomer{customer: Customer}: void
+  "Fetches a customer from the backend database"
   fetchCustomer(id: u64): Customer
+  "Sends a customer creation event"
   customerCreated{customer: Customer}: void
 }
 

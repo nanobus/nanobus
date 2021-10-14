@@ -50,8 +50,11 @@ type CustomerActor interface {
 }
 
 type Outbound interface {
+	// Saves a customer to the backend database
 	SaveCustomer(ctx context.Context, customer Customer) error
+	// Fetches a customer from the backend database
 	FetchCustomer(ctx context.Context, id uint64) (*Customer, error)
+	// Sends a customer creation event
 	CustomerCreated(ctx context.Context, customer Customer) error
 }
 

@@ -16,3 +16,7 @@ generates:
     ifNotExists: true
     module: '@nanobus/codegen/go'
     visitorClass: ScaffoldVisitor
+  bus.yaml:
+    ifNotExists: true
+    module: '@nanobus/codegen/bus'
+    visitorClass: BusVisitor

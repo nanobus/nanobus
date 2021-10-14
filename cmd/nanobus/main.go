@@ -329,6 +329,8 @@ func main() {
 	busInvoker = rt.BusInvoker
 	dependencies["bus:invoker"] = busInvoker
 
+	appURL := fmt.Sprintf("http://127.0.0.1:%d", appPort)
+	os.Setenv("APP_URL", appURL)
 	// Internal invoker
 	if config.Compute.Type == "" {
 		config.Compute.Type = "mux"

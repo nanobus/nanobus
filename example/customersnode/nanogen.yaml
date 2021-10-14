@@ -10,3 +10,7 @@ generates:
     ifNotExists: true
     module: '@nanobus/codegen/typescript'
     visitorClass: ScaffoldVisitor
+  bus.yaml:
+    ifNotExists: true
+    module: '@nanobus/codegen/bus'
+    visitorClass: BusVisitor
