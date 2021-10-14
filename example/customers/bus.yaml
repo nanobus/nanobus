@@ -19,7 +19,6 @@ codecs:
         - http://localhost:8081
 
 services:
-
   'customers.v1.Inbound':
     createCustomer____ignore:
       summary: Saves the customer to the database
@@ -60,8 +59,7 @@ services:
           with:
             value: input
 
-outbound:
-
+providers:
   'customers.v1.Outbound':
     saveCustomer:
       summary: Saves the customer to the database

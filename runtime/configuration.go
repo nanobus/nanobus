@@ -12,8 +12,8 @@ type Configuration struct {
 	Compute       Compute           `json:"compute" yaml:"compute"`
 	Resiliency    Resiliency        `json:"resiliency" yaml:"resiliency"`
 	Services      Services          `json:"services" yaml:"services"`
-	Outbound      Services          `json:"outbound" yaml:"outbound"`
-	Inbound       FunctionPipelines `json:"inbound" yaml:"inbound"`
+	Providers     Services          `json:"providers" yaml:"providers"`
+	Events        FunctionPipelines `json:"events" yaml:"events"`
 	Subscriptions interface{}       `json:"subscriptions" yaml:"subscriptions"`
 	InputBindings interface{}       `json:"inputBindings" yaml:"inputBindings"`
 	Decoding      interface{}       `json:"decoding" yaml:"decoding"`

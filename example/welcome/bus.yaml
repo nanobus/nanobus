@@ -27,7 +27,7 @@ resiliency:
       maxRequests: 2
       timeout: 30s
 
-inbound:
+events:
   "io.nanobus.examples.customers.Customer":
     summary: Receives the customer message
     actions:
@@ -59,8 +59,7 @@ inbound:
                   retry: pubsub
                   circuitBreaker: pubsub
 
-outbound:
-
+providers:
   'welcome.v1.Outbound':
     sendEmail:
       summary: Sends an email to the customer

@@ -168,13 +168,14 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 	for i, operation := range operations {
 		var params *spec.Type
 		if operation.Unary {
-			if named, ok := operation.Parameters[0].Type.(*ast.Named); ok {
+			param := operation.Parameters[0]
+			if named, ok := param.Type.(*ast.Named); ok {
 				pt := p.n.TypesByName[named.Name.Value]
 				annotations := map[string]*spec.Annotation{}
 				for k, v := range pt.Annotations {
 					annotations[k] = v
 				}
-				other := p.convertAnnotations(operation.Parameters[0].Annotations)
+				other := p.convertAnnotations(param.Annotations)
 				for k, v := range other.Annotations {
 					annotations[k] = v
 				}
@@ -189,9 +190,6 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 					},
 					Validations: pt.Validations,
 				}
-			} else {
-				// TODO
-				//params = p.convertTypeRef(operation.Parameters[0].Type)
 			}
 		} else {
 			params = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)

@@ -126,7 +126,7 @@ type Adapter struct {
 
 func NewAdapter(stateManager *stateful.Manager) *Adapter {
 	codec := msgpack.New()
-	m := mux.New(busURI+"/outbound/", codec.ContentType())
+	m := mux.New(busURI+"/providers/", codec.ContentType())
 	invoker := functions.NewInvoker(m.Invoke, codec)
 
 	app := Adapter{

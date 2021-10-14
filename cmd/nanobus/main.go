@@ -537,7 +537,7 @@ func main() {
 			// 	log.Println("-->", target, string(jsonBytes)+"\n")
 			// }
 
-			result, err := rt.processor.Inbound(ctx, target, data)
+			result, err := rt.processor.Event(ctx, target, data)
 			if err != nil {
 				log.Println("error processing event", err)
 				return nil, err
@@ -639,7 +639,7 @@ func main() {
 			"env":      env,
 		}
 
-		output, err := rt.processor.Inbound(ctx, event.BindingName, actionData)
+		output, err := rt.processor.Event(ctx, event.BindingName, actionData)
 		if err != nil {
 			return nil, err
 		}
@@ -678,7 +678,7 @@ func main() {
 				target = typeName
 			}
 
-			_, err = rt.processor.Inbound(ctx, target, data)
+			_, err = rt.processor.Event(ctx, target, data)
 			if err != nil {
 				log.Println("error processing event", err)
 				return err
@@ -769,7 +769,7 @@ func main() {
 			"env":      env,
 		}
 
-		_, err := rt.processor.Inbound(ctx, function, data)
+		_, err := rt.processor.Event(ctx, function, data)
 		if err != nil {
 			log.Println("error processing event", err)
 			return embedded.EventResponseStatusRetry, err
@@ -842,8 +842,8 @@ func main() {
 	{
 		// Expose the bus
 		r := mux.NewRouter()
-		r.HandleFunc("/outbound/{namespace}/{function}", rt.OutboundHandler).Methods("POST")
-		r.HandleFunc("/inbound/{function}", rt.InboundHandler).Methods("POST")
+		r.HandleFunc("/providers/{namespace}/{function}", rt.ProvidersHandler).Methods("POST")
+		r.HandleFunc("/events/{function}", rt.EventsHandler).Methods("POST")
 		r.HandleFunc("/state/{namespace}/{id}/{key}", stateHandler).Methods("GET")
 		r.HandleFunc("/healthz", healthHandler).Methods("GET")
 		//r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
@@ -895,7 +895,7 @@ func main() {
 	}
 }
 
-func (rt *Runtime) OutboundHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	namespace := mux.Vars(r)["namespace"]
 	function := mux.Vars(r)["function"]
@@ -923,7 +923,7 @@ func (rt *Runtime) OutboundHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("<--", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
 	}
 
-	output, err := rt.processor.Outbound(r.Context(), namespace, service, function, data)
+	output, err := rt.processor.Provider(r.Context(), namespace, service, function, data)
 	if err != nil {
 		handleError(err, w, http.StatusInternalServerError)
 		return
@@ -948,7 +948,7 @@ func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function 
 		"env":   rt.env,
 	}
 
-	output, err := rt.processor.Outbound(ctx, namespace, service, function, data)
+	output, err := rt.processor.Provider(ctx, namespace, service, function, data)
 	if err != nil {
 		return nil, err
 	}
@@ -960,7 +960,7 @@ func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function 
 	return output, nil
 }
 
-func (rt *Runtime) InboundHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *Runtime) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	function := mux.Vars(r)["function"]
 
@@ -980,7 +980,7 @@ func (rt *Runtime) InboundHandler(w http.ResponseWriter, r *http.Request) {
 		"env":   rt.env,
 	}
 
-	output, err := rt.processor.Inbound(r.Context(), function, data)
+	output, err := rt.processor.Event(r.Context(), function, data)
 	if err != nil {
 		handleError(err, w, http.StatusInternalServerError)
 		return

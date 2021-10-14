@@ -70,36 +70,17 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 	foundTypes := make(map[string]struct{})
 
 	for _, ns := range namespaces {
-		version := getAnotationString(ns, "version")
 		a, ok := ns.Annotation("info")
 		if ok {
-			var contact *openapi3.Contact
-			if contactArg, ok := a.Arguments["contact"]; ok {
-				if ca, ok := contactArg.Value.(map[string]interface{}); ok {
-					contact = &openapi3.Contact{
-						Name:  mapStringProperty(ca, "name"),
-						URL:   mapStringProperty(ca, "url"),
-						Email: mapStringProperty(ca, "email"),
-					}
-				}
+			var info openapi3.Info
+			infoMapJSON, err := json.Marshal(a.ToMap())
+			if err != nil {
+				return nil, err
 			}
-			var license *openapi3.License
-			if licenseArg, ok := a.Arguments["license"]; ok {
-				if ca, ok := licenseArg.Value.(map[string]interface{}); ok {
-					license = &openapi3.License{
-						Name: mapStringProperty(ca, "name"),
-						URL:  mapStringProperty(ca, "url"),
-					}
-				}
+			if err := json.Unmarshal(infoMapJSON, &info); err != nil {
+				return nil, err
 			}
-			spec.Info = &openapi3.Info{
-				Title:          getAnotationArgument(a, "title"),
-				Description:    getAnotationArgument(a, "description"),
-				TermsOfService: getAnotationArgument(a, "termsOfService"),
-				Contact:        contact,
-				License:        license,
-				Version:        version,
-			}
+			spec.Info = &info
 		}
 
 		nsPath := getAnotationString(ns, "path")
@@ -342,6 +323,7 @@ func traverseType(foundTypes map[string]struct{}, t *spec.Type) {
 func fieldToValue(f *spec.Field) *openapi3.Schema {
 	t := typeFormat(f.Type)
 	t.Description = f.Description
+	t.Default = f.DefaultValue
 	return t
 }
 

@@ -26,8 +26,8 @@ type Processor struct {
 	retries         map[string]*retry.Config
 	circuitBreakers map[string]*breaker.CircuitBreaker
 	services        Namespaces
-	outbound        Namespaces
-	inbound         Functions
+	providers       Namespaces
+	events          Functions
 }
 
 type Namespaces map[string]Functions
@@ -103,25 +103,25 @@ func (p *Processor) Service(ctx context.Context, namespace, service, function st
 	return output, true, err
 }
 
-func (p *Processor) Outbound(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error) {
+func (p *Processor) Provider(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error) {
 	nss := namespace + "." + service
-	s, ok := p.outbound[nss]
+	s, ok := p.providers[nss]
 	if !ok {
-		return nil, fmt.Errorf("unknown outbound service %q", nss)
+		return nil, fmt.Errorf("provider %q not found", nss)
 	}
 
 	pl, ok := s[function]
 	if !ok {
-		return nil, fmt.Errorf("unknown outbound function %q in service %q", function, nss)
+		return nil, fmt.Errorf("function %q in provider %q not found", function, nss)
 	}
 
 	return pl.Run(ctx, data)
 }
 
-func (p *Processor) Inbound(ctx context.Context, function string, data actions.Data) (interface{}, error) {
-	pl, ok := p.inbound[function]
+func (p *Processor) Event(ctx context.Context, function string, data actions.Data) (interface{}, error) {
+	pl, ok := p.events[function]
 	if !ok {
-		return nil, fmt.Errorf("unknown inbound function %q", function)
+		return nil, fmt.Errorf("unknown event function %q", function)
 	}
 
 	return pl.Run(ctx, data)
@@ -131,10 +131,10 @@ func (p *Processor) Initialize() (err error) {
 	if p.services, err = p.loadServices(p.config.Services); err != nil {
 		return err
 	}
-	if p.outbound, err = p.loadServices(p.config.Outbound); err != nil {
+	if p.providers, err = p.loadServices(p.config.Providers); err != nil {
 		return err
 	}
-	if p.inbound, err = p.loadFunctionPipelines(p.config.Inbound); err != nil {
+	if p.events, err = p.loadFunctionPipelines(p.config.Events); err != nil {
 		return err
 	}
 

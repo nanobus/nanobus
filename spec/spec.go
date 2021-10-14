@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 
 	"github.com/nanobus/nanobus/coalesce"
@@ -342,6 +343,18 @@ func (t *Type) doField(tt *TypeRef, f *Field, fieldName string, v map[string]int
 func (a *Annotated) Annotation(name string) (*Annotation, bool) {
 	anno, ok := a.Annotations[name]
 	return anno, ok
+}
+
+func (a *Annotation) ToMap() map[string]interface{} {
+	m := make(map[string]interface{}, len(a.Arguments))
+	for name, arg := range a.Arguments {
+		m[name] = arg.Value
+	}
+	return m
+}
+
+func (a *Annotation) ToStruct(dst interface{}) error {
+	return mapstructure.Decode(a.ToMap(), dst)
 }
 
 type Kind int
