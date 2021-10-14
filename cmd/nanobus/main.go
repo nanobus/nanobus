@@ -854,7 +854,7 @@ func main() {
 		g.Add(func() error {
 			appEnv := []string{
 				fmt.Sprintf("PORT=%d", appPort),
-				fmt.Sprintf("BUS_URI=http://127.0.0.1:%s", busPort),
+				fmt.Sprintf("BUS_URL=http://127.0.0.1:%s", busPort),
 			}
 			env := []string{}
 			env = append(env, os.Environ()...)

@@ -39,8 +39,8 @@ class CustomerQuery:
     # The customer's email address
     email: Optional[str] = field(default=None,
                                  metadata={'serde_rename': 'email'})
-    offset: int = field(default=int(0), metadata={'serde_rename': 'offset'})
-    limit: int = field(default=int(0), metadata={'serde_rename': 'limit'})
+    offset: int = field(default=0, metadata={'serde_rename': 'offset'})
+    limit: int = field(default=100, metadata={'serde_rename': 'limit'})
 
 
 # Customer information.

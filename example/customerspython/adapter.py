@@ -4,15 +4,14 @@ from serde import serialize, deserialize
 from dataclasses import dataclass, field
 from interfaces import Inbound, Customer, CustomerPage, CustomerQuery, Outbound
 
-server_host = os.getenv('HOST', "localhost")
+server_host = os.getenv('HOST', "127.0.0.1")
 server_port = int(os.getenv('PORT', "9000"))
-outbound_base_url = os.getenv('OUTBOUND_BASE_URL',
-                              "http://localhost:32321/outbound")
+bus_url = os.getenv('BUS_URL', "http://127.0.0.1:32321")
 
 codec = MsgPackCodec()
 handlers = Handlers(codec)
 server = UvicornServer(handlers)
-http_invoker = HTTPInvoker(outbound_base_url)
+http_invoker = HTTPInvoker(bus_url + "/providers")
 invoker = Invoker(http_invoker.invoke, codec)
 
 

@@ -17,7 +17,7 @@ import (
 	"github.com/nanobus/go-functions/transports/mux"
 )
 
-var busURI = lookupEnvOrString("BUS_URI", "http://127.0.0.1:32321")
+var busURI = lookupEnvOrString("BUS_URL", "http://127.0.0.1:32321")
 
 type OutboundImpl struct {
 	invoker *functions.Invoker

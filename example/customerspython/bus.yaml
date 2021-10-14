@@ -1,0 +1,105 @@
+specs:
+  - type: widl
+    with:
+      fileName: spec.widl
+
+compute:
+  type: mux
+  with:
+    baseUrl: http://localhost:9000
+
+codecs:
+  avro:
+    type: confluentavro
+    with:
+      schemaRegistryURLs:
+        - http://localhost:8081
+
+services:
+  'customers.v1.Inbound':
+    createCustomer____ignore:
+      summary: Saves the customer to the database
+      actions:
+        - summary: Set the customer key
+          name: '@dapr/set_state'
+          with:
+            store: statestore
+            key: input.id
+
+        - summary: Upsert the customer table
+          name: '@dapr/sql_exec'
+          with:
+            name: postgres
+            sql: |
+              INSERT INTO customers (id, first_name, last_name)
+              VALUES (:input.id, :input.firstName, :input.lastName)
+              ON CONFLICT ON CONSTRAINT customers_pkey
+              DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+
+        - summary: Publish a message
+          name: '@dapr/publish_message'
+          with:
+            pubsub: pubsub
+            topic: test_topic
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }
+
+        - summary: Return the input as the response
+          name: assign
+          with:
+            value: input
+
+providers:
+  'customers.v1.Outbound':
+    saveCustomer:
+      summary: Saves the customer to the database
+      actions:
+        - summary: Set the customer key
+          name: '@dapr/set_state'
+          with:
+            store: statestore
+            key: input.id
+
+        - summary: Upsert the customer table
+          name: '@dapr/sql_exec'
+          with:
+            name: postgres
+            sql: |
+              INSERT INTO customers (id, first_name, last_name)
+              VALUES (:input.id, :input.firstName, :input.lastName)
+              ON CONFLICT ON CONSTRAINT customers_pkey
+              DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+
+    fetchCustomer:
+      summary: Loads the customer from the database
+      actions:
+        - summary: Get the state
+          name: '@dapr/get_state'
+          with:
+            store: statestore
+            key: input.id
+
+    customerCreated:
+      summary: Send a message to the customer
+      actions:
+        - summary: Publish a message
+          name: '@dapr/publish_message'
+          with:
+            pubsub: pubsub
+            topic: test_topic
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }

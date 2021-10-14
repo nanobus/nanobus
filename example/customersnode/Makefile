@@ -30,7 +30,7 @@ run-nanobus:
 	@nanobus --components-path ../components --app-id $(APP_ID) --metrics-port $(METRICS_PORT) --placement-host-address $(PLACEMENT_HOST_ADDRESS) --http-listen-addr $(HTTP_LISTEN_ADDRESS) --rest-listen-addr $(REST_LISTEN_ADDRESS) --bus-listen-addr $(BUS_LISTEN_ADDRESS) --app-port $(APP_PORT)
 
 run-app:
-	@BUS_URI=$(BUS_LISTEN_ADDRESS) PORT=$(APP_PORT) npm run ts-node-server
+	@BUS_URI=http://$(BUS_LISTEN_ADDRESS) PORT=$(APP_PORT) npm run ts-node-server
 
 clean:
 	rm -Rf build
