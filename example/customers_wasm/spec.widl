@@ -1,4 +1,5 @@
 namespace "customers.v1"
+  @version("0.1.0")
   @path("/v1")
   @info(
     title: "Customers API",
@@ -24,13 +25,13 @@ namespace "customers.v1"
     url: "http://mycompany.io/docs"
   )
 
-import * from "@widl/restapi"
-import * from "@widl/grpc"
+#import * from "@widl/restapi"
+#import * from "@widl/grpc"
 
 """
 Operations that can be performed on a customer.
 """
-role Inbound @path("/customers") {
+role Inbound @service @uses([Outbound]) @path("/customers") {
   """
   Creates a new customer.
   """
@@ -43,6 +44,7 @@ role Inbound @path("/customers") {
         "application/json": "json"
       }
     )
+
   """
   Retrieve a customer by id.
   """
@@ -64,9 +66,31 @@ role Inbound @path("/customers") {
         "application/json": "json"
       }
     )
+
+  """
+  Return a page of customers using optional search filters.
+  """
+  listCustomers{query: CustomerQuery @query}: CustomerPage
+    @GET
+  
+  somethingSimple(customer: Customer): void @nocode
 }
 
-role Outbound {
+"""
+Stateful operations that can be performed on a customer.
+"""
+role CustomerActor @stateful @path("/actor/{id}") {
+  """
+  Creates the customer state.
+  """
+  createCustomer{customer: Customer}: Customer @POST
+  """
+  Retrieve the customer state.
+  """
+  getCustomer(): Customer @GET
+}
+
+role Outbound @provider {
   saveCustomer{customer: Customer}: void
   fetchCustomer(id: u64): Customer
   customerCreated{customer: Customer}: void
@@ -88,6 +112,28 @@ type Customer {
   email: string @email @fieldnum(5)
   "The customer's address"
   address: Address @fieldnum(6)
+}
+
+type CustomerQuery {
+  "The customer identifer"
+  id: u64? @fieldnum(1)
+  "The customer's first name"
+  firstName: string? @fieldnum(2)
+  "The customer's middle name"
+  middleName: string? @fieldnum(3)
+  "The customer's last name"
+  lastName: string? @fieldnum(4)
+  "The customer's email address"
+  email: string? @email @fieldnum(5)
+  ""
+  offset: u64 = 0 @fieldnum(10)
+  limit: u64 = 100 @fieldnum(11)
+}
+
+type CustomerPage {
+  offset: u64 @fieldnum(1)
+  limit: u64 @fieldnum(2)
+  items: [Customer] @fieldnum(3)
 }
 
 type Nested {

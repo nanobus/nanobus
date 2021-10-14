@@ -4,9 +4,9 @@ specs:
       fileName: spec.widl
 
 compute:
-  type: mux
+  type: wapc
   with:
-    baseUrl: http://localhost:9000
+    fileName: build/customers.wasm
 
 codecs:
   avro:

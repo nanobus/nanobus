@@ -1,4 +1,13 @@
-.PHONY: all deps codegen build clean doc test
+APP_ID                 ?= welcome
+APP_PORT               ?= 9001
+HTTP_LISTEN_ADDRESS    ?= :18082
+REST_LISTEN_ADDRESS    ?= :8092
+BUS_LISTEN_ADDRESS     ?= 127.0.0.1:32322
+METRICS_PORT           ?= 19092
+
+PLACEMENT_HOST_ADDRESS ?= localhost:50005
+
+.PHONY: all deps codegen watch build run run-nanobus run-app clean doc test
 
 all: deps codegen tidy build
 
@@ -7,15 +16,24 @@ deps:
 codegen:
 	nanogen generate
 
+watch:
+	nanogen watch
+
 tidy:
 	go mod tidy
 
 build:
 	mkdir -p build
-	go build -o build/welcome cmd/main.go
+	go build -o build/$(APP_ID) cmd/main.go
 
 run:
-	@go run cmd/main.go
+	@nanobus --components-path ../components --app-id $(APP_ID) --metrics-port $(METRICS_PORT) --placement-host-address $(PLACEMENT_HOST_ADDRESS) --http-listen-addr $(HTTP_LISTEN_ADDRESS) --rest-listen-addr $(REST_LISTEN_ADDRESS) --bus-listen-addr $(BUS_LISTEN_ADDRESS) --app-port $(APP_PORT) -- go run cmd/main.go
+
+run-nanobus:
+	@nanobus --components-path ../components --app-id $(APP_ID) --metrics-port $(METRICS_PORT) --placement-host-address $(PLACEMENT_HOST_ADDRESS) --http-listen-addr $(HTTP_LISTEN_ADDRESS) --rest-listen-addr $(REST_LISTEN_ADDRESS) --bus-listen-addr $(BUS_LISTEN_ADDRESS) --app-port $(APP_PORT)
+
+run-app:
+	@BUS_URI=$(BUS_LISTEN_ADDRESS) PORT=$(APP_PORT) go run cmd/main.go
 
 clean:
 	rm -Rf build

@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -121,21 +123,29 @@ func main() {
 		LookupEnvOrString("REST_LISTEN_ADDR", ":8090"),
 		"rest listen address",
 	)
+	var busFile string
+	flag.StringVar(
+		&busFile,
+		"bus",
+		LookupEnvOrString("CONFIG", "bus.yaml"),
+		"The bus configuration file",
+	)
+	var appPort int
+	flag.IntVar(
+		&appPort,
+		"app-port",
+		LookupEnvOrInt("PORT", 9000),
+		"The application listening port",
+	)
 	flag.Parse()
-
 	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("usage: nanobus <configuration file>")
-		os.Exit(1)
-	}
 
 	if err := daprRuntime.Initialize(); err != nil {
 		log.Fatal(err)
 	}
 
-	filename := args[0]
 	// Load the configuration
-	config, err := loadConfiguration(filename)
+	config, err := loadConfiguration(busFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -832,6 +842,35 @@ func main() {
 	}
 
 	var g run.Group
+	if len(args) > 0 {
+		log.Printf("Executing %q", strings.Join(args, " "))
+		command := args[0]
+		args = args[1:]
+		cmd := exec.CommandContext(ctx, command, args...)
+		busPort := busListenAddr
+		if i := strings.Index(busPort, ":"); i != -1 {
+			busPort = busPort[i+1:]
+		}
+		g.Add(func() error {
+			appEnv := []string{
+				fmt.Sprintf("PORT=%d", appPort),
+				fmt.Sprintf("BUS_URI=http://127.0.0.1:%s", busPort),
+			}
+			env := []string{}
+			env = append(env, os.Environ()...)
+			env = append(env, appEnv...)
+			cmd.Env = env
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}, func(error) {
+			// TODO: send term sig instead
+			if cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+		})
+	}
 	{
 		g.Add(func() error {
 			return daprRuntime.WaitUntilShutdown()
@@ -1078,6 +1117,16 @@ func environmentToMap(environment []string, getkeyval func(item string) (key, va
 func LookupEnvOrString(key string, defaultVal string) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
+	}
+
+	return defaultVal
+}
+
+func LookupEnvOrInt(key string, defaultVal int) int {
+	if val, ok := os.LookupEnv(key); ok {
+		if intVal, err := strconv.Atoi(val); err != nil {
+			return intVal
+		}
 	}
 
 	return defaultVal

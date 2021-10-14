@@ -1,11 +1,11 @@
 {
-  "name": "customers_wasm",
+  "name": "customers",
   "version": "0.0.1",
   "description": "Customers Service as WebAssembly",
   "author": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "asc assembly/index.ts -b build/customers_wasm.wasm --use abort=assembly/index/abort --optimize"
+    "build": "asc assembly/index.ts -b build/customers.wasm --use abort=assembly/index/abort --optimize"
   },
   "license": "ISC",
   "dependencies": {

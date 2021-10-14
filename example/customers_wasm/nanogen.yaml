@@ -1,4 +1,4 @@
-schema: schema.widl
+spec: spec.widl
 config:
   hostRoles:
     - Outbound

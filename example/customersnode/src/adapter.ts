@@ -17,9 +17,9 @@ import {
   Outbound,
 } from "./interfaces";
 
-const busUrl = process.env.BUS_URL || "http://localhost:32321";
+const busUrl = process.env.BUS_URL || "http://127.0.0.1:32321";
 
-const invoker = HTTPInvoker(busUrl + "/outbound", msgpackCodec);
+const invoker = HTTPInvoker(busUrl + "/providers", msgpackCodec);
 const handlers = new HTTPHandlers(msgpackCodec);
 const cache = new LRUCache();
 const storage = new Storage(busUrl, jsonCodec);
@@ -156,6 +156,6 @@ const HOST = process.env.HOST || "127.0.0.1";
 
 export function start(): void {
   handlers.listen(PORT, HOST, () => {
-    logger.info(`🌏 Nanoprocess server started at http://${HOST}:${PORT}`);
+    logger.info(`🌏 Nanoserver started at http://${HOST}:${PORT}`);
   });
 }

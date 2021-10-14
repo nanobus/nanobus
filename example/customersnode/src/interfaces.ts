@@ -101,7 +101,7 @@ export class CustomerQuery {
     lastName = null,
     email = null,
     offset = 0,
-    limit = 0,
+    limit = 100,
   }: {
     id?: number | undefined;
     firstName?: string | undefined;

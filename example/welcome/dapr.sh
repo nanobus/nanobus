@@ -1,2 +1,0 @@
-# !/bin/sh
-nanobus --components-path ../components --app-id welcome --metrics-port 19092 --placement-host-address localhost:50005 --http-listen-addr :8082 --rest-listen-addr :8092 --bus-listen-addr localhost:32322 bus.yaml

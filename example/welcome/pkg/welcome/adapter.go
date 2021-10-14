@@ -17,7 +17,7 @@ import (
 	"github.com/nanobus/go-functions/transports/mux"
 )
 
-var busURI = lookupEnvOrString("BUS_URI", "http://localhost:32321")
+var busURI = lookupEnvOrString("BUS_URI", "http://127.0.0.1:32321")
 
 type OutboundImpl struct {
 	invoker *functions.Invoker
@@ -83,13 +83,14 @@ func NewAdapter() *Adapter {
 }
 
 func (a *Adapter) Start() (err error) {
-	host := lookupEnvOrString("HOST", "localhost")
+	host := lookupEnvOrString("HOST", "127.0.0.1")
 	port := lookupEnvOrInt("PORT", 9000)
 	httpListenAddr := fmt.Sprintf("%s:%d", host, port)
 	a.ln, err = net.Listen("tcp", httpListenAddr)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("🌏 Nanoserver started at http://%s\n", httpListenAddr)
 	return http.Serve(a.ln, a.mux.Router())
 }
 
