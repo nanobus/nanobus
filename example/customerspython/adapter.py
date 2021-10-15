@@ -67,16 +67,19 @@ class OutboundImpl(Outbound):
     def __init__(self, invoker: Invoker):
         self.invoker = invoker
 
+    # Saves a customer to the backend database
     async def save_customer(self, customer: Customer):
         await self.invoker.invoke('customers.v1.Outbound', 'saveCustomer',
                                   customer)
 
+    # Fetches a customer from the backend database
     async def fetch_customer(self, id: int) -> Customer:
         input_args = _OutboundFetchCustomerArgs(id)
         return await self.invoker.invoke_with_return('customers.v1.Outbound',
                                                      'fetchCustomer',
                                                      input_args, Customer)
 
+    # Sends a customer creation event
     async def customer_created(self, customer: Customer):
         await self.invoker.invoke('customers.v1.Outbound', 'customerCreated',
                                   customer)

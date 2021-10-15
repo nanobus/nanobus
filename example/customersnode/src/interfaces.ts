@@ -36,8 +36,11 @@ export interface CustomerActor {
 }
 
 export interface Outbound {
+  // Saves a customer to the backend database
   saveCustomer(customer: Customer): Promise<void>;
+  // Fetches a customer from the backend database
   fetchCustomer(id: number): Promise<Customer>;
+  // Sends a customer creation event
   customerCreated(customer: Customer): Promise<void>;
 }
 

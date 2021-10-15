@@ -1,3 +1,8 @@
+import * from "@nanobus/core"
+import * from "@nanobus/rest"
+import * from "@nanobus/openapi"
+import * from "@nanobus/grpc"
+
 namespace "customers.v1"
   @version("0.1.0")
   @path("/v1")
@@ -25,13 +30,10 @@ namespace "customers.v1"
     url: "http://mycompany.io/docs"
   )
 
-#import * from "@widl/restapi"
-#import * from "@widl/grpc"
-
 """
 Operations that can be performed on a customer.
 """
-role Inbound @service @uses([Outbound]) @path("/customers") {
+role Inbound @service @uses(["Outbound"]) @path("/customers") {
   """
   Creates a new customer.
   """
@@ -73,13 +75,13 @@ role Inbound @service @uses([Outbound]) @path("/customers") {
   listCustomers{query: CustomerQuery @query}: CustomerPage
     @GET
   
-  somethingSimple(customer: Customer): void @nocode
+  somethingSimple(customer: Customer) @nocode
 }
 
 """
 Stateful operations that can be performed on a customer.
 """
-role CustomerActor @stateful @path("/actor/{id}") {
+role CustomerActor @stateful @path("/customer-actors/{id}") {
   """
   Creates the customer state.
   """
@@ -91,9 +93,12 @@ role CustomerActor @stateful @path("/actor/{id}") {
 }
 
 role Outbound @provider {
-  saveCustomer{customer: Customer}: void
+  "Saves a customer to the backend database"
+  saveCustomer{customer: Customer}
+  "Fetches a customer from the backend database"
   fetchCustomer(id: u64): Customer
-  customerCreated{customer: Customer}: void
+  "Sends a customer creation event"
+  customerCreated{customer: Customer}
 }
 
 """

@@ -120,6 +120,7 @@ export class OutboundImpl implements Outbound {
     this.invoker = invoker;
   }
 
+  // Saves a customer to the backend database
   async saveCustomer(customer: Customer): Promise<void> {
     return this.invoker(
       "customers.v1.Outbound",
@@ -128,6 +129,7 @@ export class OutboundImpl implements Outbound {
     ).then();
   }
 
+  // Fetches a customer from the backend database
   async fetchCustomer(id: number): Promise<Customer> {
     const inputArgs: OutboundFetchCustomerArgs = {
       id,
@@ -135,6 +137,7 @@ export class OutboundImpl implements Outbound {
     return this.invoker("customers.v1.Outbound", "fetchCustomer", inputArgs);
   }
 
+  // Sends a customer creation event
   async customerCreated(customer: Customer): Promise<void> {
     return this.invoker(
       "customers.v1.Outbound",

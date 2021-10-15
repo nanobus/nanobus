@@ -86,11 +86,14 @@ class Inbound:
 
 
 class Outbound:
+    # Saves a customer to the backend database
     async def save_customer(self, customer: Customer):
         pass
 
+    # Fetches a customer from the backend database
     async def fetch_customer(self, id: int) -> Customer:
         pass
 
+    # Sends a customer creation event
     async def customer_created(self, customer: Customer):
         pass
