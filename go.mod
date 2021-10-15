@@ -26,7 +26,7 @@ require (
 	github.com/valyala/fasthttp v1.28.0
 	github.com/vmihailenco/msgpack/v5 v5.3.4
 	github.com/wapc/wapc-go v0.3.0
-	github.com/wapc/widl-go v0.0.0-20210922050642-a089e96973c3
+	github.com/wapc/widl-go v0.0.0-20211015125015-5b0d96e9c845
 	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )

@@ -1156,8 +1156,8 @@ github.com/vmware/vmware-go-kcl v0.0.0-20191104173950-b6c74c3fe74e/go.mod h1:JFn
 github.com/wapc/wapc-go v0.2.1/go.mod h1:cWa/DMFUTFsq1cutKj119zP+eua5lWOEV+MxOIyBqKA=
 github.com/wapc/wapc-go v0.3.0 h1:tSpsJCF42iHJwGlLEWafEt1f+hfqRng8E9deH8V4gCA=
 github.com/wapc/wapc-go v0.3.0/go.mod h1:CGRUMkCnLKqHKmuxGy7cnE13d/GNanJc1DGN50bP8xk=
-github.com/wapc/widl-go v0.0.0-20210922050642-a089e96973c3 h1:fS+6XlTPEYq2gwya7TLU4QpAOX2Zvtrh0uYkXoRhqH8=
-github.com/wapc/widl-go v0.0.0-20210922050642-a089e96973c3/go.mod h1:rzYWwh8QYN+fw5gDVS/A3FloALdFDFZYbCavR9ElHU8=
+github.com/wapc/widl-go v0.0.0-20211015125015-5b0d96e9c845 h1:t0jZHzqhq5lE7RCHfvKnzyTAKcNh4385hDtdtyjTjvg=
+github.com/wapc/widl-go v0.0.0-20211015125015-5b0d96e9c845/go.mod h1:rzYWwh8QYN+fw5gDVS/A3FloALdFDFZYbCavR9ElHU8=
 github.com/wasmerio/go-ext-wasm v0.3.1/go.mod h1:VGyarTzasuS7k5KhSIGpM3tciSZlkP31Mp9VJTHMMeI=
 github.com/wasmerio/wasmer-go v1.0.3 h1:9pWIlIqUKxALvFlWK8+Zy90qyqxd+8wlyVG91txh1TU=
 github.com/wasmerio/wasmer-go v1.0.3/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
