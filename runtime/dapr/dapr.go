@@ -158,7 +158,7 @@ func (r *Runtime) Initialize() error {
 		r.allowedOrigins, r.config, r.componentsPath,
 		string(runtime.EmbeddedProtocol), r.mode, 0, daprInternalGRPC, 0, []string{}, nil, 0,
 		profPort, r.enableProfiling,
-		concurrency, r.enableMTLS, r.sentryAddress, r.appSSL, maxRequestBodySize, "")
+		concurrency, r.enableMTLS, r.sentryAddress, r.appSSL, maxRequestBodySize, "", 4, false)
 
 	// // set environment variables
 	// // TODO - consider adding host address to runtime config and/or caching result in utils package

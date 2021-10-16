@@ -176,7 +176,6 @@ func main() {
 		for _, s := range ns.Services {
 			if _, ok := s.Annotations["stateful"]; ok {
 				entityName := namespaceName + "." + s.Name
-				log.Printf("Found actor %s", entityName)
 				actorEntities = append(actorEntities, entityName)
 			}
 		}

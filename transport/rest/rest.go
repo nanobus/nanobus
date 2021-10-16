@@ -57,6 +57,11 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	r.Use(handlers.ProxyHeaders)
 	r.Use(mux.CORSMethodMiddleware(r))
 
+	swaggerHost := address
+	if strings.HasPrefix(swaggerHost, ":") {
+		swaggerHost = "localhost" + swaggerHost
+	}
+	log.Printf("Registering Swagger UI at http://%s/swagger/", swaggerHost)
 	if err := RegisterSwaggerRoutes(r, namespaces); err != nil {
 		return nil, err
 	}

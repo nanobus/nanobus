@@ -12,6 +12,7 @@ import (
 	"github.com/dapr/dapr/pkg/config"
 	"github.com/dapr/dapr/pkg/messaging"
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
+	"github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
 )
 
@@ -35,7 +36,7 @@ type InvokeHandler func(ctx context.Context, method, contentType string, data []
 type InputBindingHandler func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error)
 type PubSubHandler func(ctx context.Context, event *embedded.TopicEvent) (embedded.EventResponseStatus, error)
 
-func (c *DaprComponents) RegisterComponents(reg embedded.ComponentRegistry) error {
+func (c *DaprComponents) RegisterComponents(reg runtime.ComponentRegistry) error {
 	c.Actors = reg.Actors
 	c.DirectMessaging = reg.DirectMessaging
 	c.StateStores = reg.StateStores
@@ -46,7 +47,7 @@ func (c *DaprComponents) RegisterComponents(reg embedded.ComponentRegistry) erro
 	return nil
 }
 
-func (c *DaprComponents) CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int) (channel.AppChannel, error) {
+func (c *DaprComponents) CreateLocalChannel(port, maxConcurrency int, spec config.TracingSpec, sslEnabled bool, maxRequestBodySize int, readBufferSize int) (channel.AppChannel, error) {
 	return c, nil
 }
 
