@@ -3,6 +3,30 @@
 NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving
 common tasks to composable flows that connect to transports, data stores, and other infrastructure.
 
+## Key Features
+
+### Virtually no boilerplate code
+
+In conjunction with Dapr, NanoBus allows the developer to focus on defining APIs. The "glue" to make APIs accessible is handled automatically.
+
+### Clean Architecture on top of Dapr
+
+The structure of a NanoBus application follows design principles that allow your application to scale as requirements evolve. Newly created projects use a layout that serves as an intuitive blueprint to implement.
+
+### Declarative middleware for communicating data
+
+Simplifies common tasks when communicating with other services and Dapr building blocks. Secure API endpoints, transform data, support different formats, and apply resiliency policies thought simple configuration.
+
+### Automatic service endpoints and API documentation
+
+Declaring services as specifications allows NanoBus to share your service through multiple protocals, including REST and gRPC. Standards like OpenAPI and Swagger UI are used to share your service with your partner teams.
+
+### Consistent polyglot service and actor programming model
+
+Nanoservices are small simplfied processes that plug into NanoBus and provide a uniform developer experience, regardless of the choosen programming language.
+
+## Architecture
+
 ![NanoBus Architecture](docs/images/architecture.svg)
 
 NanoBus works jointly with [Dapr](https://dapr.io) to provide developers powerful building blocks such as service invocation,
@@ -20,7 +44,7 @@ The primary goal of NanoBus is to codify best practices into a sidecar so develo
 
 ## Getting Started
 
-* Install the [waPC CLI](https://github.com/wapc/cli#install-the-cli)
+* Install the [nanobus CLI](https://github.com/nanobus/cli#install-the-cli)
 * Follow the tutorial under [examples](example/README.md)
 
 ## Design Concepts

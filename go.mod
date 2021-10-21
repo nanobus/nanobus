@@ -11,6 +11,7 @@ require (
 	github.com/dapr/dapr v1.3.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.61.0
+	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.7.3
 	github.com/gorilla/handlers v1.5.1

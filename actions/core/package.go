@@ -8,6 +8,7 @@ import (
 
 var All = []actions.NamedLoader{
 	Assign,
+	Authorize,
 	Decode,
 	Filter,
 	HTTP,

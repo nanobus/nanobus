@@ -47,9 +47,11 @@ import (
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/runtime"
 	dapr_runtime "github.com/nanobus/nanobus/runtime/dapr"
+	"github.com/nanobus/nanobus/security/claims"
 	"github.com/nanobus/nanobus/spec"
 	spec_widl "github.com/nanobus/nanobus/spec/widl"
 	"github.com/nanobus/nanobus/transport"
+	"github.com/nanobus/nanobus/transport/filter/jwt"
 	"github.com/nanobus/nanobus/transport/httprpc"
 	"github.com/nanobus/nanobus/transport/rest"
 )
@@ -353,6 +355,8 @@ func main() {
 		var input interface{}
 		var output interface{}
 
+		claimsMap := claims.FromContext(ctx)
+
 		if strings.HasPrefix(method, "actors/") {
 			// TODO: Decoder
 			if len(payload) > 0 {
@@ -375,6 +379,7 @@ func main() {
 				namespace := actorType[:lastDot]
 
 				data := actions.Data{
+					"claims":   claimsMap,
 					"input":    input,
 					"metadata": metadata,
 					"env":      env,
@@ -488,6 +493,7 @@ func main() {
 			namespace := method[:lastDot]
 
 			data := actions.Data{
+				"claims":   claimsMap,
 				"input":    input,
 				"metadata": metadata,
 				"env":      env,
@@ -794,9 +800,12 @@ func main() {
 			return nil, err
 		}
 
+		claimsMap := claims.FromContext(ctx)
+
 		data := actions.Data{
-			"input": input,
-			"env":   env,
+			"claims": claimsMap,
+			"input":  input,
+			"env":    env,
 		}
 
 		response, ok, err := rt.processor.Service(ctx, namespace, service, function, data)
@@ -901,7 +910,9 @@ func main() {
 	}
 	{
 		// Expose HTTP-RPC
-		transport, err := httprpc.New(httpListenAddr, namespaces, transportInvoker, jsoncodec, msgpackcodec)
+		transport, err := httprpc.New(httpListenAddr, namespaces, transportInvoker,
+			httprpc.WithFilters(jwt.HTTP),
+			httprpc.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -914,7 +925,9 @@ func main() {
 	}
 	{
 		// Expose REST
-		transport, err := rest.New(restListenAddr, namespaces, transportInvoker, jsoncodec, msgpackcodec)
+		transport, err := rest.New(restListenAddr, namespaces, transportInvoker,
+			rest.WithFilters(jwt.HTTP),
+			rest.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -14,13 +14,20 @@ import (
 
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
+	"github.com/nanobus/nanobus/transport/filter"
 )
 
 type HTTPRPC struct {
 	address string
 	invoker transport.Invoker
 	codecs  map[string]functions.Codec
+	filters []filter.Filter
 	ln      net.Listener
+}
+
+type optionsHolder struct {
+	codecs  []functions.Codec
+	filters []filter.Filter
 }
 
 var (
@@ -28,14 +35,33 @@ var (
 	ErrInvalidURISyntax        = errors.New("invalid invocation URI syntax")
 )
 
-func Loader() (string, transport.Loader) {
-	return "httprpc", New
+type Option func(opts *optionsHolder)
+
+func WithCodecs(codecs ...functions.Codec) Option {
+	return func(opts *optionsHolder) {
+		opts.codecs = codecs
+	}
 }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, codecs ...functions.Codec) (transport.Transport, error) {
-	codecMap := make(map[string]functions.Codec, len(codecs))
+func WithFilters(filters ...filter.Filter) Option {
+	return func(opts *optionsHolder) {
+		opts.filters = filters
+	}
+}
 
-	for _, c := range codecs {
+// func Loader() (string, transport.Loader) {
+// 	return "httprpc", New
+// }
+
+func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, options ...Option) (transport.Transport, error) {
+	var opts optionsHolder
+
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	codecMap := make(map[string]functions.Codec, len(opts.codecs))
+	for _, c := range opts.codecs {
 		codecMap[c.ContentType()] = c
 	}
 
@@ -43,6 +69,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 		address: address,
 		invoker: invoker,
 		codecs:  codecMap,
+		filters: opts.filters,
 	}, nil
 }
 
@@ -88,6 +115,16 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/json"
 	}
 
+	ctx := r.Context()
+
+	for _, filter := range t.filters {
+		var err error
+		if ctx, err = filter(ctx, r); err != nil {
+			handleError(err, w, http.StatusInternalServerError)
+			return
+		}
+	}
+
 	codec, ok := t.codecs[contentType]
 	if !ok {
 		handleError(ErrUnregisteredContentType, w, http.StatusUnsupportedMediaType)
@@ -110,7 +147,7 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 		input = map[string]interface{}{}
 	}
 
-	response, err := t.invoker(r.Context(), namespace, service, id, function, input)
+	response, err := t.invoker(ctx, namespace, service, id, function, input)
 	if err != nil {
 		code := http.StatusInternalServerError
 		if errors.Is(err, transport.ErrBadInput) {

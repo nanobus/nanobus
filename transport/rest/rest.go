@@ -17,6 +17,7 @@ import (
 
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
+	"github.com/nanobus/nanobus/transport/filter"
 )
 
 type Rest struct {
@@ -24,6 +25,7 @@ type Rest struct {
 	namespaces spec.Namespaces
 	invoker    transport.Invoker
 	codecs     map[string]functions.Codec
+	filters    []filter.Filter
 	router     *mux.Router
 	ln         net.Listener
 }
@@ -35,6 +37,11 @@ type queryParam struct {
 	typeRef *spec.TypeRef
 }
 
+type optionsHolder struct {
+	codecs  []functions.Codec
+	filters []filter.Filter
+}
+
 var rePathParams = regexp.MustCompile(`(?m)\{([^\}]*)\}`)
 
 var (
@@ -42,14 +49,33 @@ var (
 	ErrInvalidURISyntax        = errors.New("invalid invocation URI syntax")
 )
 
-func Loader() (string, transport.Loader) {
-	return "rest", New
+type Option func(opts *optionsHolder)
+
+func WithCodecs(codecs ...functions.Codec) Option {
+	return func(opts *optionsHolder) {
+		opts.codecs = codecs
+	}
 }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, codecs ...functions.Codec) (transport.Transport, error) {
-	codecMap := make(map[string]functions.Codec, len(codecs))
+func WithFilters(filters ...filter.Filter) Option {
+	return func(opts *optionsHolder) {
+		opts.filters = filters
+	}
+}
 
-	for _, c := range codecs {
+// func Loader() (string, transport.Loader) {
+// 	return "rest", New
+// }
+
+func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, options ...Option) (transport.Transport, error) {
+	var opts optionsHolder
+
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	codecMap := make(map[string]functions.Codec, len(opts.codecs))
+	for _, c := range opts.codecs {
 		codecMap[c.ContentType()] = c
 	}
 
@@ -71,6 +97,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 		namespaces: namespaces,
 		invoker:    invoker,
 		codecs:     codecMap,
+		filters:    opts.filters,
 		router:     r,
 	}
 
@@ -217,6 +244,7 @@ func (t *Rest) Close() (err error) {
 func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	hasBody bool, bodyParamName string, queryParams map[string]queryParam) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		defer r.Body.Close()
 		vars := mux.Vars(r)
 		id := ""
@@ -227,6 +255,14 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		contentType := r.Header.Get("Content-Type")
 		if contentType == "" {
 			contentType = "application/json"
+		}
+
+		for _, filter := range t.filters {
+			var err error
+			if ctx, err = filter(ctx, r); err != nil {
+				handleError(err, w, http.StatusInternalServerError)
+				return
+			}
 		}
 
 		codec, ok := t.codecs[contentType]
@@ -292,7 +328,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			}
 		}
 
-		response, err := t.invoker(r.Context(), namespace, service, id, operation, input)
+		response, err := t.invoker(ctx, namespace, service, id, operation, input)
 		if err != nil {
 			code := http.StatusInternalServerError
 			if errors.Is(err, transport.ErrBadInput) {

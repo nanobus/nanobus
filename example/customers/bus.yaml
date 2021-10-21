@@ -18,6 +18,12 @@ services:
     createCustomer____ignore:
       summary: Saves the customer to the database
       actions:
+        - summary: Authorize the user
+          name: authorize
+          with:
+            check:
+              scope: dummy
+
         - summary: Set the customer key
           name: '@dapr/set_state'
           with:
