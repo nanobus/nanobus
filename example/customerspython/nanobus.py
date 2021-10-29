@@ -2,6 +2,7 @@ import asyncio
 from logging import WARNING
 from typing import Awaitable, Callable, Dict, NoReturn, Type, TypeVar, Generic
 from serde.msgpack import from_msgpack, to_msgpack
+from serde.json import from_json, to_json
 from aiohttp import web, ClientSession
 import uvicorn
 
@@ -9,6 +10,10 @@ import uvicorn
 T = TypeVar('T')
 
 session: ClientSession = None
+
+
+def get_session() -> ClientSession:
+    return session
 
 
 class Codec(Generic[T]):
@@ -25,6 +30,14 @@ class MsgPackCodec(Codec):
 
     def decode(self, data: bytes, data_class: Type[T]) -> T:
         return from_msgpack(data_class, data)
+
+
+class JsonCodec(Codec):
+    def encode(self, value: T) -> bytes:
+        return to_json(value).encode('ascii')
+
+    def decode(self, data: bytes, data_class: Type[T]) -> T:
+        return from_json(data_class, data.decode('ascii'))
 
 
 class HTTPInvoker:
@@ -55,14 +68,23 @@ class Handlers:
     def __init__(self, codec: Codec):
         self.handlers: Dict[str, Callable[[bytes],
                                           Awaitable[bytes]]] = {}
+        self.stateful_handlers: Dict[str, Callable[[str, bytes],
+                                                   Awaitable[bytes]]] = {}
         self.codec = codec
 
     def register_handler(self, namespace: str, operation: str, handler: Callable[[bytes], Awaitable[bytes]]):
         if handler != None:
             self.handlers[namespace + '/' + operation] = handler
 
+    def register_stateful_handler(self, namespace: str, operation: str, handler: Callable[[str, bytes], Awaitable[bytes]]):
+        if handler != None:
+            self.stateful_handlers[namespace + '/' + operation] = handler
+
     def get_handler(self, namespace: str, operation: str):
         return self.handlers.get(namespace + '/' + operation, operation)
+
+    def get_stateful_handler(self, namespace: str, operation: str):
+        return self.stateful_handlers.get(namespace + '/' + operation, operation)
 
 
 class AIOHTTPServer:
@@ -72,6 +94,8 @@ class AIOHTTPServer:
         self.handlers = handlers
         app = web.Application()
         app.add_routes([web.post('/{namespace}/{operation}', self.handle)])
+        app.add_routes(
+            [web.post('/{namespace}/{id}/{operation}', self.handle_stateful)])
         app.cleanup_ctx.append(self.client_session_ctx)
         self.app = app
 
@@ -84,6 +108,19 @@ class AIOHTTPServer:
 
         post_data = await request.read()
         result = await handler(post_data)
+
+        return web.Response(body=result, content_type="application/msgpack")
+
+    async def handle_stateful(self, request):
+        namespace = request.match_info['namespace']
+        id = request.match_info['id']
+        operation = request.match_info['operation']
+        handler = self.handlers.get_stateful_handler(namespace, operation)
+        if handler == None:
+            return web.HTTPNotFound()
+
+        post_data = await request.read()
+        result = await handler(id, post_data)
 
         return web.Response(body=result, content_type="application/msgpack")
 
@@ -117,7 +154,7 @@ class UvicornServer:
 
     async def __call__(self, scope, receive, send):
         parts = scope["path"].split('/')
-        if (len(parts) < 3):
+        if len(parts) < 3:
             await send({
                 'type': 'http.response.start',
                 'status': 400,
@@ -132,9 +169,21 @@ class UvicornServer:
             return
 
         namespace = parts[1]
-        operation = parts[2]
 
-        handler = self.handlers.get_handler(namespace, operation)
+        handler: Callable[[bytes], Awaitable[bytes]] = None
+
+        if len(parts) == 3:
+            operation = parts[2]
+            handler = self.handlers.get_handler(namespace, operation)
+        if len(parts) == 4:
+            id = parts[2]
+            operation = parts[3]
+            shandler = self.handlers.get_stateful_handler(namespace, operation)
+            if shandler is not None:
+                async def hn(payload: bytes) -> Awaitable[bytes]:
+                    return await shandler(id, payload)
+                handler = hn
+
         if handler == None:
             await send({
                 'type': 'http.response.start',

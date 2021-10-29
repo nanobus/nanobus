@@ -409,6 +409,12 @@ func main() {
 				if len(statefulResponse.Mutation.Set) > 0 {
 					i := 0
 					for key, value := range statefulResponse.Mutation.Set {
+						if len(value.Data) == 0 && value.DataBase64 != "" {
+							if value.Data, err = base64.StdEncoding.DecodeString(value.DataBase64); err != nil {
+								return nil, "", err
+							}
+							value.DataBase64 = ""
+						}
 						operations[i] = actors.TransactionalOperation{
 							Operation: actors.Upsert,
 							Request: actors.TransactionalUpsert{
@@ -610,6 +616,7 @@ func main() {
 		namespace := mux.Vars(r)["namespace"]
 		id := mux.Vars(r)["id"]
 		key := mux.Vars(r)["key"]
+		returnBase64 := r.URL.Query().Has("base64")
 
 		resp, err := daprComponents.Actors.GetState(r.Context(), &actors.GetStateRequest{
 			ActorType: namespace,
@@ -620,6 +627,25 @@ func main() {
 			log.Println(err)
 			handleError(err, w, http.StatusInternalServerError)
 			return
+		}
+
+		if returnBase64 {
+			var rawItem stateful.RawItem
+			// Dapr stores actor state in JSON
+			if err := json.Unmarshal(resp.Data, &rawItem); err != nil {
+				log.Println(err)
+				handleError(err, w, http.StatusInternalServerError)
+				return
+			}
+
+			rawItem.DataBase64 = base64.StdEncoding.EncodeToString(rawItem.Data)
+			rawItem.Data = nil
+
+			if resp.Data, err = json.Marshal(rawItem); err != nil {
+				log.Println(err)
+				handleError(err, w, http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/octet-stream")

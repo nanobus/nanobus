@@ -1,32 +1,43 @@
 #!/usr/bin/env python3
-from adapter import start, register_inbound_handlers, outbound
-from interfaces import Inbound, Customer, CustomerPage, CustomerQuery
+from adapter import start, register_inbound, register_customer_actor, outbound
+from interfaces import Context, Inbound, Customer, CustomerPage, CustomerQuery, CustomerActor
 
 
-async def create_customer(customer: Customer) -> Customer:
-    await outbound.save_customer(customer)
-    await outbound.customer_created(customer)
-    return customer
+class InboundImpl(Inbound):
+    async def create_customer(self, customer: Customer) -> Customer:
+        await outbound.save_customer(customer)
+        await outbound.customer_created(customer)
+        return customer
+
+    async def get_customer(self, id: int) -> Customer:
+        return await outbound.fetch_customer(id)
+
+    async def list_customers(self, query: CustomerQuery) -> CustomerPage:
+        return CustomerPage(
+            offset=query.offset,
+            limit=query.limit,
+        )
 
 
-async def get_customer(id: int) -> Customer:
-    return await outbound.fetch_customer(id)
+class CustomerActorImpl(CustomerActor):
+    async def activate(self, ctx: Context):
+        print("ACTIVATED")
 
+    async def create_customer(self, ctx: Context,
+                              customer: Customer) -> Customer:
+        ctx.set("customer", customer)
+        return customer
 
-async def list_customers(query: CustomerQuery) -> CustomerPage:
-    return CustomerPage(
-        offset=query.offset,
-        limit=query.limit,
-    )
+    async def get_customer(self, ctx: Context) -> Customer:
+        return await ctx.get("customer", Customer)
+
+    async def deactivate(self, ctx: Context):
+        print("DEACTIVATED")
 
 
 def main():
-    register_inbound_handlers(
-        Inbound(
-            create_customer=create_customer,
-            get_customer=get_customer,
-            list_customers=list_customers,
-        ))
+    register_inbound(InboundImpl())
+    register_customer_actor(CustomerActorImpl())
 
     start()
 

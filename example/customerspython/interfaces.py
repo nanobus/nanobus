@@ -1,12 +1,33 @@
-from typing import Optional, Callable, Awaitable
+from typing import Optional, Awaitable, Type, TypeVar
 from serde import serialize, deserialize
 from dataclasses import dataclass, field
 
+T = TypeVar("T")
 
-# Address information.
+
+class LogicalAddress:
+    type: str
+    id: str
+
+
+class Context:
+    def self() -> LogicalAddress:
+        pass
+
+    async def get(self, key: str, type: Type[T]) -> Awaitable[Optional[T]]:
+        pass
+
+    def set(self, key: str, data: T):
+        pass
+
+    def remove(self, key: str):
+        pass
+
+
 @deserialize
 @serialize
 @dataclass
+# Address information.
 class Address:
     # The address line 1
     line1: str = field(default='', metadata={'serde_rename': 'line1'})
@@ -43,10 +64,10 @@ class CustomerQuery:
     limit: int = field(default=100, metadata={'serde_rename': 'limit'})
 
 
-# Customer information.
 @deserialize
 @serialize
 @dataclass
+# Customer information.
 class Customer:
     # The customer identifer
     id: int = field(default=int(0), metadata={'serde_rename': 'id'})
@@ -75,14 +96,30 @@ class CustomerPage:
 
 
 # Operations that can be performed on a customer.
-@dataclass
 class Inbound:
     # Creates a new customer.
-    create_customer: Callable[[Customer], Awaitable[Customer]] = None
+    async def create_customer(self, customer: Customer) -> Customer:
+        pass
+
     # Retrieve a customer by id.
-    get_customer: Callable[[int], Awaitable[Customer]] = None
+    async def get_customer(self, id: int) -> Customer:
+        pass
+
     # Return a page of customers using optional search filters.
-    list_customers: Callable[[CustomerQuery], Awaitable[CustomerPage]] = None
+    async def list_customers(self, query: CustomerQuery) -> CustomerPage:
+        pass
+
+
+# Stateful operations that can be performed on a customer.
+class CustomerActor:
+    # Creates the customer state.
+    async def create_customer(self, ctx: Context,
+                              customer: Customer) -> Customer:
+        pass
+
+    # Retrieve the customer state.
+    async def get_customer(self, ctx: Context) -> Customer:
+        pass
 
 
 class Outbound:
