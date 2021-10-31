@@ -11,8 +11,8 @@ import (
 )
 
 type WIDLConfig struct {
-	// FileName is the file name of the WIDL definition to load.
-	FileName string `mapstructure:"fileName"` // TODO: Load from external location
+	// Filename is the file name of the WIDL definition to load.
+	Filename string `mapstructure:"filename"` // TODO: Load from external location
 }
 
 // WIDL is the NamedLoader for the WIDL spec.
@@ -26,7 +26,7 @@ func WIDLLoader(with interface{}) ([]*spec.Namespace, error) {
 		return nil, err
 	}
 
-	widlBytes, err := os.ReadFile(c.FileName)
+	widlBytes, err := os.ReadFile(c.Filename)
 	if err != nil {
 		return nil, err
 	}

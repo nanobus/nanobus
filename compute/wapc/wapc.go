@@ -17,8 +17,8 @@ import (
 )
 
 type WaPCConfig struct {
-	// FileName is the file name of the waPC/WebAssembly module to load.
-	FileName string `mapstructure:"fileName"` // TODO: Load from external location
+	// Filename is the file name of the waPC/WebAssembly module to load.
+	Filename string `mapstructure:"filename"` // TODO: Load from external location
 	// PoolSize controls the number of waPC instance of the module to create and pool.
 	// It also represents the maximum number of concurrent requests the module can process.
 	PoolSize uint64 `mapstructure:"poolSize"`
@@ -45,7 +45,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoke
 		return nil, err
 	}
 
-	wasmBytes, err := os.ReadFile(c.FileName)
+	wasmBytes, err := os.ReadFile(c.Filename)
 	if err != nil {
 		return nil, err
 	}

@@ -57,10 +57,10 @@ func (ve *ValueExpr) DecodeString3(value string) (err error) {
 
 // Testing out github.com/antonmedv/expr
 
-func (ve *ValueExpr) DecodeString(value string) (err error) {
+func (ve *ValueExpr) DecodeString(value string) error {
 	prog, err := expr.Compile(value)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	ve.expr = value

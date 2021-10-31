@@ -72,6 +72,9 @@ func decodeString(
 	}
 
 	if decoder != nil {
+		if dataString == "" {
+			return nil, nil
+		}
 		if err := decoder.DecodeString(dataString); err != nil {
 			if t.Kind() == reflect.Ptr {
 				t = t.Elem()

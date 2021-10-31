@@ -1,7 +1,7 @@
 specs:
   - type: widl
     with:
-      fileName: spec.widl
+      filename: spec.widl
 
 compute:
   type: mux

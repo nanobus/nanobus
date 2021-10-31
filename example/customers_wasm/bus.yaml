@@ -1,12 +1,12 @@
 specs:
   - type: widl
     with:
-      fileName: spec.widl
+      filename: spec.widl
 
 compute:
   type: wapc
   with:
-    fileName: build/customers.wasm
+    filename: build/customers.wasm
 
 codecs:
   avro:

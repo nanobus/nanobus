@@ -135,12 +135,12 @@ cat > bus.yaml <<EOF
 specs:
   - type: widl
     with:
-      fileName: schema.widl
+      filename: schema.widl
 
 compute:
   # type: wapc
   # with:
-  #   fileName: customers.wasm
+  #   filename: customers.wasm
   type: mux
   with: {}
 

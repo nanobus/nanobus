@@ -20,7 +20,7 @@ type AuthorizeConfig struct {
 	Message   string                 `mapstructure:"message"`
 }
 
-// Log is the NamedLoader for the log action.
+// Authorize is the NamedLoader for the log action.
 func Authorize() (string, actions.Loader) {
 	return "authorize", AuthorizeLoader
 }
