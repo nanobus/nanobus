@@ -6,21 +6,17 @@ import (
 
 type Claims map[string]interface{}
 
-func (c Claims) Combine(other Claims) Claims {
-	if other == nil {
-		return c
-	}
-	if c == nil {
-		return other
-	}
+func Combine(claimsList ...Claims) Claims {
+	merged := make(Claims)
 
-	merged := make(Claims, len(c)+len(other))
-	for k, v := range c {
-		merged[k] = v
-	}
+	for _, claims := range claimsList {
+		if claims == nil {
+			continue
+		}
 
-	for k, v := range other {
-		merged[k] = v
+		for k, v := range claims {
+			merged[k] = v
+		}
 	}
 
 	return merged
@@ -31,7 +27,7 @@ type claimsKey struct{}
 func FromContext(ctx context.Context) Claims {
 	v := ctx.Value(claimsKey{})
 	if v == nil {
-		return nil
+		return Claims{}
 	}
 	c, _ := v.(Claims)
 	if c == nil {
