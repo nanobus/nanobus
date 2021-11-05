@@ -10,6 +10,7 @@ import (
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/coalesce"
+	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
@@ -26,6 +27,14 @@ type HTTPConfig struct {
 	Headers *expr.DataExpr `mapstructure:"headers"`
 	// Output is an optional transformation to be applied to the response.
 	Output *expr.DataExpr `mapstructure:"output"`
+	// Codec is the name of the codec to use for decoing.
+	Codec string `mapstructure:"codec"`
+	// Args are the arguments to pass to the decode function.
+	CodecArgs []interface{} `mapstructure:"codecArgs"`
+}
+
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }
 
 // HTTP is the NamedLoader for Dapr output bindings
@@ -34,22 +43,32 @@ func HTTP() (string, actions.Loader) {
 }
 
 func HTTPLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c HTTPConfig
+	c := HTTPConfig{
+		Codec: "json",
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
 
 	var httpClient HTTPClient
+	var codecs codec.Codecs
 	if err := resolve.Resolve(resolver,
-		"client:http", &httpClient); err != nil {
+		"client:http", &httpClient,
+		"codec:lookup", &codecs); err != nil {
 		return nil, err
 	}
 
-	return HTTPAction(httpClient, &c), nil
+	codec, ok := codecs[c.Codec]
+	if !ok {
+		return nil, fmt.Errorf("unknown codec %q", c.Codec)
+	}
+
+	return HTTPAction(httpClient, codec, &c), nil
 }
 
 func HTTPAction(
 	httpClient HTTPClient,
+	codec codec.Codec,
 	config *HTTPConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var err error
@@ -77,7 +96,7 @@ func HTTPAction(
 			return nil, err
 		}
 
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", codec.ContentType())
 		if config.Headers != nil {
 			headers, err := config.Headers.EvalMap(data)
 			if err != nil {
@@ -105,7 +124,7 @@ func HTTPAction(
 
 		var response interface{}
 		if len(responseBytes) > 0 {
-			if err = coalesce.JSONUnmarshal(responseBytes, &response); err != nil {
+			if response, _, err = codec.Decode(responseBytes, config.CodecArgs...); err != nil {
 				return nil, err
 			}
 

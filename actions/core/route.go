@@ -31,13 +31,17 @@ type RouteConfig struct {
 
 type RouteCondition struct {
 	// Summary if the overall summary of this route.
-	Summary string
+	Summary string `mapstructure:"summary"`
 	// When is the predicate expression for filtering.
 	When *expr.ValueExpr `mapstructure:"when"`
 	// Then is the steps to process.
 	Then []runtime.Step `mapstructure:"then"`
 
-	runnable *runtime.Runnable
+	runnable runtime.Runnable
+}
+
+type Processor interface {
+	LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error)
 }
 
 // Route is the NamedLoader for the filter action.
@@ -51,7 +55,7 @@ func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, 
 		return nil, err
 	}
 
-	var processor runtime.Processor
+	var processor Processor
 	if err := resolve.Resolve(resolver,
 		"system:processor", &processor); err != nil {
 		return nil, err
@@ -74,30 +78,33 @@ func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, 
 
 func RouteAction(
 	config *RouteConfig) actions.Action {
-	return func(ctx context.Context, data actions.Data) (interface{}, error) {
+	return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
 		for i := range config.Routes {
 			r := &config.Routes[i]
-			resultInt, err := r.When.Eval(data)
-			if err != nil {
-				return nil, err
+
+			if r.When != nil {
+				resultInt, err := r.When.Eval(data)
+				if err != nil {
+					return nil, err
+				}
+
+				result, ok := resultInt.(bool)
+				if !ok {
+					return nil, fmt.Errorf("expression %q did not evaluate a boolean", r.When.Expr())
+				}
+
+				if !result {
+					continue
+				}
 			}
 
-			result, ok := resultInt.(bool)
-			if !ok {
-				return nil, fmt.Errorf("expression %q did not evaluate a boolean", r.When.Expr())
-			}
-
-			if !result {
-				continue
-			}
-
-			output, err := r.runnable.Run(ctx, data)
+			output, err = r.runnable.Run(ctx, data)
 			if config.Selection == Single || err != nil {
 				return output, err
 			}
 		}
 
-		return nil, nil
+		return output, nil
 	}
 }
 

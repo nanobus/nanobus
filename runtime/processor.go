@@ -33,7 +33,11 @@ type Processor struct {
 type Namespaces map[string]Functions
 type Functions map[string]Runnable
 
-type Runnable struct {
+type Runnable interface {
+	Run(ctx context.Context, data actions.Data) (interface{}, error)
+}
+
+type runnable struct {
 	config *Pipeline
 	steps  []step
 }
@@ -158,13 +162,13 @@ func (p *Processor) loadFunctionPipelines(fpl FunctionPipelines) (Functions, err
 		if err != nil {
 			return nil, err
 		}
-		runnables[name] = *pl
+		runnables[name] = pl
 	}
 
 	return runnables, nil
 }
 
-func (p *Processor) LoadPipeline(pl *Pipeline) (*Runnable, error) {
+func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 	steps := make([]step, len(pl.Actions))
 	for i := range pl.Actions {
 		s := &pl.Actions[i]
@@ -175,7 +179,7 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (*Runnable, error) {
 		steps[i] = *step
 	}
 
-	return &Runnable{
+	return &runnable{
 		config: pl,
 		steps:  steps,
 	}, nil
@@ -228,7 +232,7 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 	}, nil
 }
 
-func (r *Runnable) Run(ctx context.Context, data actions.Data) (interface{}, error) {
+func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, error) {
 	var output interface{}
 	var err error
 	for _, s := range r.steps {

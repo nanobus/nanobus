@@ -48,13 +48,13 @@ type Pipeline struct {
 }
 
 type Step struct {
-	Summary        string      `json:"summary" yaml:"summary"`
-	Name           string      `json:"name" yaml:"name"`
-	With           interface{} `json:"with" yaml:"with"`
-	Returns        string      `json:"returns" yaml:"returns"`
-	Timeout        string      `json:"timeout" yaml:"timeout"`
-	Retry          string      `json:"retry" yaml:"retry"`
-	CircuitBreaker string      `json:"circuitBreaker" yaml:"circuitBreaker"`
+	Summary        string      `json:"summary" yaml:"summary" mapstructure:"summary"`
+	Name           string      `json:"name" yaml:"name" mapstructure:"name"`
+	With           interface{} `json:"with" yaml:"with" mapstructure:"with"`
+	Returns        string      `json:"returns" yaml:"returns" mapstructure:"returns"`
+	Timeout        string      `json:"timeout" yaml:"timeout" mapstructure:"timeout"`
+	Retry          string      `json:"retry" yaml:"retry" mapstructure:"retry"`
+	CircuitBreaker string      `json:"circuitBreaker" yaml:"circuitBreaker" mapstructure:"circuitBreaker"`
 }
 
 func LoadYAML(in io.Reader) (*Configuration, error) {

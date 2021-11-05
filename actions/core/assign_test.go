@@ -20,9 +20,9 @@ func TestAssign(t *testing.T) {
 	tests := []struct {
 		name string
 
-		config map[string]interface{}
+		config   map[string]interface{}
+		resolver resolve.ResolveAs
 
-		resolver  resolve.ResolveAs
 		data      actions.Data
 		expected  interface{}
 		loaderErr string

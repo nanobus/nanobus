@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/codec"
@@ -28,6 +29,8 @@ func DecodeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action,
 	c := DecodeConfig{
 		TypeField: "type",
 		DataField: "input",
+		Codec:     "json",
+		CodecArgs: []interface{}{},
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -51,14 +54,28 @@ func DecodeAction(
 	codec codec.Codec,
 	config *DecodeConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		current, ok := data[config.DataField]
-		if !ok {
-			return nil, nil
+		parts := strings.Split(config.DataField, ".")
+		var current interface{} = map[string]interface{}(data)
+		for _, part := range parts {
+			var ok bool
+			asMap, ok := current.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("non-map encountered for property %q", part)
+			}
+			current, ok = asMap[part]
+			if !ok {
+				return nil, fmt.Errorf("property %q not set", part)
+			}
 		}
 
-		dataBytes, ok := current.([]byte)
-		if !ok {
-			return nil, fmt.Errorf("%q is not []byte which are required for decoding", config.DataField)
+		var dataBytes []byte
+		switch v := current.(type) {
+		case []byte:
+			dataBytes = v
+		case string:
+			dataBytes = []byte(v)
+		default:
+			return nil, fmt.Errorf("%q must be []byte or string for decoding", config.DataField)
 		}
 
 		decoded, typeName, err := codec.Decode(dataBytes, config.CodecArgs...)
@@ -73,6 +90,6 @@ func DecodeAction(
 			data[config.DataField] = decoded
 		}
 
-		return nil, nil
+		return decoded, nil
 	}
 }

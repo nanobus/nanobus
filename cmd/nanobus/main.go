@@ -44,6 +44,7 @@ import (
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
+	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/runtime"
 	dapr_runtime "github.com/nanobus/nanobus/runtime/dapr"
@@ -96,6 +97,12 @@ type Runtime struct {
 	resolver   resolve.DependencyResolver
 	resolveAs  resolve.ResolveAs
 	env        runtime.Environment
+}
+
+type logger struct{}
+
+func (l *logger) Printf(format string, v ...interface{}) {
+	log.Printf(format, v...)
 }
 
 func main() {
@@ -228,6 +235,7 @@ func main() {
 	httpClient := getHTTPClient()
 	env := getEnvironment()
 	dependencies := map[string]interface{}{
+		"system:logger":   &logger{},
 		"client:http":     httpClient,
 		"codec:json":      jsoncodec,
 		"codec:msgpack":   msgpackcodec,
@@ -369,7 +377,7 @@ func main() {
 			if len(parts) == 5 && parts[3] == "method" {
 				actorType := parts[1]
 				actorID := parts[2]
-				function := parts[4]
+				fn := parts[4]
 
 				lastDot := strings.LastIndexByte(actorType, '.')
 				if lastDot < 0 {
@@ -388,10 +396,15 @@ func main() {
 				target := actorType + "/" + actorID
 
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("-->", target+"/"+function, string(jsonBytes)+"\n")
+					log.Println("-->", target+"/"+fn, string(jsonBytes)+"\n")
 				}
 
-				output, ok, err = rt.processor.Service(ctx, namespace, service, function, data)
+				ctx := function.ToContext(ctx, function.Function{
+					Namespace: target,
+					Operation: fn,
+				})
+
+				output, ok, err = rt.processor.Service(ctx, namespace, service, fn, data)
 				if err != nil {
 					return nil, "", err
 				}
@@ -400,7 +413,7 @@ func main() {
 				}
 
 				var statefulResponse stateful.Response
-				if err = invoker.InvokeWithReturn(ctx, target, function, input, &statefulResponse); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, target, fn, input, &statefulResponse); err != nil {
 					return nil, "", err
 				}
 
@@ -488,7 +501,7 @@ func main() {
 			if idx < 0 {
 				return nil, "", fmt.Errorf("invalid method %q", method)
 			}
-			function := method[idx+1:]
+			fn := method[idx+1:]
 			method = method[:idx]
 
 			lastDot := strings.LastIndexByte(method, '.')
@@ -497,6 +510,7 @@ func main() {
 			}
 			service := method[lastDot+1:]
 			namespace := method[:lastDot]
+			ns := namespace + "." + service
 
 			data := actions.Data{
 				"claims":   claimsMap,
@@ -509,14 +523,19 @@ func main() {
 				log.Println("-->", target, string(jsonBytes)+"\n")
 			}
 
-			output, ok, err = rt.processor.Service(ctx, namespace, service, function, data)
+			ctx := function.ToContext(ctx, function.Function{
+				Namespace: ns,
+				Operation: fn,
+			})
+
+			output, ok, err = rt.processor.Service(ctx, namespace, service, fn, data)
 			if err != nil {
 				return nil, "", err
 			}
 
 			if !ok {
 				// No pipeline exits for the operation so invoke directly.
-				if err = invoker.InvokeWithReturn(ctx, namespace+"."+service, function, input, &output); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &output); err != nil {
 					return nil, "", err
 				}
 			}
@@ -821,8 +840,8 @@ func main() {
 		return embedded.EventResponseStatusSuccess, nil
 	})
 
-	transportInvoker := func(ctx context.Context, namespace, service, id, function string, input interface{}) (interface{}, error) {
-		if err := coalesceInput(namespaces, namespace, service, function, input); err != nil {
+	transportInvoker := func(ctx context.Context, namespace, service, id, fn string, input interface{}) (interface{}, error) {
+		if err := coalesceInput(namespaces, namespace, service, fn, input); err != nil {
 			return nil, err
 		}
 
@@ -834,7 +853,12 @@ func main() {
 			"env":    env,
 		}
 
-		response, ok, err := rt.processor.Service(ctx, namespace, service, function, data)
+		ctx = function.ToContext(ctx, function.Function{
+			Namespace: namespace,
+			Operation: fn,
+		})
+
+		response, ok, err := rt.processor.Service(ctx, namespace, service, fn, data)
 		if err != nil {
 			return nil, err
 		}
@@ -844,10 +868,10 @@ func main() {
 			ns := namespace + "." + service
 			if id == "" {
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("-->", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+					log.Println("-->", namespace+"."+service+"/"+fn, string(jsonBytes)+"\n")
 				}
 
-				if err = invoker.InvokeWithReturn(ctx, ns, function, input, &response); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &response); err != nil {
 					return nil, err
 				}
 			} else {
@@ -856,7 +880,7 @@ func main() {
 					return nil, err
 				}
 
-				req := invokev1.NewInvokeMethodRequest(function).
+				req := invokev1.NewInvokeMethodRequest(fn).
 					WithActor(ns, id).
 					WithRawData(data, "application/msgpack")
 				res, err := daprComponents.Actors.Call(ctx, req)

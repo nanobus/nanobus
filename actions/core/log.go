@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"log"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -16,6 +15,10 @@ type LogConfig struct {
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }
 
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
 // Log is the NamedLoader for the log action.
 func Log() (string, actions.Loader) {
 	return "log", LogLoader
@@ -27,10 +30,17 @@ func LogLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, er
 		return nil, err
 	}
 
-	return LogAction(&c), nil
+	var logger Logger
+	if err := resolve.Resolve(resolver,
+		"system:logger", &logger); err != nil {
+		return nil, err
+	}
+
+	return LogAction(logger, &c), nil
 }
 
 func LogAction(
+	logger Logger,
 	config *LogConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		args := make([]interface{}, len(config.Args))
@@ -41,7 +51,7 @@ func LogAction(
 			}
 		}
 
-		log.Printf(config.Format, args...)
+		logger.Printf(config.Format, args...)
 
 		return nil, nil
 	}

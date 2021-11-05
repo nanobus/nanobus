@@ -3,6 +3,7 @@ package json
 import (
 	"encoding/json"
 
+	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -33,7 +34,7 @@ func (c *Codec) ContentType() string {
 // Decode decodes JSON bytes to a value.
 func (c *Codec) Decode(msgValue []byte, args ...interface{}) (interface{}, string, error) {
 	var data interface{}
-	if err := json.Unmarshal(msgValue, &data); err != nil {
+	if err := coalesce.JSONUnmarshal(msgValue, &data); err != nil {
 		return nil, "", err
 	}
 

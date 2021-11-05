@@ -36,11 +36,11 @@ func ToResolveAs(resolver DependencyResolver) ResolveAs {
 			return false
 		}
 
-		return as(dependency, target)
+		return As(dependency, target)
 	}
 }
 
-func as(source, target interface{}) bool {
+func As(source, target interface{}) bool {
 	if target == nil {
 		return false
 	}
