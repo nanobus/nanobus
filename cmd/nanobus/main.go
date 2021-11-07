@@ -183,7 +183,7 @@ func main() {
 	actorEntities := []string{}
 	for namespaceName, ns := range namespaces {
 		for _, s := range ns.Services {
-			if _, ok := s.Annotations["stateful"]; ok {
+			if _, ok := s.Annotation("stateful"); ok {
 				entityName := namespaceName + "." + s.Name
 				actorEntities = append(actorEntities, entityName)
 			}

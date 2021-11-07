@@ -18,7 +18,7 @@ func Resolve(resolver ResolveAs, args ...interface{}) error {
 	for i := 0; i < len(args); i += 2 {
 		dependencyName, ok := args[i].(string)
 		if !ok {
-			return fmt.Errorf("argment %d is not a string", i)
+			return fmt.Errorf("argument %d is not a string", i)
 		}
 
 		if !resolver(dependencyName, args[i+1]) {

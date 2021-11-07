@@ -10,18 +10,18 @@ import (
 	"github.com/nanobus/nanobus/spec"
 )
 
-type WIDLConfig struct {
+type Config struct {
 	// Filename is the file name of the WIDL definition to load.
 	Filename string `mapstructure:"filename"` // TODO: Load from external location
 }
 
 // WIDL is the NamedLoader for the WIDL spec.
 func WIDL() (string, spec.Loader) {
-	return "widl", WIDLLoader
+	return "widl", Loader
 }
 
-func WIDLLoader(with interface{}) ([]*spec.Namespace, error) {
-	c := WIDLConfig{}
+func Loader(with interface{}) ([]*spec.Namespace, error) {
+	c := Config{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -44,12 +44,7 @@ type nsParser struct {
 }
 
 func Parse(schema []byte) (*spec.Namespace, error) {
-	n := spec.Namespace{
-		ServicesByName: make(map[string]*spec.Service),
-		TypesByName:    make(map[string]*spec.Type),
-		Enums:          make(map[string]*spec.Enum),
-		Unions:         make(map[string]*spec.Union),
-	}
+	n := spec.NewNamespace("")
 	doc, err := parser.Parse(parser.ParseParams{
 		Source: string(schema),
 		Options: parser.ParseOptions{
@@ -61,63 +56,61 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 		return nil, err
 	}
 
-	p := nsParser{n: &n}
+	p := nsParser{n: n}
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
 		case *ast.NamespaceDefinition:
 			n.Name = d.Name.Value
-			n.Annotated = p.convertAnnotations(d.Annotations)
+			n.AddAnnotations(p.convertAnnotations(d.Annotations)...)
 
 		case *ast.TypeDefinition:
-			t := p.createType(d)
-			n.Types = append(n.Types, t)
-			n.TypesByName[t.Name] = t
+			// Create a placeholder for the type in memory
+			n.AddType(spec.NewType(d.Name.Value, stringValue(d.Description)))
+
+		case *ast.EnumDefinition:
+			// Create a placeholder for the enum in memory
+			n.AddEnum(spec.NewEnum(d.Name.Value, stringValue(d.Description)))
+
+		case *ast.UnionDefinition:
+			// Create a placeholder for the enum in memory
+			n.AddUnion(spec.NewUnion(d.Name.Value, stringValue(d.Description)))
 		}
 	}
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
 		case *ast.TypeDefinition:
-			p.convertType(d)
+			// Populate the type information
+			n.AddType(p.createType(d))
+		case *ast.EnumDefinition:
+			// Populate the enum information
+			n.AddEnum(p.createEnum(d))
+		case *ast.UnionDefinition:
+			// Populate the union information
+			n.AddUnion(p.createUnion(d))
 		}
 	}
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
 		case *ast.RoleDefinition:
-			//if a := d.Annotation("service"); a != nil {
 			s := p.convertService(d)
-			n.Services = append(n.Services, s)
-			n.ServicesByName[s.Name] = s
-			//}
+			n.AddService(s)
 		}
 	}
 
-	return &n, nil
+	return n, nil
 }
 
-func (p *nsParser) createType(tt *ast.TypeDefinition) *spec.Type {
-	t := spec.Type{
-		Name: tt.Name.Value,
+func (p *nsParser) createType(t *ast.TypeDefinition) *spec.Type {
+	tt, ok := p.n.Type(t.Name.Value)
+	if !ok {
+		tt = spec.NewType(t.Name.Value, stringValue(t.Description))
 	}
-	return &t
-}
-
-func (p *nsParser) convertType(tt *ast.TypeDefinition) {
-	t := p.n.TypesByName[tt.Name.Value]
-	fields := p.convertFields(tt.Fields)
-	fieldsByName := make(map[string]*spec.Field, len(fields))
-	for _, field := range fields {
-		fieldsByName[field.Name] = field
-	}
-	*t = spec.Type{
-		Name:         tt.Name.Value,
-		Description:  stringValue(tt.Description),
-		Fields:       fields,
-		FieldsByName: fieldsByName,
-		Annotated:    p.convertAnnotations(tt.Annotations),
-	}
+	return tt.
+		AddFields(p.convertFields(t.Fields)...).
+		AddAnnotations(p.convertAnnotations(t.Annotations)...)
 }
 
 func (p *nsParser) convertFields(fields []*ast.FieldDefinition) []*spec.Field {
@@ -131,32 +124,62 @@ func (p *nsParser) convertFields(fields []*ast.FieldDefinition) []*spec.Field {
 		if field.Default != nil {
 			dv = field.Default.GetValue()
 		}
-		o[i] = &spec.Field{
-			Name:         field.Name.Value,
-			Description:  stringValue(field.Description),
-			Type:         p.convertTypeRef(field.Type),
-			DefaultValue: dv,
-			Annotated:    p.convertAnnotations(field.Annotations),
-		}
+		o[i] = spec.NewField(
+			field.Name.Value,
+			stringValue(field.Description),
+			p.convertTypeRef(field.Type),
+			dv).
+			AddAnnotations(p.convertAnnotations(field.Annotations)...)
 	}
 
 	return o
 }
 
+func (p *nsParser) createEnum(t *ast.EnumDefinition) *spec.Enum {
+	e, ok := p.n.Enum(t.Name.Value)
+	if !ok {
+		e = spec.NewEnum(t.Name.Value, stringValue(t.Description))
+	}
+	return e.
+		AddValues(p.convertEnumValues(t.Values)...).
+		AddAnnotations(p.convertAnnotations(t.Annotations)...)
+}
+
+func (p *nsParser) convertEnumValues(fields []*ast.EnumValueDefinition) []*spec.EnumValue {
+	if fields == nil {
+		return nil
+	}
+
+	o := make([]*spec.EnumValue, len(fields))
+	for i, field := range fields {
+		o[i] = spec.NewEnumValue(
+			field.Name.Value,
+			stringValue(field.Description),
+			stringValue(field.Display),
+			field.Index.Value).
+			AddAnnotations(p.convertAnnotations(field.Annotations)...)
+	}
+
+	return o
+}
+
+func (p *nsParser) createUnion(t *ast.UnionDefinition) *spec.Union {
+	e, ok := p.n.Union(t.Name.Value)
+	if !ok {
+		e = spec.NewUnion(t.Name.Value, stringValue(t.Description))
+	}
+	for _, t := range t.Types {
+		e.AddType(p.convertTypeRef(t))
+	}
+	return e.AddAnnotations(p.convertAnnotations(t.Annotations)...)
+}
+
 func (p *nsParser) convertService(role *ast.RoleDefinition) *spec.Service {
-	operations := p.convertOperations(role.Operations)
-	operationsByName := make(map[string]*spec.Operation, len(operations))
-	for _, oper := range operations {
-		operationsByName[oper.Name] = oper
-	}
-	s := spec.Service{
-		Name:             role.Name.Value,
-		Description:      stringValue(role.Description),
-		Operations:       operations,
-		OperationsByName: operationsByName,
-		Annotated:        p.convertAnnotations(role.Annotations),
-	}
-	return &s
+	return spec.NewService(
+		role.Name.Value,
+		stringValue(role.Description)).
+		AddOperations(p.convertOperations(role.Operations)...).
+		AddAnnotations(p.convertAnnotations(role.Annotations)...)
 }
 
 func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*spec.Operation {
@@ -170,38 +193,23 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 		if operation.Unary {
 			param := operation.Parameters[0]
 			if named, ok := param.Type.(*ast.Named); ok {
-				pt := p.n.TypesByName[named.Name.Value]
-				annotations := map[string]*spec.Annotation{}
-				for k, v := range pt.Annotations {
-					annotations[k] = v
-				}
-				other := p.convertAnnotations(param.Annotations)
-				for k, v := range other.Annotations {
-					annotations[k] = v
-				}
-				params = &spec.Type{
-					Namespace:    pt.Namespace,
-					Name:         pt.Name,
-					Description:  pt.Description,
-					Fields:       pt.Fields,
-					FieldsByName: pt.FieldsByName,
-					Annotated: spec.Annotated{
-						Annotations: annotations,
-					},
-					Validations: pt.Validations,
-				}
+				pt, _ := p.n.Type(named.Name.Value)
+				params = spec.NewType(pt.Name, pt.Description).
+					AddFields(pt.Fields...).
+					AddAnnotations(p.convertAnnotations(param.Annotations)...).
+					AddAnnotations(pt.Annotations...)
+				params.Validations = pt.Validations
 			}
 		} else {
 			params = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)
 		}
-		o[i] = &spec.Operation{
-			Name:        operation.Name.Value,
-			Description: stringValue(operation.Description),
-			Unary:       operation.Unary,
-			Parameters:  params,
-			Returns:     p.convertTypeRef(operation.Type),
-			Annotated:   p.convertAnnotations(operation.Annotations),
-		}
+		o[i] = spec.NewOperation(
+			operation.Name.Value,
+			stringValue(operation.Description),
+			operation.Unary,
+			params,
+			p.convertTypeRef(operation.Type)).
+			AddAnnotations(p.convertAnnotations(operation.Annotations)...)
 	}
 
 	return o
@@ -209,17 +217,7 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 
 func (p *nsParser) convertParameterType(name string, params []*ast.ParameterDefinition) *spec.Type {
 	fields := p.convertParameters(params)
-	fieldsByName := make(map[string]*spec.Field, len(fields))
-	for _, field := range fields {
-		fieldsByName[field.Name] = field
-	}
-	t := spec.Type{
-		Namespace:    p.n,
-		Name:         name,
-		Fields:       fields,
-		FieldsByName: fieldsByName,
-	}
-	return &t
+	return spec.NewType(name, "").AddFields(fields...)
 }
 
 func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) []*spec.Field {
@@ -233,44 +231,35 @@ func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) []*s
 		if parameter.Default != nil {
 			dv = parameter.Default.GetValue()
 		}
-		o[i] = &spec.Field{
-			Name:         parameter.Name.Value,
-			Description:  stringValue(parameter.Description),
-			Type:         p.convertTypeRef(parameter.Type),
-			DefaultValue: dv,
-			Annotated:    p.convertAnnotations(parameter.Annotations),
-		}
+		o[i] = spec.NewField(
+			parameter.Name.Value,
+			stringValue(parameter.Description),
+			p.convertTypeRef(parameter.Type),
+			dv).
+			AddAnnotations(p.convertAnnotations(parameter.Annotations)...)
 	}
 
 	return o
 }
 
-func (p *nsParser) convertAnnotations(annotations []*ast.Annotation) spec.Annotated {
-	if annotations == nil {
-		return spec.Annotated{}
+func (p *nsParser) convertAnnotations(annotations []*ast.Annotation) []*spec.Annotation {
+	a := make([]*spec.Annotation, len(annotations))
+	for i, annotation := range annotations {
+		a[i] = spec.NewAnnotation(annotation.Name.Value).
+			AddArguments(p.convertArguments(annotation.Arguments)...)
 	}
 
-	a := make(map[string]*spec.Annotation, len(annotations))
-	for _, annotation := range annotations {
-		a[annotation.Name.Value] = &spec.Annotation{
-			Name:      annotation.Name.Value,
-			Arguments: p.convertArguments(annotation.Arguments),
-		}
-	}
-
-	return spec.Annotated{
-		Annotations: a,
-	}
+	return a
 }
 
-func (p *nsParser) convertArguments(arguments []*ast.Argument) map[string]*spec.Argument {
+func (p *nsParser) convertArguments(arguments []*ast.Argument) []*spec.Argument {
 	if arguments == nil {
 		return nil
 	}
 
-	a := make(map[string]*spec.Argument, len(arguments))
-	for _, argument := range arguments {
-		a[argument.Name.Value] = &spec.Argument{
+	a := make([]*spec.Argument, len(arguments))
+	for i, argument := range arguments {
+		a[i] = &spec.Argument{
 			Name:  argument.Name.Value,
 			Value: argument.Value.GetValue(),
 		}
@@ -328,19 +317,19 @@ func (p *nsParser) convertTypeRef(t ast.Type) *spec.TypeRef {
 		if prim, ok := typeRefMap[tt.Name.Value]; ok {
 			return prim
 		}
-		if t, ok := p.n.TypesByName[tt.Name.Value]; ok {
+		if t, ok := p.n.Type(tt.Name.Value); ok {
 			return &spec.TypeRef{
 				Kind: spec.KindType,
 				Type: t,
 			}
 		}
-		if e, ok := p.n.Enums[tt.Name.Value]; ok {
+		if e, ok := p.n.Enum(tt.Name.Value); ok {
 			return &spec.TypeRef{
 				Kind: spec.KindEnum,
 				Enum: e,
 			}
 		}
-		if u, ok := p.n.Unions[tt.Name.Value]; ok {
+		if u, ok := p.n.Union(tt.Name.Value); ok {
 			return &spec.TypeRef{
 				Kind:  spec.KindUnion,
 				Union: u,

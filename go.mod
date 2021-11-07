@@ -7,7 +7,7 @@ require (
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
 	github.com/antonmedv/expr v1.9.0
 	github.com/cenkalti/backoff/v4 v4.1.1
-	github.com/dapr/components-contrib v1.4.0-rc2
+	github.com/dapr/components-contrib v1.5.0-rc.1
 	github.com/dapr/dapr v1.3.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.61.0
@@ -27,7 +27,7 @@ require (
 	github.com/valyala/fasthttp v1.28.0
 	github.com/vmihailenco/msgpack/v5 v5.3.4
 	github.com/wapc/wapc-go v0.3.0
-	github.com/wapc/widl-go v0.0.0-20211015125015-5b0d96e9c845
+	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
 	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
@@ -36,7 +36,7 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.2.0 // indirect
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1 // indirect
 	github.com/AdhityaRamadhanus/fasthttpcors v0.0.0-20170121111917-d4c07198763a // indirect
-	github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798 // indirect
+	github.com/DataDog/zstd v1.4.6-0.20210211175136-c6db21d202f4 // indirect
 	github.com/OneOfOne/xxhash v1.2.7 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect

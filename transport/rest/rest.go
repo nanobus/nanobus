@@ -103,14 +103,16 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 
 	for _, namespace := range namespaces {
 		pathNS := ""
-		if path, ok := namespace.Annotations["path"]; ok {
-			pathNS = path.Arguments["value"].ValueString()
+		if path, ok := namespace.Annotation("path"); ok {
+			if arg, ok := path.Argument("value"); ok {
+				pathNS = arg.ValueString()
+			}
 		}
 
 		for _, service := range namespace.Services {
-			_, isService := service.Annotations["service"]
-			_, isActor := service.Annotations["actor"]
-			_, isStateful := service.Annotations["stateful"]
+			_, isService := service.Annotation("service")
+			_, isActor := service.Annotation("actor")
+			_, isStateful := service.Annotation("stateful")
 
 			isActor = isActor || isStateful
 			if !(isService || isActor) {
@@ -118,14 +120,18 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 			}
 
 			pathSrv := ""
-			if path, ok := service.Annotations["path"]; ok {
-				pathSrv = path.Arguments["value"].ValueString()
+			if path, ok := service.Annotation("path"); ok {
+				if arg, ok := path.Argument("value"); ok {
+					pathSrv = arg.ValueString()
+				}
 			}
 
 			for _, operation := range service.Operations {
 				pathOper := ""
-				if path, ok := operation.Annotations["path"]; ok {
-					pathOper = path.Arguments["value"].ValueString()
+				if path, ok := operation.Annotation("path"); ok {
+					if arg, ok := path.Argument("value"); ok {
+						pathOper = arg.ValueString()
+					}
 				}
 
 				path := pathNS + pathSrv + pathOper
@@ -134,15 +140,15 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 				}
 
 				method := ""
-				if _, ok := operation.Annotations["GET"]; ok {
+				if _, ok := operation.Annotation("GET"); ok {
 					method = "GET"
-				} else if _, ok := operation.Annotations["POST"]; ok {
+				} else if _, ok := operation.Annotation("POST"); ok {
 					method = "POST"
-				} else if _, ok := operation.Annotations["PUT"]; ok {
+				} else if _, ok := operation.Annotation("PUT"); ok {
 					method = "PUT"
-				} else if _, ok := operation.Annotations["PATCH"]; ok {
+				} else if _, ok := operation.Annotation("PATCH"); ok {
 					method = "PATCH"
-				} else if _, ok := operation.Annotations["DELETE"]; ok {
+				} else if _, ok := operation.Annotation("DELETE"); ok {
 					method = "DELETE"
 				} else {
 					continue
@@ -163,7 +169,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 					for _, param := range operation.Parameters.Fields {
 						if _, ok := pathParams[param.Name]; ok {
 							continue
-						} else if _, ok := param.Annotations["query"]; ok {
+						} else if _, ok := param.Annotation("query"); ok {
 							if param.Type.IsPrimitive() {
 								queryParams[param.Name] = queryParam{
 									name:    param.Name,
@@ -186,7 +192,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 						}
 					}
 				} else {
-					_, hasQuery := operation.Parameters.Annotations["query"]
+					_, hasQuery := operation.Parameters.Annotation("query")
 					if hasQuery {
 						for _, param := range operation.Parameters.Fields {
 							if param.Type.IsPrimitive() {

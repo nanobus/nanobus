@@ -85,9 +85,9 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 
 		nsPath := getAnotationString(ns, "path")
 		for _, service := range ns.Services {
-			_, isService := service.Annotations["service"]
-			_, isActor := service.Annotations["actor"]
-			_, isStateful := service.Annotations["stateful"]
+			_, isService := service.Annotation("service")
+			_, isActor := service.Annotation("actor")
+			_, isStateful := service.Annotation("stateful")
 
 			isActor = isActor || isStateful
 			if !(isService || isActor) {
@@ -115,17 +115,17 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 				}
 
 				var operPtr **openapi3.Operation
-				if _, ok := oper.Annotations["GET"]; ok {
+				if _, ok := oper.Annotation("GET"); ok {
 					operPtr = &sp.Get
-				} else if _, ok := oper.Annotations["OPTIONS"]; ok {
+				} else if _, ok := oper.Annotation("OPTIONS"); ok {
 					operPtr = &sp.Head
-				} else if _, ok := oper.Annotations["HEAD"]; ok {
+				} else if _, ok := oper.Annotation("HEAD"); ok {
 					operPtr = &sp.Options
-				} else if _, ok := oper.Annotations["PATCH"]; ok {
+				} else if _, ok := oper.Annotation("PATCH"); ok {
 					operPtr = &sp.Patch
-				} else if _, ok := oper.Annotations["POST"]; ok {
+				} else if _, ok := oper.Annotation("POST"); ok {
 					operPtr = &sp.Post
-				} else if _, ok := oper.Annotations["PUT"]; ok {
+				} else if _, ok := oper.Annotation("PUT"); ok {
 					operPtr = &sp.Put
 				} else {
 					continue
@@ -180,7 +180,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 		sort.Strings(sortedTypeNames)
 
 		for _, name := range sortedTypeNames {
-			t := ns.TypesByName[name]
+			t, _ := ns.Type(name)
 			if t == nil {
 				continue
 			}
@@ -235,8 +235,8 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 		pathParams[match] = struct{}{}
 	}
 
-	_, isActor := service.Annotations["actor"]
-	_, isStateful := service.Annotations["stateful"]
+	_, isActor := service.Annotation("actor")
+	_, isStateful := service.Annotation("stateful")
 
 	isActor = isActor || isStateful
 
@@ -256,7 +256,7 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 						WithDescription(param.Description).
 						WithSchema(fieldToValue(param)),
 				})
-			} else if _, ok := param.Annotations["query"]; ok {
+			} else if _, ok := param.Annotation("query"); ok {
 				if param.Type.IsPrimitive() {
 					params = append(params, &openapi3.ParameterRef{
 						Value: openapi3.NewQueryParameter(param.Name).
@@ -283,7 +283,7 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 		}
 	} else {
 		param := oper.Parameters
-		if _, ok := param.Annotations["query"]; ok {
+		if _, ok := param.Annotation("query"); ok {
 			for _, f := range param.Fields {
 				params = append(params, &openapi3.ParameterRef{
 					Value: openapi3.NewQueryParameter(f.Name).
@@ -381,7 +381,7 @@ func typeFormat(t *spec.TypeRef) *openapi3.Schema {
 
 func getAnotationString(a spec.Annotator, name string) string {
 	if a, ok := a.Annotation(name); ok {
-		if arg, ok := a.Arguments["value"]; ok {
+		if arg, ok := a.Argument("value"); ok {
 			return arg.ValueString()
 		}
 	}
@@ -389,7 +389,7 @@ func getAnotationString(a spec.Annotator, name string) string {
 }
 
 func getAnotationArgument(a *spec.Annotation, name string) string {
-	if arg, ok := a.Arguments[name]; ok {
+	if arg, ok := a.Argument(name); ok {
 		return arg.ValueString()
 	}
 	return ""

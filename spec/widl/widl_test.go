@@ -1,22 +1,38 @@
 package widl_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
-	"github.com/nanobus/nanobus/spec/widl"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nanobus/nanobus/spec/widl"
 )
 
 func TestParse(t *testing.T) {
-	schemaBytes, err := os.ReadFile("../../example/customers/spec.widl")
+	expectedBytes, err := os.ReadFile("testdata/expected.json")
 	if err != nil {
 		t.FailNow()
 	}
 
-	_, err = widl.Parse(schemaBytes)
+	name, loader := widl.WIDL()
+	assert.Equal(t, "widl", name)
+	namespaces, err := loader(map[string]interface{}{
+		"filename": "testdata/spec.widl",
+	})
 	require.NoError(t, err)
-	// jsonBytes, _ := json.MarshalIndent(ns, "", "  ")
-	// fmt.Println(string(jsonBytes))
-	// t.FailNow()
+	require.Len(t, namespaces, 1)
+
+	actualBytes, err := json.MarshalIndent(namespaces[0], "", "  ")
+	require.NoError(t, err)
+	fmt.Println(string(actualBytes))
+
+	var expected, actual interface{}
+	require.NoError(t, json.Unmarshal(expectedBytes, &expected))
+	require.NoError(t, json.Unmarshal(actualBytes, &actual))
+
+	assert.Equal(t, expected, actual)
 }
