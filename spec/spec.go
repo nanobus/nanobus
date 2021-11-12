@@ -485,68 +485,84 @@ func (u *Union) AddAnnotation(a *Annotation) *Union {
 }
 
 func (t *TypeRef) IsPrimitive() bool {
-	switch t.Kind {
-	case KindOptional:
+	if t.Kind == KindOptional {
 		return t.OptionalType.IsPrimitive()
 	}
 	return t.Kind.IsPrimitive()
 }
 
-func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, error) {
+func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool, error) {
 	var err error
+	var changed bool
 	switch t.Kind {
 	case KindOptional:
 		if value == nil {
-			return nil, nil
+			return nil, false, nil
 		}
 		return t.OptionalType.Coalesce(value, validate)
-	case KindString, KindDateTime:
+	case KindString:
+		if _, ok := value.(string); !ok {
+			value, err = cast.ToStringE(value)
+			changed = true
+		}
+	case KindDateTime:
 		if _, ok := value.(string); !ok {
 			err = fmt.Errorf("value must be an string")
 		}
 	case KindU64:
 		if _, ok := value.(uint64); !ok {
 			value, err = cast.ToUint64E(value)
+			changed = true
 		}
 	case KindU32:
 		if _, ok := value.(uint32); !ok {
 			value, err = cast.ToUint32E(value)
+			changed = true
 		}
 	case KindU16:
 		if _, ok := value.(uint16); !ok {
 			value, err = cast.ToUint16E(value)
+			changed = true
 		}
 	case KindU8:
 		if _, ok := value.(uint8); !ok {
 			value, err = cast.ToUint8E(value)
+			changed = true
 		}
 	case KindI64:
 		if _, ok := value.(int64); !ok {
 			value, err = cast.ToInt64E(value)
+			changed = true
 		}
 	case KindI32:
 		if _, ok := value.(int32); !ok {
 			value, err = cast.ToInt32E(value)
+			changed = true
 		}
 	case KindI16:
 		if _, ok := value.(int16); !ok {
 			value, err = cast.ToInt16E(value)
+			changed = true
 		}
 	case KindI8:
 		if _, ok := value.(int8); !ok {
 			value, err = cast.ToInt8E(value)
+			changed = true
 		}
 	case KindF64:
 		if _, ok := value.(float64); !ok {
 			value, err = cast.ToFloat64E(value)
+			changed = true
 		}
 	case KindF32:
 		if _, ok := value.(float32); !ok {
 			value, err = cast.ToFloat32E(value)
+			changed = true
 		}
 	case KindBool:
 		if _, ok := value.(bool); !ok {
 			value, err = cast.ToBoolE(value)
+			changed = true
 		}
 	case KindBytes:
 		if _, ok := value.([]byte); !ok {
@@ -555,21 +571,23 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, error
 			} else {
 				err = fmt.Errorf("value must be a boolean")
 			}
+			changed = true
 		}
 	case KindType:
-		valueMap, ok := coalesce.ToMapSI(value)
+		valueMap, ok := coalesce.ToMapSI(value, false)
 		if !ok {
 			err = fmt.Errorf("value must be a map")
 		}
 		if err == nil {
 			err = t.Type.Coalesce(valueMap, validate)
+			changed = true
 		}
 		value = valueMap
 		//KindEnum
 		//KindUnion
 	}
 
-	return value, err
+	return value, changed, err
 }
 
 func (t *TypeRef) MarshalJSON() ([]byte, error) {
@@ -638,81 +656,15 @@ func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 }
 
 func (t *Type) doField(tt *TypeRef, f *Field, fieldName string, v map[string]interface{}, value interface{}, validate bool) (err error) {
-	switch tt.Kind {
-	case KindOptional:
-		if value == nil {
-			return nil
-		}
-		return t.doField(tt.OptionalType, f, fieldName, v, value, validate)
-	case KindString, KindDateTime:
-		if _, ok := value.(string); !ok {
-			err = fmt.Errorf("field %q of type %q must be a string", f.Name, t.Name)
-		}
-	case KindU64:
-		if _, ok := value.(uint64); !ok {
-			v[fieldName], err = cast.ToUint64E(value)
-		}
-	case KindU32:
-		if _, ok := value.(uint32); !ok {
-			v[fieldName], err = cast.ToUint32E(value)
-		}
-	case KindU16:
-		if _, ok := value.(uint16); !ok {
-			v[fieldName], err = cast.ToUint16E(value)
-		}
-	case KindU8:
-		if _, ok := value.(uint8); !ok {
-			v[fieldName], err = cast.ToUint8E(value)
-		}
-	case KindI64:
-		if _, ok := value.(int64); !ok {
-			v[fieldName], err = cast.ToInt64E(value)
-		}
-	case KindI32:
-		if _, ok := value.(int32); !ok {
-			v[fieldName], err = cast.ToInt32E(value)
-		}
-	case KindI16:
-		if _, ok := value.(int16); !ok {
-			v[fieldName], err = cast.ToInt16E(value)
-		}
-	case KindI8:
-		if _, ok := value.(int8); !ok {
-			v[fieldName], err = cast.ToInt8E(value)
-		}
-	case KindF64:
-		if _, ok := value.(float64); !ok {
-			v[fieldName], err = cast.ToFloat64E(value)
-		}
-	case KindF32:
-		if _, ok := value.(float32); !ok {
-			v[fieldName], err = cast.ToFloat32E(value)
-		}
-	case KindBool:
-		if _, ok := value.(bool); !ok {
-			v[fieldName], err = cast.ToBoolE(value)
-		}
-	case KindBytes:
-		if _, ok := value.([]byte); !ok {
-			if stringValue, ok := value.(string); ok {
-				value, err = base64.StdEncoding.DecodeString(stringValue)
-			} else {
-				err = fmt.Errorf("field %q of type %q must be a boolean", f.Name, t.Name)
-			}
-		}
-	case KindType:
-		valueMap, ok := coalesce.ToMapSI(value)
-		if !ok {
-			err = fmt.Errorf("field %q of type %q must be a map", f.Name, t.Name)
-		}
-		if err == nil {
-			err = tt.Type.Coalesce(valueMap, validate)
-		}
-		//KindEnum
-		//KindUnion
+	newValue, changed, err := tt.Coalesce(value, validate)
+	if err != nil {
+		return fmt.Errorf("invalid field %q of type %q: %w", f.Name, t.Name, err)
+	}
+	if changed {
+		v[fieldName] = newValue
 	}
 
-	return err
+	return nil
 }
 
 func newAnnotated() Annotated {
@@ -856,7 +808,8 @@ func (k Kind) String() string {
 func (k Kind) IsPrimitive() bool {
 	switch k {
 	case KindString, KindU64, KindU32, KindU16, KindU8, KindI64,
-		KindI32, KindI16, KindI8, KindF64, KindF32, KindBool, KindDateTime:
+		KindI32, KindI16, KindI8, KindF64, KindF32, KindBool, KindDateTime,
+		KindBytes:
 		return true
 	}
 	return false

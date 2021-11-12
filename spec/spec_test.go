@@ -238,3 +238,143 @@ func TestNamespace(t *testing.T) {
 
 	assert.Equal(t, expected, actual)
 }
+
+func TestCoalesce(t *testing.T) {
+	nested := spec.NewType("Nested", "").
+		AddFields(
+			spec.NewField("stringField", "", &spec.TypeRef{
+				Kind: spec.KindString,
+			}, nil),
+		)
+
+	parent := spec.NewType("Parent", "").
+		AddFields(
+			spec.NewField("boolField", "", &spec.TypeRef{
+				Kind: spec.KindBool,
+			}, nil),
+			spec.NewField("bytesField", "", &spec.TypeRef{
+				Kind: spec.KindBytes,
+			}, nil),
+			spec.NewField("dateTimeField", "", &spec.TypeRef{
+				Kind: spec.KindDateTime,
+			}, nil),
+			spec.NewField("f32Field", "", &spec.TypeRef{
+				Kind: spec.KindF32,
+			}, nil),
+			spec.NewField("f64Field", "", &spec.TypeRef{
+				Kind: spec.KindF64,
+			}, nil),
+			spec.NewField("i8Field", "", &spec.TypeRef{
+				Kind: spec.KindI8,
+			}, nil),
+			spec.NewField("i16Field", "", &spec.TypeRef{
+				Kind: spec.KindI16,
+			}, nil),
+			spec.NewField("i32Field", "", &spec.TypeRef{
+				Kind: spec.KindI32,
+			}, nil),
+			spec.NewField("i64Field", "", &spec.TypeRef{
+				Kind: spec.KindI64,
+			}, nil),
+			spec.NewField("u8Field", "", &spec.TypeRef{
+				Kind: spec.KindU8,
+			}, nil),
+			spec.NewField("u16Field", "", &spec.TypeRef{
+				Kind: spec.KindU16,
+			}, nil),
+			spec.NewField("u32Field", "", &spec.TypeRef{
+				Kind: spec.KindU32,
+			}, nil),
+			spec.NewField("u64Field", "", &spec.TypeRef{
+				Kind: spec.KindU64,
+			}, nil),
+			spec.NewField("nestedField", "", &spec.TypeRef{
+				Kind: spec.KindOptional,
+				OptionalType: &spec.TypeRef{
+					Kind: spec.KindType,
+					Type: nested,
+				},
+			}, nil),
+		)
+
+	expected := map[string]interface{}{
+		"boolField":     true,
+		"bytesField":    []byte(`Hello, test`),
+		"dateTimeField": "2021-11-08T09:36:00-05:00",
+		"f32Field":      float32(1.1),
+		"f64Field":      float64(2.2),
+		"i8Field":       int8(127),
+		"i16Field":      int16(32767),
+		"i32Field":      int32(32768),
+		"i64Field":      int64(2147483648),
+		"u8Field":       uint8(255),
+		"u16Field":      uint16(65535),
+		"u32Field":      uint32(4294967295),
+		"u64Field":      uint64(9223372036854775807),
+		"nestedField": map[string]interface{}{
+			"stringField": "1234",
+		},
+	}
+	parentMap := map[string]interface{}{
+		"boolField":     "true",
+		"bytesField":    "SGVsbG8sIHRlc3Q=",
+		"dateTimeField": "2021-11-08T09:36:00-05:00",
+		"f32Field":      "1.1",
+		"f64Field":      "2.2",
+		"i8Field":       "127",
+		"i16Field":      "32767",
+		"i32Field":      "32768",
+		"i64Field":      "2147483648",
+		"u8Field":       "255",
+		"u16Field":      "65535",
+		"u32Field":      "4294967295",
+		"u64Field":      "9223372036854775807",
+		"nestedField": map[string]interface{}{
+			"stringField": 1234,
+		},
+	}
+	err := parent.Coalesce(parentMap, true)
+	require.NoError(t, err)
+	assert.Equal(t, expected, parentMap)
+}
+
+func TestKind(t *testing.T) {
+	tests := []struct {
+		kind      spec.Kind
+		name      string
+		primitive bool
+	}{
+		{spec.KindOptional, "optional", false},
+		{spec.KindList, "list", false},
+		{spec.KindMap, "map", false},
+		{spec.KindString, "string", true},
+		{spec.KindU64, "u64", true},
+		{spec.KindU32, "u32", true},
+		{spec.KindU16, "u16", true},
+		{spec.KindU8, "u8", true},
+		{spec.KindI64, "i64", true},
+		{spec.KindI32, "i32", true},
+		{spec.KindI16, "i16", true},
+		{spec.KindI8, "i8", true},
+		{spec.KindF64, "f64", true},
+		{spec.KindF32, "f32", true},
+		{spec.KindBool, "bool", true},
+		{spec.KindBytes, "bytes", true},
+		{spec.KindRaw, "raw", false},
+		{spec.KindDateTime, "datetime", true},
+		{spec.KindType, "type", false},
+		{spec.KindEnum, "enum", false},
+		{spec.KindUnion, "union", false},
+		{spec.Kind(9999), "unknown", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.primitive, tt.kind.IsPrimitive())
+			assert.Equal(t, tt.name, tt.kind.String())
+			b, err := tt.kind.MarshalJSON()
+			if assert.NoError(t, err) {
+				assert.Equal(t, []byte(`"`+tt.name+`"`), b)
+			}
+		})
+	}
+}

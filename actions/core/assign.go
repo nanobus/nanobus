@@ -43,7 +43,7 @@ func AssignAction(
 			if err != nil {
 				return nil, err
 			}
-			if v, ok := coalesce.ToMapSI(output); ok {
+			if v, ok := coalesce.ToMapSI(output, true); ok {
 				output = v
 			}
 		}

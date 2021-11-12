@@ -1187,13 +1187,13 @@ github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAh
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
 github.com/vmware/vmware-go-kcl v0.0.0-20191104173950-b6c74c3fe74e/go.mod h1:JFn5wAwfmRZgv/VScA9aUc51zOVL5395yPKGxPi3eNo=
 github.com/wapc/wapc-go v0.2.1/go.mod h1:cWa/DMFUTFsq1cutKj119zP+eua5lWOEV+MxOIyBqKA=
-github.com/wapc/wapc-go v0.3.0 h1:tSpsJCF42iHJwGlLEWafEt1f+hfqRng8E9deH8V4gCA=
-github.com/wapc/wapc-go v0.3.0/go.mod h1:CGRUMkCnLKqHKmuxGy7cnE13d/GNanJc1DGN50bP8xk=
+github.com/wapc/wapc-go v0.3.1 h1:mCRq+/XEBlpaUBpCOAWDQBXjqDrQBdCmv+VIkuVoXoM=
+github.com/wapc/wapc-go v0.3.1/go.mod h1:mJ3gffTeS0mKTnR71533l8FXCh4ZdVzWVStDKy+sEG0=
 github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f h1:wclXIRCfUnKofOgKGZr4SfC+/25CWCrH4W5RJsUIoj4=
 github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f/go.mod h1:rzYWwh8QYN+fw5gDVS/A3FloALdFDFZYbCavR9ElHU8=
 github.com/wasmerio/go-ext-wasm v0.3.1/go.mod h1:VGyarTzasuS7k5KhSIGpM3tciSZlkP31Mp9VJTHMMeI=
-github.com/wasmerio/wasmer-go v1.0.3 h1:9pWIlIqUKxALvFlWK8+Zy90qyqxd+8wlyVG91txh1TU=
-github.com/wasmerio/wasmer-go v1.0.3/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
+github.com/wasmerio/wasmer-go v1.0.4 h1:MnqHoOGfiQ8MMq2RF6wyCeebKOe84G88h5yv+vmxJgs=
+github.com/wasmerio/wasmer-go v1.0.4/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.0.2/go.mod h1:1WAq6h33pAW+iRreB34OORO2Nf7qel3VV3fjBj+hCSs=
 github.com/xdg-go/stringprep v1.0.2/go.mod h1:8F9zXuvzgwmyT5DUm4GUfZGDdT3W+LCvS6+da4O5kxM=

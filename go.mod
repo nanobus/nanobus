@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.28.0
 	github.com/vmihailenco/msgpack/v5 v5.3.4
-	github.com/wapc/wapc-go v0.3.0
+	github.com/wapc/wapc-go v0.3.1
 	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
 	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -137,7 +137,7 @@ require (
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/wasmerio/wasmer-go v1.0.3 // indirect
+	github.com/wasmerio/wasmer-go v1.0.4 // indirect
 	github.com/yashtewari/glob-intersection v0.0.0-20180916065949-5c77d914dd0b // indirect
 	go.opencensus.io v0.22.5 // indirect
 	go.opentelemetry.io/otel v0.19.0 // indirect

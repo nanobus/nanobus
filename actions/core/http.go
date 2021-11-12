@@ -79,7 +79,7 @@ func HTTPAction(
 			if err != nil {
 				return nil, err
 			}
-			requestData, _ = coalesce.ToMapSI(requestData)
+			requestData, _ = coalesce.ToMapSI(requestData, true)
 			requestBytes, err := json.Marshal(requestData)
 			if err != nil {
 				return nil, err
@@ -135,7 +135,7 @@ func HTTPAction(
 					return nil, err
 				}
 
-				response = coalesce.ValueIItoSI(response)
+				response = coalesce.ValueIItoSI(response, true)
 			}
 		}
 

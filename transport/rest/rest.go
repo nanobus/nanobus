@@ -312,7 +312,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			queryValues, _ := url.ParseQuery(r.URL.RawQuery)
 			for name, values := range queryValues {
 				if q, ok := queryParams[name]; ok {
-					converted, err := q.typeRef.Coalesce(values[0], false)
+					converted, _, err := q.typeRef.Coalesce(values[0], false)
 					if err != nil {
 						handleError(err, w, http.StatusBadRequest)
 						return

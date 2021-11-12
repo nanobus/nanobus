@@ -2,13 +2,16 @@ package coalesce
 
 import "fmt"
 
-func ToMapSI(v interface{}) (map[string]interface{}, bool) {
+func ToMapSI(v interface{}, recursive bool) (map[string]interface{}, bool) {
 	switch t := v.(type) {
 	case map[interface{}]interface{}:
-		return MapIItoSI(t), true
+		return MapIItoSI(t, recursive), true
 	case map[string]interface{}:
+		if !recursive {
+			return t, true
+		}
 		for k, v := range t {
-			t[k] = ValueIItoSI(v)
+			t[k] = ValueIItoSI(v, recursive)
 		}
 		return t, true
 	case map[string]string:
@@ -18,24 +21,26 @@ func ToMapSI(v interface{}) (map[string]interface{}, bool) {
 	return nil, false
 }
 
-func MapIItoSI(m map[interface{}]interface{}) map[string]interface{} {
+func MapIItoSI(m map[interface{}]interface{}, recursive bool) map[string]interface{} {
 	ret := make(map[string]interface{}, len(m))
 	for k, v := range m {
-		v = ValueIItoSI(v)
+		if recursive {
+			v = ValueIItoSI(v, recursive)
+		}
 		ret[interfaceToString(k)] = v
 	}
 	return ret
 }
 
-func ValueIItoSI(value interface{}) interface{} {
+func ValueIItoSI(value interface{}, recursive bool) interface{} {
 	switch t := value.(type) {
 	case map[interface{}]interface{}:
-		value = MapIItoSI(t)
+		value = MapIItoSI(t, recursive)
 	case map[string]string:
 		value = MapSStoSI(t)
 	case []interface{}:
 		for i := range t {
-			t[i] = ValueIItoSI(t[i])
+			t[i] = ValueIItoSI(t[i], recursive)
 		}
 	}
 	return value

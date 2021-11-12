@@ -469,7 +469,7 @@ export class Manager {
       if (isDeactivator(actor)) {
         (actor as Deactivator).deactivate(sctx);
       }
-      this.deactivate(new LogicalAddress(type, id));
+      this.deactivate(sctx.self);
       return new ArrayBuffer(0);
     };
   }

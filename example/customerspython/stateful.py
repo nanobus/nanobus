@@ -292,9 +292,9 @@ class Manager:
 
     async def to_context(self, type: str, id: str, actor: any) -> Context:
         address = LogicalAddress(type, id)
-        (state, activated) = self.get_state(address, 0, actor)
+        (state, needs_activation) = self.get_state(address, 0, actor)
         context = Context(address, state)
-        if activated and hasattr(actor, "activate"):
+        if needs_activation and hasattr(actor, "activate"):
             await actor.activate(context)
         return context
 
@@ -324,9 +324,9 @@ class Manager:
 
     def deactivate_handler(self, type: str, actor: any) -> Callable[[str, bytes], Awaitable[bytes]]:
         async def dh(id: str, payload: bytes) -> Awaitable[bytes]:
-            sctx = self.to_context(type, id, actor)
+            sctx = await self.to_context(type, id, actor)
             if hasattr(actor, "deactivate"):
                 await actor.deactivate(sctx)
-            self.deactivate(LogicalAddress(type, id))
+            self.deactivate(sctx.self)
             return b''
         return dh

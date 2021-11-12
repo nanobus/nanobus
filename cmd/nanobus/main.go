@@ -396,7 +396,7 @@ func main() {
 				target := actorType + "/" + actorID
 
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("-->", target+"/"+fn, string(jsonBytes)+"\n")
+					log.Println("==>", target+"/"+fn, string(jsonBytes)+"\n")
 				}
 
 				ctx := function.ToContext(ctx, function.Function{
@@ -520,7 +520,7 @@ func main() {
 			}
 
 			if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-				log.Println("-->", target, string(jsonBytes)+"\n")
+				log.Println("==>", target, string(jsonBytes)+"\n")
 			}
 
 			ctx := function.ToContext(ctx, function.Function{
@@ -576,7 +576,7 @@ func main() {
 			}
 
 			// if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
-			// 	log.Println("-->", target, string(jsonBytes)+"\n")
+			// 	log.Println("==>", target, string(jsonBytes)+"\n")
 			// }
 
 			result, err := rt.processor.Event(ctx, target, data)
@@ -791,7 +791,7 @@ func main() {
 		function := event.Path
 
 		if jsonBytes, err := json.MarshalIndent(event.CloudEvent, "", "  "); err == nil {
-			log.Println("-->", function, string(jsonBytes)+"\n")
+			log.Println("==>", function, string(jsonBytes)+"\n")
 		}
 
 		var input interface{} = event.CloudEvent
@@ -868,7 +868,7 @@ func main() {
 			ns := namespace + "." + service
 			if id == "" {
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("-->", namespace+"."+service+"/"+fn, string(jsonBytes)+"\n")
+					log.Println("==>", namespace+"."+service+"/"+fn, string(jsonBytes)+"\n")
 				}
 
 				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &response); err != nil {
@@ -1023,7 +1023,7 @@ func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("<--", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+		log.Println("<==", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
 	}
 
 	output, err := rt.processor.Provider(r.Context(), namespace, service, function, data)
@@ -1043,7 +1043,7 @@ func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("<--", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+		log.Println("<==", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
 	}
 
 	data := actions.Data{
@@ -1075,7 +1075,7 @@ func (rt *Runtime) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	input = coalesce.Integers(input)
 
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("-->", function, string(jsonBytes))
+		log.Println("==>", function, string(jsonBytes))
 	}
 
 	data := actions.Data{
@@ -1199,7 +1199,7 @@ func LookupEnvOrInt(key string, defaultVal int) int {
 func coalesceInput(namespaces spec.Namespaces, namespace, service, function string, input interface{}) error {
 	if oper, ok := namespaces.Operation(namespace, service, function); ok {
 		if oper.Parameters != nil {
-			inputMap, ok := coalesce.ToMapSI(input)
+			inputMap, ok := coalesce.ToMapSI(input, true)
 			if !ok {
 				return fmt.Errorf("%w: input is not a map", transport.ErrBadInput)
 			}
@@ -1218,11 +1218,11 @@ func coalesceOutput(namespaces spec.Namespaces, namespace, service, function str
 	var err error
 	if oper, ok := namespaces.Operation(namespace, service, function); ok {
 		if oper.Returns != nil {
-			outputMap, ok := coalesce.ToMapSI(output)
+			outputMap, ok := coalesce.ToMapSI(output, true)
 			if !ok {
 				return nil, errors.New("output is not a map")
 			}
-			output, err = oper.Returns.Coalesce(outputMap, true)
+			output, _, err = oper.Returns.Coalesce(outputMap, true)
 		}
 	} else {
 		coalesce.Integers(output)

@@ -62,6 +62,10 @@ def register_inbound(h: Inbound):
 
 
 def register_customer_actor(h: CustomerActor):
+    handlers.register_stateful_handler(
+        'customers.v1.CustomerActor', 'deactivate',
+        state_manager.deactivate_handler('customers.v1.CustomerActor', h))
+
     if not h.create_customer is None:
 
         async def handler(id: str, input: bytes) -> bytes:
