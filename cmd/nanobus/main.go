@@ -52,6 +52,7 @@ import (
 	"github.com/nanobus/nanobus/spec"
 	spec_widl "github.com/nanobus/nanobus/spec/widl"
 	"github.com/nanobus/nanobus/transport"
+	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/filter/jwt"
 	"github.com/nanobus/nanobus/transport/httprpc"
 	"github.com/nanobus/nanobus/transport/rest"
@@ -204,6 +205,12 @@ func main() {
 
 	ctx := context.Background()
 
+	// Filter registration
+	filterRegistry := filter.Registry{}
+	filterRegistry.Register(
+		jwt.HTTP,
+	)
+
 	// Compute registration
 	computeRegistry := compute.Registry{}
 	computeRegistry.Register(
@@ -250,15 +257,15 @@ func main() {
 	resolveAs := resolve.ToResolveAs(resolver)
 
 	if config.Codecs == nil {
-		config.Codecs = map[string]runtime.Codec{}
+		config.Codecs = map[string]runtime.Component{}
 	}
 	if _, exists := config.Codecs["json"]; !exists {
-		config.Codecs["json"] = runtime.Codec{
+		config.Codecs["json"] = runtime.Component{
 			Type: "json",
 		}
 	}
 	if _, exists := config.Codecs["msgpack"]; !exists {
-		config.Codecs["msgpack"] = runtime.Codec{
+		config.Codecs["msgpack"] = runtime.Component{
 			Type: "msgpack",
 		}
 	}
@@ -350,12 +357,29 @@ func main() {
 	}
 	invoker, err = computeLoader(config.Compute.With, resolveAs)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("could not load compute type %q", config.Compute.Type))
 	}
 	dependencies["client:invoker"] = invoker
 
 	if err = processor.Initialize(); err != nil {
 		log.Fatal(err)
+	}
+
+	httpFilters := []filter.Filter{}
+	if filters, ok := config.Filters["http"]; ok {
+		for _, f := range filters {
+			filterLoader, ok := filterRegistry[f.Type]
+			if !ok {
+				log.Fatal(fmt.Errorf("could not find filter type %q", f.Type))
+			}
+
+			filter, err := filterLoader(f.With, resolveAs)
+			if err != nil {
+				log.Fatal(fmt.Errorf("could not load filter type %q", f.Type))
+			}
+
+			httpFilters = append(httpFilters, filter)
+		}
 	}
 
 	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, payload []byte, metadata map[string][]string) ([]byte, string, error) {
@@ -961,7 +985,7 @@ func main() {
 	{
 		// Expose HTTP-RPC
 		transport, err := httprpc.New(httpListenAddr, namespaces, transportInvoker,
-			httprpc.WithFilters(jwt.HTTP),
+			httprpc.WithFilters(httpFilters...),
 			httprpc.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
@@ -976,7 +1000,7 @@ func main() {
 	{
 		// Expose REST
 		transport, err := rest.New(restListenAddr, namespaces, transportInvoker,
-			rest.WithFilters(jwt.HTTP),
+			rest.WithFilters(httpFilters...),
 			rest.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)

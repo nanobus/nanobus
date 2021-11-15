@@ -7,29 +7,20 @@ import (
 )
 
 type Configuration struct {
-	Specs         []Spec            `json:"specs" yaml:"specs"`
-	Codecs        map[string]Codec  `json:"codecs" yaml:"codecs"`
-	Compute       Compute           `json:"compute" yaml:"compute"`
-	Resiliency    Resiliency        `json:"resiliency" yaml:"resiliency"`
-	Services      Services          `json:"services" yaml:"services"`
-	Providers     Services          `json:"providers" yaml:"providers"`
-	Events        FunctionPipelines `json:"events" yaml:"events"`
-	Subscriptions interface{}       `json:"subscriptions" yaml:"subscriptions"`
-	InputBindings interface{}       `json:"inputBindings" yaml:"inputBindings"`
-	Decoding      interface{}       `json:"decoding" yaml:"decoding"`
+	Specs         []Component            `json:"specs" yaml:"specs"`
+	Filters       map[string][]Component `json:"filters" yaml:"filters"`
+	Codecs        map[string]Component   `json:"codecs" yaml:"codecs"`
+	Compute       Component              `json:"compute" yaml:"compute"`
+	Resiliency    Resiliency             `json:"resiliency" yaml:"resiliency"`
+	Services      Services               `json:"services" yaml:"services"`
+	Providers     Services               `json:"providers" yaml:"providers"`
+	Events        FunctionPipelines      `json:"events" yaml:"events"`
+	Subscriptions interface{}            `json:"subscriptions" yaml:"subscriptions"`
+	InputBindings interface{}            `json:"inputBindings" yaml:"inputBindings"`
+	Decoding      interface{}            `json:"decoding" yaml:"decoding"`
 }
 
-type Spec struct {
-	Type string      `json:"type" yaml:"type"`
-	With interface{} `json:"with" yaml:"with"`
-}
-
-type Codec struct {
-	Type string      `json:"type" yaml:"type"`
-	With interface{} `json:"with" yaml:"with"`
-}
-
-type Compute struct {
+type Component struct {
 	Type string      `json:"type" yaml:"type"`
 	With interface{} `json:"with" yaml:"with"`
 }
