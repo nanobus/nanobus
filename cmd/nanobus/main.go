@@ -877,8 +877,10 @@ func main() {
 			"env":    env,
 		}
 
+		ns := namespace + "." + service
+
 		ctx = function.ToContext(ctx, function.Function{
-			Namespace: namespace,
+			Namespace: ns,
 			Operation: fn,
 		})
 
@@ -889,7 +891,6 @@ func main() {
 
 		if !ok {
 			// No pipeline exits for the operation so invoke directly.
-			ns := namespace + "." + service
 			if id == "" {
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
 					log.Println("==>", namespace+"."+service+"/"+fn, string(jsonBytes)+"\n")

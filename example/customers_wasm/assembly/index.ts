@@ -1,23 +1,36 @@
-import { Customer, Handlers, Host } from "./module";
-
-var host = new Host();
+import { Inbound, outbound, registerInbound } from "./adapters";
+import {
+  Customer,
+  CustomerQuery,
+  CustomerPage,
+  CustomerPageBuilder,
+} from "./interfaces";
 
 export function wapc_init(): void {
-  Handlers.registerCreateCustomer(createCustomer);
-  Handlers.registerGetCustomer(getCustomer);
+  registerInbound(new InboundImpl());
 }
 
-function createCustomer(customer: Customer): Customer {
-  consoleLog("createCustomer called");
-  host.saveCustomer(customer);
-  host.customerCreated(customer);
+class InboundImpl implements Inbound {
+  createCustomer(customer: Customer): Customer {
+    consoleLog("createCustomer called");
+    outbound.saveCustomer(customer);
+    outbound.customerCreated(customer);
 
-  return customer;
-}
+    return customer;
+  }
 
-function getCustomer(id: u64): Customer {
-  consoleLog("getCustomer called");
-  return host.fetchCustomer(id);
+  getCustomer(id: u64): Customer {
+    consoleLog("getCustomer called");
+    return outbound.fetchCustomer(id);
+  }
+
+  listCustomers(query: CustomerQuery): CustomerPage {
+    consoleLog("listCustomers called");
+    return new CustomerPageBuilder()
+      .withOffset(query.offset)
+      .withLimit(query.limit)
+      .build();
+  }
 }
 
 // Boilerplate code for waPC.  Do not remove.

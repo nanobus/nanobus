@@ -136,11 +136,6 @@ type CustomerPage {
   items: [Customer] @fieldnum(3)
 }
 
-type Nested {
-  foo: string @fieldnum(1)
-  bar: string @fieldnum(2)
-}
-
 """
 Address information.
 """
