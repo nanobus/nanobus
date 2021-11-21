@@ -1,12 +1,16 @@
-import { Inbound, outbound, registerInbound } from "./adapters";
+import { OutboundImpl, registerInbound } from "./adapters";
 import {
   Customer,
   CustomerQuery,
   CustomerPage,
-  CustomerPageBuilder,
+  Inbound,
+  Outbound,
 } from "./interfaces";
 
+var outbound: Outbound;
+
 export function wapc_init(): void {
+  outbound = new OutboundImpl()
   registerInbound(new InboundImpl());
 }
 
@@ -26,7 +30,7 @@ class InboundImpl implements Inbound {
 
   listCustomers(query: CustomerQuery): CustomerPage {
     consoleLog("listCustomers called");
-    return new CustomerPageBuilder()
+    return CustomerPage.newBuilder()
       .withOffset(query.offset)
       .withLimit(query.limit)
       .build();
