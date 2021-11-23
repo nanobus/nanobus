@@ -6,6 +6,12 @@ specs:
 compute:
   type: mux
 
+filters:
+  http:
+    - type: jwt
+      with:
+        rsaPublicKeyFile: ../../public.pem
+
 codecs:
   avro:
     type: confluentavro
@@ -15,6 +21,17 @@ codecs:
 
 services:
   'customers.v1.Inbound':
+    getCustomer:
+      summary: Gets the customer record
+      actions:
+        - summary: Authorize
+          name: authorize
+          with:
+            has:
+              - foo
+        - summary: forward
+          name: invoke
+
     createCustomer____ignore:
       summary: Saves the customer to the database
       actions:

@@ -1,16 +1,16 @@
 spec: spec.widl
-config:
-  hostRoles:
-    - Outbound
-  handlerRoles:
-    - Inbound
 generates:
-  assembly/module.ts:
+  assembly/adapter.ts:
     module: '@nanobus/codegen/assemblyscript'
-    visitorClass: ModuleVisitor
+    visitorClass: AdapterVisitor
+  assembly/interfaces.ts:
+    module: '@nanobus/codegen/assemblyscript'
+    visitorClass: InterfacesVisitor
   assembly/index.ts:
     ifNotExists: true
     module: '@nanobus/codegen/assemblyscript'
     visitorClass: ScaffoldVisitor
-    config:
-      package: './module'
+  bus.yaml:
+    ifNotExists: true
+    module: '@nanobus/codegen/bus'
+    visitorClass: BusVisitor

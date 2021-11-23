@@ -1,14 +1,77 @@
 import { hostCall, register } from "@wapc/as-guest";
-import { Decoder, Writer, Encoder, Sizer, Codec } from "@wapc/as-msgpack";
+import { Decoder, Writer, Encoder, Sizer } from "@wapc/as-msgpack";
 import {
-  Address,
-  Customer,
-  CustomerPage,
-  CustomerQuery,
   Inbound,
+  CustomerActor,
   Outbound,
+  Customer,
+  CustomerQuery,
+  CustomerPage,
+  Address,
+  Error,
   Value,
 } from "./interfaces";
+
+export function registerInbound(handler: Inbound): void {
+  InboundHandler = handler;
+  register(
+    "customers.v1.Inbound/createCustomer",
+    Inbound_createCustomerWrapper
+  );
+  register("customers.v1.Inbound/getCustomer", Inbound_getCustomerWrapper);
+  register("customers.v1.Inbound/listCustomers", Inbound_listCustomersWrapper);
+}
+
+var InboundHandler: Inbound;
+
+function Inbound_createCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
+  const decoder = new Decoder(payload);
+  const request = CustomerCodec.decode(decoder);
+  const response = InboundHandler.createCustomer(request);
+  return CustomerCodec.toBuffer(response);
+}
+
+function Inbound_getCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
+  const decoder = new Decoder(payload);
+  const inputArgs = InboundGetCustomerArgsCodec.decode(decoder);
+  const response = InboundHandler.getCustomer(inputArgs.id);
+  return CustomerCodec.toBuffer(response);
+}
+
+function Inbound_listCustomersWrapper(payload: ArrayBuffer): ArrayBuffer {
+  const decoder = new Decoder(payload);
+  const request = CustomerQueryCodec.decode(decoder);
+  const response = InboundHandler.listCustomers(request);
+  return CustomerPageCodec.toBuffer(response);
+}
+
+class InboundGetCustomerArgs {
+  id: u64 = 0;
+}
+
+class InboundGetCustomerArgsCodec {
+  static decodeNullable(decoder: Decoder): InboundGetCustomerArgs | null {
+    if (decoder.isNextNil()) return null;
+    return InboundGetCustomerArgsCodec.decode(decoder);
+  }
+
+  static decode(decoder: Decoder): InboundGetCustomerArgs {
+    const that = new InboundGetCustomerArgs();
+    var numFields = decoder.readMapSize();
+
+    while (numFields > 0) {
+      numFields--;
+      const field = decoder.readString();
+
+      if (field == "id") {
+        that.id = decoder.readUInt64();
+      } else {
+        decoder.skip();
+      }
+    }
+    return that;
+  }
+}
 
 export class OutboundImpl implements Outbound {
   saveCustomer(customer: Customer): void {
@@ -27,7 +90,7 @@ export class OutboundImpl implements Outbound {
       "",
       "customers.v1.Outbound",
       "fetchCustomer",
-      inputArgs.toBuffer()
+      OutboundFetchCustomerArgsCodec.toBuffer(inputArgs)
     );
     const decoder = new Decoder(payload);
     return CustomerCodec.decode(decoder);
@@ -43,180 +106,26 @@ export class OutboundImpl implements Outbound {
   }
 }
 
-export var outbound = new OutboundImpl();
-
-var inboundInstance: Inbound;
-export function registerInbound(h: Inbound): void {
-  inboundInstance = h;
-  register(
-    "customers.v1.Inbound/createCustomer",
-    Inbound_createCustomerWrapper
-  );
-  register("customers.v1.Inbound/getCustomer", Inbound_getCustomerWrapper);
-  register("customers.v1.Inbound/listCustomers", Inbound_listCustomersWrapper);
-}
-
-function Inbound_createCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
-  const decoder = new Decoder(payload);
-  const request = CustomerCodec.decode(decoder);
-  const response = inboundInstance.createCustomer(request);
-  return CustomerCodec.toBuffer(response);
-}
-
-function Inbound_getCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
-  const decoder = new Decoder(payload);
-  const inputArgs = new InboundGetCustomerArgs();
-  inputArgs.decode(decoder);
-  const response = inboundInstance.getCustomer(inputArgs.id);
-  return CustomerCodec.toBuffer(response);
-}
-
-function Inbound_listCustomersWrapper(payload: ArrayBuffer): ArrayBuffer {
-  const decoder = new Decoder(payload);
-  const request = CustomerQueryCodec.decode(decoder);
-  const response = inboundInstance.listCustomers(request);
-  return CustomerPageCodec.toBuffer(response);
-}
-
-class InboundGetCustomerArgs implements Codec {
+class OutboundFetchCustomerArgs {
   id: u64 = 0;
+}
 
-  static decodeNullable(decoder: Decoder): InboundGetCustomerArgs | null {
-    if (decoder.isNextNil()) return null;
-    return InboundGetCustomerArgs.decode(decoder);
-  }
-
-  // decode
-  static decode(decoder: Decoder): InboundGetCustomerArgs {
-    const o = new InboundGetCustomerArgs();
-    o.decode(decoder);
-    return o;
-  }
-
-  decode(decoder: Decoder): void {
-    var numFields = decoder.readMapSize();
-
-    while (numFields > 0) {
-      numFields--;
-      const field = decoder.readString();
-
-      if (field == "id") {
-        this.id = decoder.readUInt64();
-      } else {
-        decoder.skip();
-      }
-    }
-  }
-
-  encode(encoder: Writer): void {
+class OutboundFetchCustomerArgsCodec {
+  static encode(encoder: Writer, that: OutboundFetchCustomerArgs): void {
     encoder.writeMapSize(1);
     encoder.writeString("id");
-    encoder.writeUInt64(this.id);
+    encoder.writeUInt64(that.id);
   }
 
-  toBuffer(): ArrayBuffer {
+  static toBuffer(that: OutboundFetchCustomerArgs): ArrayBuffer {
     let sizer = new Sizer();
-    this.encode(sizer);
+    OutboundFetchCustomerArgsCodec.encode(sizer, that);
     let buffer = new ArrayBuffer(sizer.length);
     let encoder = new Encoder(buffer);
-    this.encode(encoder);
+    OutboundFetchCustomerArgsCodec.encode(encoder, that);
     return buffer;
   }
 }
-
-class InboundSomethingSimpleArgs implements Codec {
-  customer: Customer = new Customer();
-
-  static decodeNullable(decoder: Decoder): InboundSomethingSimpleArgs | null {
-    if (decoder.isNextNil()) return null;
-    return InboundSomethingSimpleArgs.decode(decoder);
-  }
-
-  // decode
-  static decode(decoder: Decoder): InboundSomethingSimpleArgs {
-    const o = new InboundSomethingSimpleArgs();
-    o.decode(decoder);
-    return o;
-  }
-
-  decode(decoder: Decoder): void {
-    var numFields = decoder.readMapSize();
-
-    while (numFields > 0) {
-      numFields--;
-      const field = decoder.readString();
-
-      if (field == "customer") {
-        this.customer = CustomerCodec.decode(decoder);
-      } else {
-        decoder.skip();
-      }
-    }
-  }
-
-  encode(encoder: Writer): void {
-    encoder.writeMapSize(1);
-    encoder.writeString("customer");
-    CustomerCodec.encode(encoder, this.customer);
-  }
-
-  toBuffer(): ArrayBuffer {
-    let sizer = new Sizer();
-    this.encode(sizer);
-    let buffer = new ArrayBuffer(sizer.length);
-    let encoder = new Encoder(buffer);
-    this.encode(encoder);
-    return buffer;
-  }
-}
-
-class OutboundFetchCustomerArgs implements Codec {
-  id: u64 = 0;
-
-  static decodeNullable(decoder: Decoder): OutboundFetchCustomerArgs | null {
-    if (decoder.isNextNil()) return null;
-    return OutboundFetchCustomerArgs.decode(decoder);
-  }
-
-  // decode
-  static decode(decoder: Decoder): OutboundFetchCustomerArgs {
-    const o = new OutboundFetchCustomerArgs();
-    o.decode(decoder);
-    return o;
-  }
-
-  decode(decoder: Decoder): void {
-    var numFields = decoder.readMapSize();
-
-    while (numFields > 0) {
-      numFields--;
-      const field = decoder.readString();
-
-      if (field == "id") {
-        this.id = decoder.readUInt64();
-      } else {
-        decoder.skip();
-      }
-    }
-  }
-
-  encode(encoder: Writer): void {
-    encoder.writeMapSize(1);
-    encoder.writeString("id");
-    encoder.writeUInt64(this.id);
-  }
-
-  toBuffer(): ArrayBuffer {
-    let sizer = new Sizer();
-    this.encode(sizer);
-    let buffer = new ArrayBuffer(sizer.length);
-    let encoder = new Encoder(buffer);
-    this.encode(encoder);
-    return buffer;
-  }
-}
-
-///////////////////////////
 
 class CustomerCodec {
   static decodeNullable(decoder: Decoder): Customer | null {
@@ -225,7 +134,7 @@ class CustomerCodec {
   }
 
   static decode(decoder: Decoder): Customer {
-    const o = new Customer();
+    const that = new Customer();
     var numFields = decoder.readMapSize();
 
     while (numFields > 0) {
@@ -233,55 +142,54 @@ class CustomerCodec {
       const field = decoder.readString();
 
       if (field == "id") {
-        o.id = decoder.readUInt64();
+        that.id = decoder.readUInt64();
       } else if (field == "firstName") {
-        o.firstName = decoder.readString();
+        that.firstName = decoder.readString();
       } else if (field == "middleName") {
         if (decoder.isNextNil()) {
-          o.middleName = null;
+          that.middleName = null;
         } else {
-          o.middleName = decoder.readString();
+          that.middleName = decoder.readString();
         }
       } else if (field == "lastName") {
-        o.lastName = decoder.readString();
+        that.lastName = decoder.readString();
       } else if (field == "email") {
-        o.email = decoder.readString();
+        that.email = decoder.readString();
       } else if (field == "address") {
-        o.address = AddressCodec.decode(decoder);
+        that.address = AddressCodec.decode(decoder);
       } else {
         decoder.skip();
       }
     }
-
-    return o;
+    return that;
   }
 
-  static encode(encoder: Writer, o: Customer): void {
+  static encode(encoder: Writer, that: Customer): void {
     encoder.writeMapSize(6);
     encoder.writeString("id");
-    encoder.writeUInt64(o.id);
+    encoder.writeUInt64(that.id);
     encoder.writeString("firstName");
-    encoder.writeString(o.firstName);
+    encoder.writeString(that.firstName);
     encoder.writeString("middleName");
-    if (o.middleName === null) {
+    if (that.middleName === null) {
       encoder.writeNil();
     } else {
-      encoder.writeString(o.middleName!);
+      encoder.writeString(that.middleName!);
     }
     encoder.writeString("lastName");
-    encoder.writeString(o.lastName);
+    encoder.writeString(that.lastName);
     encoder.writeString("email");
-    encoder.writeString(o.email);
+    encoder.writeString(that.email);
     encoder.writeString("address");
-    AddressCodec.encode(encoder, o.address);
+    AddressCodec.encode(encoder, that.address);
   }
 
-  static toBuffer(o: Customer): ArrayBuffer {
+  static toBuffer(that: Customer): ArrayBuffer {
     let sizer = new Sizer();
-    CustomerCodec.encode(sizer, o);
+    CustomerCodec.encode(sizer, that);
     let buffer = new ArrayBuffer(sizer.length);
     let encoder = new Encoder(buffer);
-    CustomerCodec.encode(encoder, o);
+    CustomerCodec.encode(encoder, that);
     return buffer;
   }
 }
@@ -293,7 +201,7 @@ class CustomerQueryCodec {
   }
 
   static decode(decoder: Decoder): CustomerQuery {
-    const o = new CustomerQuery();
+    const that = new CustomerQuery();
     var numFields = decoder.readMapSize();
 
     while (numFields > 0) {
@@ -302,44 +210,43 @@ class CustomerQueryCodec {
 
       if (field == "id") {
         if (decoder.isNextNil()) {
-          o.id = null;
+          that.id = null;
         } else {
-          o.id = new Value(decoder.readUInt64());
+          that.id = new Value(decoder.readUInt64());
         }
       } else if (field == "firstName") {
         if (decoder.isNextNil()) {
-          o.firstName = null;
+          that.firstName = null;
         } else {
-          o.firstName = decoder.readString();
+          that.firstName = decoder.readString();
         }
       } else if (field == "middleName") {
         if (decoder.isNextNil()) {
-          o.middleName = null;
+          that.middleName = null;
         } else {
-          o.middleName = decoder.readString();
+          that.middleName = decoder.readString();
         }
       } else if (field == "lastName") {
         if (decoder.isNextNil()) {
-          o.lastName = null;
+          that.lastName = null;
         } else {
-          o.lastName = decoder.readString();
+          that.lastName = decoder.readString();
         }
       } else if (field == "email") {
         if (decoder.isNextNil()) {
-          o.email = null;
+          that.email = null;
         } else {
-          o.email = decoder.readString();
+          that.email = decoder.readString();
         }
       } else if (field == "offset") {
-        o.offset = decoder.readUInt64();
+        that.offset = decoder.readUInt64();
       } else if (field == "limit") {
-        o.limit = decoder.readUInt64();
+        that.limit = decoder.readUInt64();
       } else {
         decoder.skip();
       }
     }
-
-    return o;
+    return that;
   }
 
   static encode(encoder: Writer, that: CustomerQuery): void {
@@ -380,12 +287,12 @@ class CustomerQueryCodec {
     encoder.writeUInt64(that.limit);
   }
 
-  static toBuffer(o: CustomerQuery): ArrayBuffer {
+  static toBuffer(that: CustomerQuery): ArrayBuffer {
     let sizer = new Sizer();
-    CustomerQueryCodec.encode(sizer, o);
+    CustomerQueryCodec.encode(sizer, that);
     let buffer = new ArrayBuffer(sizer.length);
     let encoder = new Encoder(buffer);
-    CustomerQueryCodec.encode(encoder, o);
+    CustomerQueryCodec.encode(encoder, that);
     return buffer;
   }
 }
@@ -409,9 +316,11 @@ class CustomerPageCodec {
       } else if (field == "limit") {
         that.limit = decoder.readUInt64();
       } else if (field == "items") {
-        that.items = decoder.readArray((decoder: Decoder): Customer => {
-          return CustomerCodec.decode(decoder);
-        });
+        that.items = decoder.readArray(
+          (decoder: Decoder): Customer => {
+            return CustomerCodec.decode(decoder);
+          }
+        );
       } else {
         decoder.skip();
       }
