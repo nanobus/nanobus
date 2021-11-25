@@ -45,5 +45,5 @@ if (cluster.isMaster) {
 } else {
   // isMaster will be false
   // isWorker will be true: set the children's work
-  require('./service');
+  require('./index');
 }

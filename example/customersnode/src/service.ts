@@ -1,21 +1,28 @@
 import {
-  start,
-  registerInbound,
-  registerCustomerActor,
-  outbound,
-} from "./adapter";
-import { Context, Customer, CustomerPage, CustomerQuery } from "./interfaces";
+  Context,
+  Customer,
+  CustomerPage,
+  CustomerQuery,
+  Inbound,
+  Outbound,
+} from "./interfaces";
 
-class InboundImpl {
+export class InboundImpl implements Inbound {
+  private outbound: Outbound;
+
+  constructor(outbound: Outbound) {
+    this.outbound = outbound;
+  }
+
   async createCustomer(customer: Customer): Promise<Customer> {
-    await outbound.saveCustomer(customer);
-    await outbound.customerCreated(customer);
+    await this.outbound.saveCustomer(customer);
+    await this.outbound.customerCreated(customer);
 
     return customer;
   }
 
   async getCustomer(id: number): Promise<Customer> {
-    return outbound.fetchCustomer(id);
+    return this.outbound.fetchCustomer(id);
   }
 
   async listCustomers(query: CustomerQuery): Promise<CustomerPage> {
@@ -27,9 +34,7 @@ class InboundImpl {
   }
 }
 
-registerInbound(new InboundImpl());
-
-class CustomerActorImpl {
+export class CustomerActorImpl {
   async createCustomer(ctx: Context, customer: Customer): Promise<Customer> {
     ctx.set("customer", customer);
     return customer;
@@ -40,7 +45,3 @@ class CustomerActorImpl {
     return customer;
   }
 }
-
-registerCustomerActor(new CustomerActorImpl());
-
-start();

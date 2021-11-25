@@ -20,11 +20,11 @@ export interface Context {
 // Operations that can be performed on a customer.
 export interface Inbound {
   // Creates a new customer.
-  createCustomer?: (customer: Customer) => Promise<Customer>;
+  createCustomer(customer: Customer): Promise<Customer>;
   // Retrieve a customer by id.
-  getCustomer?: (id: number) => Promise<Customer>;
+  getCustomer(id: number): Promise<Customer>;
   // Return a page of customers using optional search filters.
-  listCustomers?: (query: CustomerQuery) => Promise<CustomerPage>;
+  listCustomers(query: CustomerQuery): Promise<CustomerPage>;
 }
 
 // Stateful operations that can be performed on a customer.

@@ -10,8 +10,8 @@
     "lint": "./node_modules/eslint/bin/eslint.js  src --ext .ts",
     "dev": "./scripts/dev.sh",
     "dev-server": "NODE_ENV=development nodemon",
-    "ts-node-server": "ts-node src/service.ts",
-    "start": "node dist/service.js",
+    "ts-node-server": "ts-node src/index.ts",
+    "start": "node dist/index.js",
     "test": "jest",
     "fix-lint": "./node_modules/eslint/bin/eslint.js  src --ext .ts --fix"
   },
