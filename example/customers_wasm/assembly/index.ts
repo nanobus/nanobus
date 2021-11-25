@@ -1,4 +1,3 @@
-import { handleCall, handleAbort } from "@wapc/as-guest";
 import { registerInbound, OutboundImpl } from "./adapter";
 import { InboundImpl } from "./service";
 
@@ -8,6 +7,8 @@ export function wapc_init(): void {
 }
 
 // Boilerplate code for waPC.  Do not remove.
+
+import { handleCall, handleAbort } from "@wapc/as-guest";
 
 export function __guest_call(operation_size: usize, payload_size: usize): bool {
   return handleCall(operation_size, payload_size);
