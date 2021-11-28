@@ -1,94 +1,105 @@
-# NanoBus
+![NanoBus Logo](docs/images/nanobus-logo.svg)
 
-NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable flows.
+NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable flows. The primary goal of NanoBus is to codify best practices so developers can **focus on business outcomes, not boilerplate code**.
 
 ## Key Features
 
 ### Virtually no boilerplate code
 
-In conjunction with Dapr, NanoBus allows the developer to focus on defining APIs. The "glue" to make APIs accessible is handled automatically.
-
-### Clean Architecture on top of Dapr
-
-The structure of a NanoBus application follows design principles that allow your application to scale as requirements evolve. Newly created projects use a layout that serves as an intuitive blueprint to implement.
+In conjunction with Dapr, NanoBus allows the developer to focus on what matters most, the application's logic. All the distributed system "glue" is handled automatically.
 
 ### Data-aware middleware / flows
 
-Simplifies common tasks when communicating with other services and Dapr building blocks. Secure API endpoints, transform data, support multiple formats, and apply resiliency policies using simple configuration.
+Communicating with other services and Dapr building block is simplified in declarative, composable flows. Secure API endpoints, transform data, support multiple serialization formats, and apply resiliency policies using configuration.
 
 ### Automatic API endpoints with documentation
 
-Declaring services as specifications allows NanoBus to share your service through multiple protocals, including REST and gRPC. Standards like OpenAPI and Swagger UI are used to share your service with your partner teams.
+Share your service through multiple protocols, including REST, gRPC and NATS, without having to write additional code. OpenAPI/Swagger UI, AsyncAPI and Protobuf provide documentation for your partner teams.
 
 ### Consistent polyglot programming model
 
-Nanoservices are small simplfied processes that plug into NanoBus and provide a uniform developer experience for services and actors, regardless of the choosen programming language.
+Using NanoBus and Dapr as a sidecar greatly simplifies distributed application development. Regardless of the chosen programming language, the developer experience feels like local development with plain interfaces and data structures.
 
-## Architecture
+### Clean Architecture
+
+NanoBus applications are structured with design principles that allow your application to scale as requirements evolve. Newly created projects use an intuitive layout that follow best practices like [separation of concerns](https://en.wikipedia.org/wiki/Separation_of_concerns).
+
+## How It Works
 
 ![NanoBus Architecture](docs/images/architecture.svg)
 
-NanoBus works jointly with [Dapr](https://dapr.io) to provide developers powerful building blocks such as service invocation,
-state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are accessed using flows which act as connective data pipelines. Inside flows, developer's use configurable actions to decode, transform and route data between application logic and Dapr's components. No SDKs required.
+NanoBus runs jointly with [Dapr](https://dapr.io) in a [sidecar process](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar). Conceptually, your application is plugged into the center and NanoBus handles bi-directional communication with Dapr and service/transport protocols.
 
-To expose services, NanoBus uses flexible interface definitions to automatically produce API endpoints, like HTTP-RPC, REST and gRPC. These transports are pluggable into NanoBus, allowing developers to expose services using multiple protocols without boilerplate code. Additionally, API documentation is auto-generated for the consumers of your services.
+Dapr provides developers with powerful [building blocks](https://docs.dapr.io/developing-applications/building-blocks/) such as service invocation, state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are integrated with NanoBus flows. Flows are like middleware or data pipelines with configurable actions that perform operations like decoding, transform and routing data from the application to Dapr's components and visa-versa. No SDKs required.
 
-Finally, NanoBus supports pluggable "compute" types: from the containers you are using today, to emerging technologies
-like [WebAssembly](https://webassembly.org). In the future, embedded language runtimes like JavaScript/TypeScript, Python or Lua will be featured.
+To create services, NanoBus uses succinct yet flexible interface definitions to automatically produce API endpoints, like REST, [gRPC](https://grpc.io), and [NATS](https://nats.io). These transports are pluggable, allowing developers to expose services using multiple protocols without boilerplate code. Additionally, API documentation is auto-generated for customers.
 
-The primary goal of NanoBus is to codify best practices into a sidecar so developers **focus on business outcomes, not boilerplate code**.
+Finally, NanoBus supports pluggable "compute" types: from Docker containers to emerging technologies
+like [WebAssembly](https://webassembly.org). In the future, embedded language runtimes like JavaScript/TypeScript, Python or Lua could be supported.
+
+To learn more, see the [architecture page](/docs/architecture.md).
 
 ## Getting Started
 
-* Install the [nanobus CLI](https://github.com/nanobus/cli#install-the-cli)
-* Follow the tutorial under [examples](example/README.md)
+### Install the [nanogen CLI](https://github.com/nanobus/cli)
 
-## Design Concepts
+Windows
 
-### Ports and Adapters
+```
+powershell -Command "iwr -useb https://raw.githubusercontent.com/nanobus/cli/master/install/install.ps1 | iex"
+```
 
-Ports are simply entry and exit points of the application. Driving adapters wrap around a ports and instruct the application to perform an operation.
+MacOS
 
-### Onion Architecture
+```
+curl -fsSL https://raw.githubusercontent.com/nanobus/cli/master/install/install.sh | /bin/bash
+```
 
-<img align="right" src="docs/images/onion.svg" alt="The Onion Architecture" width="45%" style="margin: 0 0 1rem 1rem;" />
+Linux
 
-The primary inspiration for NanoBus is the **Onion Architecture**, which is comprised of concentric layers that interface with each other towards the center. This design greatly improves a system's ability to evolve over time because each layer addresses a separate concern. Here are the layers NanoBus implements:
+```
+wget -q https://raw.githubusercontent.com/nanobus/cli/master/install/install.sh -O - | /bin/bash
+```
 
-* **Core Logic** is where the developer focuses on implementing the service's behavior.
-* **Provider Services** wrap around ports that invoke flows that act as driving adapters for Dapr or other components.
-* **Data Model** (or domain modal) contains data structures for persistent data and events that are comminucated through port / flows.
+Homebrew
 
-<br clear="both"/>
+```
+brew install nanobus/tap/nanogen
+```
 
-<p></p>
+### Create a NanoBus Application
 
-### Flow-Based Programming
+Choose a supported language:
 
-Between the Endpoints, Core Logic and Stores layers, NanoBus passes data through developer-defined flows: a paradigm called **Flow-Based Programming (FBP)**.
+* Node.js (typescript)
+* C# / .NET (csharp)
+* Python (python)
+* Golang (go)
+* WASM AssemblyScript (assemblyscript)
+* WASM TinyGo (tinygo)
 
-![Flow-Based Programming example](docs/images/fbp.svg)
+Coming soon...
 
-Each step in the flow can inspect, transform, and augment the data before passing it to the destination component.  Additionally, this mechanism externalizes encoding/decoding, authorization, cryptography and resiliency policies, eliminating the need to update the application internally. The application is only concerned with operations that accept and return strongly typed data structures.
+* Java (Reactor)
+* Rust (Binary & WASM)
 
-### API-First Approach
-
-To tie layers and flows together, the developer can *optionally* use an **API-First Approach**, where the operations of your service are described in an API specification that can be shared with other teams.
-
-![IDL code generation](docs/images/idl-codegen.svg)
-
-NanoBus uses a generic and protocol agnostic Interface Definition Language (IDL). This is input to our code generation tool, which creates RPC-style endpoints that your logic uses to interact with flows. NanoBus also uses the IDL to automatically host your services with REST, gRPC, and other protocols. This eliminates the need to write biolerplate code for the Transports, Endpoints, and Stores layers.
+```shell
+nanogen new typescript hello_world
+cd hello_world
+make
+make run
+```
 
 In NanoBus, the developer only needs to follow these steps:
 
-1. Create a new service using the CLI
+1. Create a new service using the `nanogen` CLI
 2. Define the services interfaces (IDL)
 3. Create flows that tie operations to Dapr building blocks
 4. Implement the service's core logic code
 5. Run `make docker`
 6. Deploy to your favorite container orchestrator
 
-Check out the [tutorial](example/README.md) to try it out!
+Be sure to check out the [tutorial](example/README.md)!
 
 ## Contributing
 
