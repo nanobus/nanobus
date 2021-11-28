@@ -2,7 +2,6 @@ package filter
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -10,8 +9,13 @@ import (
 type (
 	NamedLoader func() (string, Loader)
 	Loader      func(with interface{}, resolver resolve.ResolveAs) (Filter, error)
-	Filter      func(ctx context.Context, req *http.Request) (context.Context, error)
+	Filter      func(ctx context.Context, header Header) (context.Context, error)
 	Registry    map[string]Loader
+
+	Header interface {
+		Get(name string) string
+		Values(name string) []string
+	}
 )
 
 func (r Registry) Register(loaders ...NamedLoader) {

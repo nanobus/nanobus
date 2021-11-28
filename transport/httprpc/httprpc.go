@@ -119,7 +119,7 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 
 	for _, filter := range t.filters {
 		var err error
-		if ctx, err = filter(ctx, r); err != nil {
+		if ctx, err = filter(ctx, r.Header); err != nil {
 			handleError(err, w, http.StatusInternalServerError)
 			return
 		}

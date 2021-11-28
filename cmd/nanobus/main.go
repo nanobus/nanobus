@@ -55,6 +55,7 @@ import (
 	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/filter/jwt"
 	"github.com/nanobus/nanobus/transport/httprpc"
+	"github.com/nanobus/nanobus/transport/nats"
 	"github.com/nanobus/nanobus/transport/rest"
 )
 
@@ -132,6 +133,13 @@ func main() {
 		"rest-listen-addr",
 		LookupEnvOrString("REST_LISTEN_ADDR", ":8090"),
 		"rest listen address",
+	)
+	var natsURL string
+	flag.StringVar(
+		&natsURL,
+		"nats-url",
+		LookupEnvOrString("NATS_URL", ""),
+		"nats url",
 	)
 	var busFile string
 	flag.StringVar(
@@ -1008,6 +1016,21 @@ func main() {
 		}
 		g.Add(func() error {
 			log.Printf("REST listening on %s\n", restListenAddr)
+			return transport.Listen()
+		}, func(error) {
+			transport.Close()
+		})
+	}
+	if natsURL != "" {
+		// Expose NATS
+		transport, err := nats.New(natsURL, namespaces, transportInvoker,
+			nats.WithFilters(httpFilters...),
+			nats.WithCodecs(jsoncodec, msgpackcodec))
+		if err != nil {
+			log.Fatal(err)
+		}
+		g.Add(func() error {
+			log.Printf("NATS client connected to %s\n", natsURL)
 			return transport.Listen()
 		}, func(error) {
 			transport.Close()

@@ -1,7 +1,6 @@
 # NanoBus
 
-NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving
-common tasks to composable flows that connect to transports, data stores, and other infrastructure.
+NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable flows.
 
 ## Key Features
 

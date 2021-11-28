@@ -20,6 +20,7 @@ require (
 	github.com/mattn/anko v0.1.8
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
+	github.com/nats-io/nats.go v1.12.0
 	github.com/oklog/run v1.1.0
 	github.com/sony/gobreaker v0.4.1
 	github.com/spf13/cast v1.4.0
@@ -28,6 +29,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.4
 	github.com/wapc/wapc-go v0.3.1
 	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
+	go.uber.org/multierr v1.7.0
 	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
@@ -114,6 +116,8 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+	github.com/nats-io/nkeys v0.3.0 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/open-policy-agent/opa v0.23.2 // indirect
 	github.com/openzipkin/zipkin-go v0.2.2 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -144,7 +148,6 @@ require (
 	go.opentelemetry.io/otel/metric v0.19.0 // indirect
 	go.opentelemetry.io/otel/trace v0.19.0 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/oauth2 v0.0.0-20210220000619-9bb904979d93 // indirect

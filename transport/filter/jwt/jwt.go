@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -117,8 +116,8 @@ func HTTPLoader(with interface{}, resolver resolve.ResolveAs) (filter.Filter, er
 }
 
 func HTTPFilter(settings *Settings) filter.Filter {
-	return func(ctx context.Context, req *http.Request) (context.Context, error) {
-		authorization := req.Header.Get("Authorization")
+	return func(ctx context.Context, header filter.Header) (context.Context, error) {
+		authorization := header.Get("Authorization")
 		if !strings.HasPrefix(authorization, "Bearer ") {
 			return ctx, nil
 		}
