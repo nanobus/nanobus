@@ -12,29 +12,26 @@ In conjunction with Dapr, NanoBus allows the developer to focus on defining APIs
 
 The structure of a NanoBus application follows design principles that allow your application to scale as requirements evolve. Newly created projects use a layout that serves as an intuitive blueprint to implement.
 
-### Declarative middleware for communicating data
+### Data-aware middleware / flows
 
-Simplifies common tasks when communicating with other services and Dapr building blocks. Secure API endpoints, transform data, support different formats, and apply resiliency policies thought simple configuration.
+Simplifies common tasks when communicating with other services and Dapr building blocks. Secure API endpoints, transform data, support multiple formats, and apply resiliency policies using simple configuration.
 
-### Automatic service endpoints and API documentation
+### Automatic API endpoints with documentation
 
 Declaring services as specifications allows NanoBus to share your service through multiple protocals, including REST and gRPC. Standards like OpenAPI and Swagger UI are used to share your service with your partner teams.
 
-### Consistent polyglot service and actor programming model
+### Consistent polyglot programming model
 
-Nanoservices are small simplfied processes that plug into NanoBus and provide a uniform developer experience, regardless of the choosen programming language.
+Nanoservices are small simplfied processes that plug into NanoBus and provide a uniform developer experience for services and actors, regardless of the choosen programming language.
 
 ## Architecture
 
 ![NanoBus Architecture](docs/images/architecture.svg)
 
 NanoBus works jointly with [Dapr](https://dapr.io) to provide developers powerful building blocks such as service invocation,
-state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are accessed using flows which act as connective data pipelines. Inside flows, developer's use configurable
-actions to decode, transform and route data between application logic and Dapr's components. No SDKs required.
+state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are accessed using flows which act as connective data pipelines. Inside flows, developer's use configurable actions to decode, transform and route data between application logic and Dapr's components. No SDKs required.
 
-To expose services, NanoBus uses flexible interface definitions to automatically produce API endpoints, like HTTP-RPC, REST and gRPC.
-These transports are pluggable into NanoBus, allowing developers to expose services using multiple protocols without boilerplate code.
-Additionally, API documentation is auto-generated for the consumers of your services.
+To expose services, NanoBus uses flexible interface definitions to automatically produce API endpoints, like HTTP-RPC, REST and gRPC. These transports are pluggable into NanoBus, allowing developers to expose services using multiple protocols without boilerplate code. Additionally, API documentation is auto-generated for the consumers of your services.
 
 Finally, NanoBus supports pluggable "compute" types: from the containers you are using today, to emerging technologies
 like [WebAssembly](https://webassembly.org). In the future, embedded language runtimes like JavaScript/TypeScript, Python or Lua will be featured.
@@ -48,16 +45,19 @@ The primary goal of NanoBus is to codify best practices into a sidecar so develo
 
 ## Design Concepts
 
+### Ports and Adapters
+
+Ports are simply entry and exit points of the application. Driving adapters wrap around a ports and instruct the application to perform an operation.
+
 ### Onion Architecture
 
 <img align="right" src="docs/images/onion.svg" alt="The Onion Architecture" width="45%" style="margin: 0 0 1rem 1rem;" />
 
 The primary inspiration for NanoBus is the **Onion Architecture**, which is comprised of concentric layers that interface with each other towards the center. This design greatly improves a system's ability to evolve over time because each layer addresses a separate concern. Here are the layers NanoBus implements:
 
-* **Transports** is the protocol layer that exposes the system's functionality to other applications (e.g. gRPC, REST, WebSockets, NATS, etc.).
-* **Endpoints** generalizes your service operations into a request/response (or RPC-style) interface.
 * **Core Logic** is where the developer focuses on implementing the service's behavior.
-* **Stores** is the suite of backends where the application stores data and sends and receives events.
+* **Provider Services** wrap around ports that invoke flows that act as driving adapters for Dapr or other components.
+* **Data Model** (or domain modal) contains data structures for persistent data and events that are comminucated through port / flows.
 
 <br clear="both"/>
 
