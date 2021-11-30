@@ -4,20 +4,23 @@ import (
 	"io"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/nanobus/nanobus/errorz"
 )
 
 type Configuration struct {
-	Specs         []Component            `json:"specs" yaml:"specs"`
-	Filters       map[string][]Component `json:"filters" yaml:"filters"`
-	Codecs        map[string]Component   `json:"codecs" yaml:"codecs"`
-	Compute       Component              `json:"compute" yaml:"compute"`
-	Resiliency    Resiliency             `json:"resiliency" yaml:"resiliency"`
-	Services      Services               `json:"services" yaml:"services"`
-	Providers     Services               `json:"providers" yaml:"providers"`
-	Events        FunctionPipelines      `json:"events" yaml:"events"`
-	Subscriptions interface{}            `json:"subscriptions" yaml:"subscriptions"`
-	InputBindings interface{}            `json:"inputBindings" yaml:"inputBindings"`
-	Decoding      interface{}            `json:"decoding" yaml:"decoding"`
+	Specs         []Component                `json:"specs" yaml:"specs"`
+	Filters       map[string][]Component     `json:"filters" yaml:"filters"`
+	Codecs        map[string]Component       `json:"codecs" yaml:"codecs"`
+	Compute       Component                  `json:"compute" yaml:"compute"`
+	Resiliency    Resiliency                 `json:"resiliency" yaml:"resiliency"`
+	Services      Services                   `json:"services" yaml:"services"`
+	Providers     Services                   `json:"providers" yaml:"providers"`
+	Events        FunctionPipelines          `json:"events" yaml:"events"`
+	Subscriptions interface{}                `json:"subscriptions" yaml:"subscriptions"`
+	InputBindings interface{}                `json:"inputBindings" yaml:"inputBindings"`
+	Decoding      interface{}                `json:"decoding" yaml:"decoding"`
+	Errors        map[string]errorz.Template `json:"errors" yaml:"errors"`
 }
 
 type Component struct {

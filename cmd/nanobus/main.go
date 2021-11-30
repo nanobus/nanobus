@@ -44,6 +44,7 @@ import (
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/runtime"
@@ -373,9 +374,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	httpFilters := []filter.Filter{}
-	if filters, ok := config.Filters["http"]; ok {
-		for _, f := range filters {
+	filters := []filter.Filter{}
+	if configFilters, ok := config.Filters["http"]; ok {
+		for _, f := range configFilters {
 			filterLoader, ok := filterRegistry[f.Type]
 			if !ok {
 				log.Fatal(fmt.Errorf("could not find filter type %q", f.Type))
@@ -386,8 +387,45 @@ func main() {
 				log.Fatal(fmt.Errorf("could not load filter type %q", f.Type))
 			}
 
-			httpFilters = append(httpFilters, filter)
+			filters = append(filters, filter)
 		}
+	}
+
+	translateError := func(err error) *errorz.Error {
+		if errz, ok := err.(*errorz.Error); ok {
+			return errz
+		}
+		var te errorz.TemplateError
+
+		if terrz, ok := err.(*errorz.TemplateError); ok && terrz != nil {
+			te = *terrz
+		} else {
+			te = errorz.ParseTemplateError(err.Error())
+		}
+
+		tmpl, ok := config.Errors[te.Template]
+		if !ok {
+			return errorz.New(errorz.Internal, err.Error())
+		}
+
+		message := err.Error()
+		if tmpl.Default.Message != nil {
+			message, _ = tmpl.Default.Message.Eval(te.Metadata)
+		}
+
+		e := errorz.New(tmpl.Code, message).
+			WithType(te.Template)
+		if tmpl.Default.Title != nil {
+			title, _ := tmpl.Default.Title.Eval(te.Metadata)
+			e.WithTitle(title)
+		}
+		if tmpl.Instance != nil {
+			instance, _ := tmpl.Instance.Eval(te.Metadata)
+			e.WithInstance(instance)
+		}
+		e.WithMetadata(te.Metadata)
+
+		return e
 	}
 
 	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, payload []byte, metadata map[string][]string) ([]byte, string, error) {
@@ -446,7 +484,7 @@ func main() {
 
 				var statefulResponse stateful.Response
 				if err = invoker.InvokeWithReturn(ctx, target, fn, input, &statefulResponse); err != nil {
-					return nil, "", err
+					return nil, "", translateError(err)
 				}
 
 				mutation := statefulResponse.Mutation
@@ -507,7 +545,7 @@ func main() {
 				function := parts[5] // timer or reminder name
 
 				if err = invoker.Invoke(ctx, actorType+"/"+actorID, callback+"."+function, input); err != nil {
-					return nil, "", err
+					return nil, "", translateError(err)
 				}
 
 				return []byte{}, "application/msgpack", nil
@@ -517,7 +555,7 @@ func main() {
 
 				fmt.Println("Deactivating " + actorType + "/" + actorID)
 				if err = invoker.Invoke(ctx, actorType+"/"+actorID, "deactivate", input); err != nil {
-					return nil, "", err
+					return nil, "", translateError(err)
 				}
 
 				return []byte{}, "application/msgpack", nil
@@ -568,7 +606,7 @@ func main() {
 			if !ok {
 				// No pipeline exits for the operation so invoke directly.
 				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &output); err != nil {
-					return nil, "", err
+					return nil, "", translateError(err)
 				}
 			}
 		}
@@ -905,7 +943,7 @@ func main() {
 				}
 
 				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &response); err != nil {
-					return nil, err
+					return nil, translateError(err)
 				}
 			} else {
 				data, err := msgpack.Marshal(input)
@@ -993,8 +1031,9 @@ func main() {
 	}
 	{
 		// Expose HTTP-RPC
-		transport, err := httprpc.New(httpListenAddr, namespaces, transportInvoker,
-			httprpc.WithFilters(httpFilters...),
+		transport, err := httprpc.New(
+			httpListenAddr, namespaces, transportInvoker, translateError,
+			httprpc.WithFilters(filters...),
 			httprpc.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
@@ -1008,8 +1047,9 @@ func main() {
 	}
 	{
 		// Expose REST
-		transport, err := rest.New(restListenAddr, namespaces, transportInvoker,
-			rest.WithFilters(httpFilters...),
+		transport, err := rest.New(
+			restListenAddr, namespaces, transportInvoker, translateError,
+			rest.WithFilters(filters...),
 			rest.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
@@ -1023,8 +1063,9 @@ func main() {
 	}
 	if natsURL != "" {
 		// Expose NATS
-		transport, err := nats.New(natsURL, namespaces, transportInvoker,
-			nats.WithFilters(httpFilters...),
+		transport, err := nats.New(
+			natsURL, namespaces, transportInvoker, translateError,
+			nats.WithFilters(filters...),
 			nats.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
 			log.Fatal(err)
@@ -1177,9 +1218,8 @@ func (rt *Runtime) SubscriptionsHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func handleError(err error, w http.ResponseWriter, status int) {
-	log.Println(err)
 	w.WriteHeader(status)
-	fmt.Fprintf(w, "error: %v", err)
+	fmt.Fprint(w, err.Error())
 }
 
 func loadConfiguration(filename string) (*runtime.Configuration, error) {
@@ -1265,7 +1305,7 @@ func coalesceInput(namespaces spec.Namespaces, namespace, service, function stri
 func coalesceOutput(namespaces spec.Namespaces, namespace, service, function string, output interface{}) (interface{}, error) {
 	var err error
 	if oper, ok := namespaces.Operation(namespace, service, function); ok {
-		if oper.Returns != nil {
+		if oper.Returns != nil && output != nil {
 			outputMap, ok := coalesce.ToMapSI(output, true)
 			if !ok {
 				return nil, errors.New("output is not a map")

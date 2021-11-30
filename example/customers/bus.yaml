@@ -19,6 +19,13 @@ codecs:
       schemaRegistryURLs:
         - http://localhost:8081
 
+errors:
+  customer_not_found:
+    type: not_found
+    code: 5
+    default:
+      message: Customer {{ .key }} not found
+  
 services:
   'customers.v1.Inbound':
     getCustomer:
@@ -106,6 +113,7 @@ providers:
           with:
             store: statestore
             key: input.id
+            notFoundError: customer_not_found
 
     customerCreated:
       summary: Send a message to the customer

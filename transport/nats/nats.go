@@ -12,20 +12,22 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/multierr"
 
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 )
 
 type NATS struct {
-	ctx        context.Context
-	cancel     context.CancelFunc
-	nc         *nats.Conn
-	namespaces spec.Namespaces
-	invoker    transport.Invoker
-	codecs     map[string]functions.Codec
-	filters    []filter.Filter
-	subs       []*nats.Subscription
+	ctx           context.Context
+	cancel        context.CancelFunc
+	nc            *nats.Conn
+	namespaces    spec.Namespaces
+	invoker       transport.Invoker
+	errorResolver errorz.Resolver
+	codecs        map[string]functions.Codec
+	filters       []filter.Filter
+	subs          []*nats.Subscription
 }
 
 type optionsHolder struct {
@@ -51,7 +53,7 @@ func WithFilters(filters ...filter.Filter) Option {
 	}
 }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, options ...Option) (transport.Transport, error) {
+func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -71,13 +73,14 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	return &NATS{
-		ctx:        ctx,
-		cancel:     cancel,
-		nc:         nc,
-		namespaces: namespaces,
-		invoker:    invoker,
-		codecs:     codecMap,
-		filters:    opts.filters,
+		ctx:           ctx,
+		cancel:        cancel,
+		nc:            nc,
+		namespaces:    namespaces,
+		invoker:       invoker,
+		errorResolver: errorResolver,
+		codecs:        codecMap,
+		filters:       opts.filters,
 	}, nil
 }
 
@@ -126,20 +129,29 @@ func (t *NATS) handler(m *nats.Msg) {
 		contentType = "application/json"
 	}
 
+	codec, ok := t.codecs[contentType]
+	if !ok {
+		header := make(nats.Header)
+		header.Set("Status", strconv.Itoa(http.StatusUnsupportedMediaType))
+		header.Set("Content-Type", "text/plain")
+
+		message := fmt.Sprintf("%v: %s", ErrUnregisteredContentType, contentType)
+		reply := nats.Msg{
+			Header: header,
+			Data:   []byte(message),
+		}
+		m.RespondMsg(&reply)
+		return
+	}
+
 	ctx := context.Background()
 
 	for _, filter := range t.filters {
 		var err error
 		if ctx, err = filter(ctx, m.Header); err != nil {
-			t.handleError(err, m, http.StatusInternalServerError)
+			t.handleError(err, codec, m, http.StatusInternalServerError)
 			return
 		}
-	}
-
-	codec, ok := t.codecs[contentType]
-	if !ok {
-		t.handleError(ErrUnregisteredContentType, m, http.StatusUnsupportedMediaType)
-		return
 	}
 
 	requestBytes := m.Data
@@ -147,7 +159,7 @@ func (t *NATS) handler(m *nats.Msg) {
 	var input interface{}
 	if len(requestBytes) > 0 {
 		if err := codec.Decode(requestBytes, &input); err != nil {
-			t.handleError(err, m, http.StatusInternalServerError)
+			t.handleError(err, codec, m, http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -160,7 +172,7 @@ func (t *NATS) handler(m *nats.Msg) {
 		if errors.Is(err, transport.ErrBadInput) {
 			code = http.StatusBadRequest
 		}
-		t.handleError(err, m, code)
+		t.handleError(err, codec, m, code)
 		return
 	}
 
@@ -172,21 +184,27 @@ func (t *NATS) handler(m *nats.Msg) {
 	header.Set("Content-Type", codec.ContentType())
 	reply.Data, err = codec.Encode(response)
 	if err != nil {
-		t.handleError(err, m, http.StatusInternalServerError)
+		t.handleError(err, codec, m, http.StatusInternalServerError)
 		return
 	}
 	m.RespondMsg(&reply)
 }
 
-func (t *NATS) handleError(err error, m *nats.Msg, status int) {
-	log.Println(err)
+func (t *NATS) handleError(err error, codec functions.Codec, m *nats.Msg, status int) {
+	errz := t.errorResolver(err)
+
 	header := make(nats.Header)
+	header.Set("Status", strconv.Itoa(errz.Status))
+	header.Set("Content-Type", codec.ContentType())
+
+	payload, err := codec.Encode(errz)
+	if err != nil {
+		payload = []byte(errz.Message)
+	}
+
 	reply := nats.Msg{
 		Header: header,
+		Data:   payload,
 	}
-	header.Set("Status", strconv.Itoa(status))
-	header.Set("Content-Type", "text/plain")
-	data := fmt.Sprintf("error: %v", err)
-	reply.Data = []byte(data)
 	m.RespondMsg(&reply)
 }

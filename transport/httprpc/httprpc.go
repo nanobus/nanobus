@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -12,17 +11,19 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nanobus/go-functions"
 
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 )
 
 type HTTPRPC struct {
-	address string
-	invoker transport.Invoker
-	codecs  map[string]functions.Codec
-	filters []filter.Filter
-	ln      net.Listener
+	address       string
+	invoker       transport.Invoker
+	errorResolver errorz.Resolver
+	codecs        map[string]functions.Codec
+	filters       []filter.Filter
+	ln            net.Listener
 }
 
 type optionsHolder struct {
@@ -53,7 +54,7 @@ func WithFilters(filters ...filter.Filter) Option {
 // 	return "httprpc", New
 // }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, options ...Option) (transport.Transport, error) {
+func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -66,10 +67,11 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	return &HTTPRPC{
-		address: address,
-		invoker: invoker,
-		codecs:  codecMap,
-		filters: opts.filters,
+		address:       address,
+		invoker:       invoker,
+		errorResolver: errorResolver,
+		codecs:        codecMap,
+		filters:       opts.filters,
 	}, nil
 }
 
@@ -98,17 +100,6 @@ func (t *HTTPRPC) Close() (err error) {
 
 func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	namespace := mux.Vars(r)["namespace"]
-	function := mux.Vars(r)["function"]
-	id := mux.Vars(r)["id"]
-
-	lastDot := strings.LastIndexByte(namespace, '.')
-	if lastDot < 0 {
-		handleError(ErrInvalidURISyntax, w, http.StatusBadRequest)
-		return
-	}
-	service := namespace[lastDot+1:]
-	namespace = namespace[:lastDot]
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType == "" {
@@ -117,30 +108,43 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	codec, ok := t.codecs[contentType]
+	if !ok {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		fmt.Fprintf(w, "%v: %s", ErrUnregisteredContentType, contentType)
+		return
+	}
+
+	namespace := mux.Vars(r)["namespace"]
+	function := mux.Vars(r)["function"]
+	id := mux.Vars(r)["id"]
+
+	lastDot := strings.LastIndexByte(namespace, '.')
+	if lastDot < 0 {
+		t.handleError(ErrInvalidURISyntax, codec, w, http.StatusBadRequest)
+		return
+	}
+	service := namespace[lastDot+1:]
+	namespace = namespace[:lastDot]
+
 	for _, filter := range t.filters {
 		var err error
 		if ctx, err = filter(ctx, r.Header); err != nil {
-			handleError(err, w, http.StatusInternalServerError)
+			t.handleError(err, codec, w, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	codec, ok := t.codecs[contentType]
-	if !ok {
-		handleError(ErrUnregisteredContentType, w, http.StatusUnsupportedMediaType)
-		return
-	}
-
 	requestBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		handleError(err, w, http.StatusInternalServerError)
+		t.handleError(err, codec, w, http.StatusInternalServerError)
 		return
 	}
 
 	var input interface{}
 	if len(requestBytes) > 0 {
 		if err := codec.Decode(requestBytes, &input); err != nil {
-			handleError(err, w, http.StatusInternalServerError)
+			t.handleError(err, codec, w, http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -153,22 +157,29 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, transport.ErrBadInput) {
 			code = http.StatusBadRequest
 		}
-		handleError(err, w, code)
+		t.handleError(err, codec, w, code)
 		return
 	}
 
 	w.Header().Set("Content-Type", codec.ContentType())
 	responseBytes, err := codec.Encode(response)
 	if err != nil {
-		handleError(err, w, http.StatusInternalServerError)
+		t.handleError(err, codec, w, http.StatusInternalServerError)
 		return
 	}
 
 	w.Write(responseBytes)
 }
 
-func handleError(err error, w http.ResponseWriter, status int) {
-	log.Println(err)
-	w.WriteHeader(status)
-	fmt.Fprintf(w, "error: %v", err)
+func (t *HTTPRPC) handleError(err error, codec functions.Codec, w http.ResponseWriter, status int) {
+	errz := t.errorResolver(err)
+
+	w.Header().Add("Content-Type", codec.ContentType())
+	w.WriteHeader(errz.Status)
+	payload, err := codec.Encode(errz)
+	if err != nil {
+		fmt.Fprint(w, "unknown error")
+	}
+
+	w.Write(payload)
 }

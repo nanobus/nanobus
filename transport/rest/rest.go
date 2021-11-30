@@ -15,19 +15,21 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nanobus/go-functions"
 
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 )
 
 type Rest struct {
-	address    string
-	namespaces spec.Namespaces
-	invoker    transport.Invoker
-	codecs     map[string]functions.Codec
-	filters    []filter.Filter
-	router     *mux.Router
-	ln         net.Listener
+	address       string
+	namespaces    spec.Namespaces
+	invoker       transport.Invoker
+	errorResolver errorz.Resolver
+	codecs        map[string]functions.Codec
+	filters       []filter.Filter
+	router        *mux.Router
+	ln            net.Listener
 }
 
 type queryParam struct {
@@ -67,7 +69,7 @@ func WithFilters(filters ...filter.Filter) Option {
 // 	return "rest", New
 // }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, options ...Option) (transport.Transport, error) {
+func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -93,12 +95,13 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	rest := Rest{
-		address:    address,
-		namespaces: namespaces,
-		invoker:    invoker,
-		codecs:     codecMap,
-		filters:    opts.filters,
-		router:     r,
+		address:       address,
+		namespaces:    namespaces,
+		invoker:       invoker,
+		errorResolver: errorResolver,
+		codecs:        codecMap,
+		filters:       opts.filters,
+		router:        r,
 	}
 
 	for _, namespace := range namespaces {
@@ -263,23 +266,24 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			contentType = "application/json"
 		}
 
+		codec, ok := t.codecs[contentType]
+		if !ok {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			fmt.Fprintf(w, "%v: %s", ErrUnregisteredContentType, contentType)
+			return
+		}
+
 		for _, filter := range t.filters {
 			var err error
 			if ctx, err = filter(ctx, r.Header); err != nil {
-				handleError(err, w, http.StatusInternalServerError)
+				t.handleError(err, codec, w, http.StatusInternalServerError)
 				return
 			}
 		}
 
-		codec, ok := t.codecs[contentType]
-		if !ok {
-			handleError(ErrUnregisteredContentType, w, http.StatusUnsupportedMediaType)
-			return
-		}
-
 		requestBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			handleError(err, w, http.StatusInternalServerError)
+			t.handleError(err, codec, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -287,13 +291,13 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		if hasBody && len(requestBytes) > 0 {
 			if bodyParamName == "" {
 				if err := codec.Decode(requestBytes, &input); err != nil {
-					handleError(err, w, http.StatusInternalServerError)
+					t.handleError(err, codec, w, http.StatusInternalServerError)
 					return
 				}
 			} else {
 				var body interface{}
 				if err := codec.Decode(requestBytes, &body); err != nil {
-					handleError(err, w, http.StatusInternalServerError)
+					t.handleError(err, codec, w, http.StatusInternalServerError)
 					return
 				}
 				input = map[string]interface{}{
@@ -314,7 +318,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 				if q, ok := queryParams[name]; ok {
 					converted, _, err := q.typeRef.Coalesce(values[0], false)
 					if err != nil {
-						handleError(err, w, http.StatusBadRequest)
+						t.handleError(err, codec, w, http.StatusBadRequest)
 						return
 					}
 					wrapper := input
@@ -340,14 +344,14 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			if errors.Is(err, transport.ErrBadInput) {
 				code = http.StatusBadRequest
 			}
-			handleError(err, w, code)
+			t.handleError(err, codec, w, code)
 			return
 		}
 
 		w.Header().Set("Content-Type", codec.ContentType())
 		responseBytes, err := codec.Encode(response)
 		if err != nil {
-			handleError(err, w, http.StatusInternalServerError)
+			t.handleError(err, codec, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -355,8 +359,15 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	}
 }
 
-func handleError(err error, w http.ResponseWriter, status int) {
-	log.Println(err)
-	w.WriteHeader(status)
-	fmt.Fprintf(w, "error: %v", err)
+func (t *Rest) handleError(err error, codec functions.Codec, w http.ResponseWriter, status int) {
+	errz := t.errorResolver(err)
+
+	w.Header().Add("Content-Type", codec.ContentType())
+	w.WriteHeader(errz.Status)
+	payload, err := codec.Encode(errz)
+	if err != nil {
+		fmt.Fprint(w, "unknown error")
+	}
+
+	w.Write(payload)
 }

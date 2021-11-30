@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/nanobus/go-functions"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
 )
 
@@ -12,7 +13,7 @@ var ErrBadInput = errors.New("input was malformed")
 
 type (
 	NamedLoader func() (string, Loader)
-	Loader      func(address string, namespaces spec.Namespaces, invoker Invoker, codecs ...functions.Codec) (Transport, error)
+	Loader      func(address string, namespaces spec.Namespaces, invoker Invoker, errorResolver errorz.Resolver, codecs ...functions.Codec) (Transport, error)
 
 	Transport interface {
 		Listen() error

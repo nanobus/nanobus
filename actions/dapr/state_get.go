@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"path"
 
 	"github.com/dapr/components-contrib/state"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -20,6 +19,8 @@ type GetStateConfig struct {
 	Store string `mapstructure:"store"`
 	// Operation is the name of the operation type for the binding to invoke
 	Key *expr.ValueExpr `mapstructure:"key"`
+	// NotFoundError is the error to return if the key is not found
+	NotFoundError string `mapstructure:"notFoundError"`
 }
 
 // GetState is the NamedLoader for the Dapr get state operation
@@ -57,12 +58,6 @@ func GetStateAction(
 		}
 		key := fmt.Sprintf("%v", keyInt)
 
-		u, err := url.Parse(daprBaseURI)
-		if err != nil {
-			return nil, err
-		}
-		u.Path = path.Join(u.Path, "v1.0/state", config.Store, key)
-
 		resp, err := store.Get(&state.GetRequest{
 			Key: key,
 		})
@@ -71,7 +66,14 @@ func GetStateAction(
 		}
 
 		var response interface{}
-		err = json.Unmarshal(resp.Data, &response)
+		if len(resp.Data) > 0 {
+			err = json.Unmarshal(resp.Data, &response)
+		} else if config.NotFoundError != "" {
+			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
+				"store": config.Store,
+				"key":   key,
+			})
+		}
 
 		return response, err
 	}
