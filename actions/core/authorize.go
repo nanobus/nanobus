@@ -17,7 +17,7 @@ type AuthorizeConfig struct {
 	Condition *expr.ValueExpr        `mapstructure:"condition"`
 	Has       []string               `mapstructure:"has"`
 	Check     map[string]interface{} `mapstructure:"check"`
-	Message   string                 `mapstructure:"message"`
+	Error     string                 `mapstructure:"error"`
 }
 
 // Authorize is the NamedLoader for the log action.
@@ -27,7 +27,7 @@ func Authorize() (string, actions.Loader) {
 
 func AuthorizeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := AuthorizeConfig{
-		Message: "unauthorized",
+		Error: "permission_denied",
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func AuthorizeAction(
 			}
 
 			if !result {
-				return nil, errors.New(config.Message) // TODO: standard error
+				return nil, errors.New(config.Error)
 			}
 		}
 
@@ -59,14 +59,14 @@ func AuthorizeAction(
 
 		for _, claim := range config.Has {
 			if _, ok := claimsMap[claim]; !ok {
-				return nil, errors.New(config.Message) // TODO: standard error
+				return nil, errors.New(config.Error)
 			}
 		}
 
 		for claim, value := range config.Check {
 			v := claimsMap[claim]
 			if v != value {
-				return nil, errors.New(config.Message) // TODO: standard error
+				return nil, errors.New(config.Error)
 			}
 		}
 

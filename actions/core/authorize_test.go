@@ -49,7 +49,7 @@ func TestAuthorize(t *testing.T) {
 				"has": []string{"test"},
 			},
 			data:      actions.Data{},
-			actionErr: "unauthorized",
+			actionErr: "permission_denied",
 		},
 		{
 			name: "using check",
@@ -64,7 +64,7 @@ func TestAuthorize(t *testing.T) {
 			data: actions.Data{},
 		},
 		{
-			name: "using check - unauthorized",
+			name: "using check - permission_denied",
 			claims: claims.Claims{
 				"test": true,
 			},
@@ -74,7 +74,7 @@ func TestAuthorize(t *testing.T) {
 				},
 			},
 			data:      actions.Data{},
-			actionErr: "unauthorized",
+			actionErr: "permission_denied",
 		},
 		{
 			name: "using condition",
@@ -103,7 +103,7 @@ func TestAuthorize(t *testing.T) {
 					"test": true,
 				},
 			},
-			actionErr: "unauthorized",
+			actionErr: "permission_denied",
 		},
 		{
 			name: "unauthorized message",
@@ -111,8 +111,8 @@ func TestAuthorize(t *testing.T) {
 				"nottest": true,
 			},
 			config: map[string]interface{}{
-				"has":     []string{"test"},
-				"message": "whomp whomp",
+				"has":   []string{"test"},
+				"error": "whomp whomp",
 			},
 			data:      actions.Data{},
 			actionErr: "whomp whomp",

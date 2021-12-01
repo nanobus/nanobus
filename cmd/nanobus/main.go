@@ -405,6 +405,11 @@ func main() {
 
 		tmpl, ok := config.Errors[te.Template]
 		if !ok {
+			// Default error if template matches a code name.
+			if code, ok := errorz.CodeLookup[te.Template]; ok {
+				return errorz.New(code)
+			}
+
 			return errorz.New(errorz.Internal, err.Error())
 		}
 

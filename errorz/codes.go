@@ -149,6 +149,26 @@ func (c ErrCode) MarshalJSON() ([]byte, error) {
 
 var numCodeNames = len(codeNames)
 
+var CodeLookup = map[string]ErrCode{
+	"ok":                  OK,
+	"canceled":            Canceled,
+	"unknown":             Unknown,
+	"invalid_argument":    InvalidArgument,
+	"deadline_exceeded":   DeadlineExceeded,
+	"not_found":           NotFound,
+	"already_exists":      AlreadyExists,
+	"permission_denied":   PermissionDenied,
+	"resource_exhausted":  ResourceExhausted,
+	"failed_precondition": FailedPrecondition,
+	"aborted":             Aborted,
+	"out_of_range":        OutOfRange,
+	"unimplemented":       Unimplemented,
+	"internal":            Internal,
+	"unavailable":         Unavailable,
+	"data_loss":           DataLoss,
+	"unauthenticated":     Unauthenticated,
+}
+
 var codeNames = [...]string{
 	OK:                 "ok",
 	Canceled:           "canceled",
