@@ -420,15 +420,21 @@ func main() {
 
 		e := errorz.New(tmpl.Code, message).
 			WithType(te.Template)
+		if tmpl.Type != "" {
+			e.Type = tmpl.Type
+		}
+		if tmpl.Status != 0 {
+			e.Status = tmpl.Status
+		}
 		if tmpl.Default.Title != nil {
 			title, _ := tmpl.Default.Title.Eval(te.Metadata)
-			e.WithTitle(title)
+			e.Title = title
 		}
 		if tmpl.Instance != nil {
 			instance, _ := tmpl.Instance.Eval(te.Metadata)
-			e.WithInstance(instance)
+			e.Instance = instance
 		}
-		e.WithMetadata(te.Metadata)
+		e.Metadata = te.Metadata
 
 		return e
 	}

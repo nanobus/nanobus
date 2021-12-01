@@ -1,5 +1,10 @@
 package errorz
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // The code below is based on
 // https://github.com/encoredev/encore.dev/blob/main/beta/errs/codes.go
 
@@ -145,6 +150,32 @@ func (c ErrCode) HTTPStatus() int {
 func (c ErrCode) MarshalJSON() ([]byte, error) {
 	s := c.String()
 	return []byte("\"" + s + "\""), nil
+}
+
+func (t *ErrCode) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	return t.Parse(str)
+}
+
+func (t *ErrCode) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	return t.Parse(str)
+}
+
+func (t *ErrCode) Parse(str string) error {
+	code, ok := CodeLookup[str]
+	if !ok {
+		return fmt.Errorf("unknown error code %q", str)
+	}
+	*t = code
+
+	return nil
 }
 
 var numCodeNames = len(codeNames)

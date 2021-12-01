@@ -21,8 +21,8 @@ codecs:
 
 errors:
   customer_not_found:
-    type: not_found
-    code: 5
+    type: CustomerNotFound
+    code: not_found
     default:
       message: Customer {{ .key }} not found
   
