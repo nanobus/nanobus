@@ -21,6 +21,19 @@ codecs:
       schemaRegistryURLs:
         - http://localhost:8081
 
+errors:
+  permission_denied:
+    type: PermissionDenied
+    code: permission_denied
+    title: Permission denied
+    message: You are not authorized to perform this operation.
+
+  customer_not_found:
+    type: CustomerNotFound
+    code: not_found
+    title: Customer not found
+    message: Customer {{ .key }} not found
+
 services:
   'customers.v1.Inbound':
     getCustomer:
@@ -108,6 +121,7 @@ providers:
           with:
             store: statestore
             key: input.id
+            notFoundError: customer_not_found
 
     customerCreated:
       summary: Send a message to the customer

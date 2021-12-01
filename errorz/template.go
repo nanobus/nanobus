@@ -9,12 +9,13 @@ import (
 type Resolver func(err error) *Error
 
 type Template struct {
-	Type     string  `json:"type,omitempty" yaml:"type,omitempty" mapstructure:"type"`
-	Code     ErrCode `json:"code" yaml:"code" mapstructure:"code"`
-	Status   int     `json:"status,omitempty" yaml:"status,omitempty" mapstructure:"status"`
-	Default  Strings `json:"default" yaml:"default" mapstructure:"default"`
-	Instance *Text   `json:"instance,omitempty" yaml:"instance,omitempty" mapstructure:"instance"`
-	// TODO: support i18n
+	Type      string             `json:"type,omitempty" yaml:"type,omitempty" mapstructure:"type"`
+	Code      ErrCode            `json:"code" yaml:"code" mapstructure:"code"`
+	Status    int                `json:"status,omitempty" yaml:"status,omitempty" mapstructure:"status"`
+	Title     *Text              `json:"title,omitempty" yaml:"title,omitempty" mapstructure:"title"`
+	Message   *Text              `json:"message,omitempty" yaml:"message,omitempty" mapstructure:"message"`
+	Instance  *Text              `json:"instance,omitempty" yaml:"instance,omitempty" mapstructure:"instance"`
+	Languages map[string]Strings `json:"languages,omitempty" yaml:"languages,omitempty" mapstructure:"languages"`
 }
 
 type Strings struct {

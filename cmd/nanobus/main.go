@@ -414,8 +414,8 @@ func main() {
 		}
 
 		message := err.Error()
-		if tmpl.Default.Message != nil {
-			message, _ = tmpl.Default.Message.Eval(te.Metadata)
+		if tmpl.Message != nil {
+			message, _ = tmpl.Message.Eval(te.Metadata)
 		}
 
 		e := errorz.New(tmpl.Code, message)
@@ -426,8 +426,8 @@ func main() {
 		if tmpl.Status != 0 {
 			e.Status = tmpl.Status
 		}
-		if tmpl.Default.Title != nil {
-			title, _ := tmpl.Default.Title.Eval(te.Metadata)
+		if tmpl.Title != nil {
+			title, _ := tmpl.Title.Eval(te.Metadata)
 			e.Title = title
 		}
 		if tmpl.Instance != nil {

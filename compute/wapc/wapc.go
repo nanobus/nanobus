@@ -2,6 +2,7 @@ package wapc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	go_runtime "runtime"
@@ -81,7 +82,21 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoke
 	if err != nil {
 		return nil, err
 	}
-	invoker := functions.NewInvoker(m.Invoke, msgpackcodec)
+	invoke := func(ctx context.Context, namespace, operation string, payload []byte) ([]byte, error) {
+		resp, err := m.Invoke(ctx, namespace, operation, payload)
+		if err != nil {
+			// Trim out wrapped message.
+			msg := err.Error()
+			msg = strings.TrimPrefix(msg, "Host error: ")
+			i := strings.Index(msg, "; ~lib/@wapc/")
+			if i > 0 {
+				msg = msg[:i]
+			}
+			return nil, errors.New(msg)
+		}
+		return resp, nil
+	}
+	invoker := functions.NewInvoker(invoke, msgpackcodec)
 
 	return invoker, nil
 }

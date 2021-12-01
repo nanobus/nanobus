@@ -20,11 +20,17 @@ codecs:
         - http://localhost:8081
 
 errors:
+  permission_denied:
+    type: PermissionDenied
+    code: permission_denied
+    title: Permission denied
+    message: You are not authorized to perform this operation.
+
   customer_not_found:
     type: CustomerNotFound
     code: not_found
-    default:
-      message: Customer {{ .key }} not found
+    title: Customer not found
+    message: Customer {{ .key }} not found
   
 services:
   'customers.v1.Inbound':

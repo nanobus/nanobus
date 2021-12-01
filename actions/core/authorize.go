@@ -2,11 +2,11 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/security/claims"
@@ -51,7 +51,9 @@ func AuthorizeAction(
 			}
 
 			if !result {
-				return nil, errors.New(config.Error)
+				return nil, errorz.Return(config.Error, errorz.Metadata{
+					"expr": config.Condition.Expr(),
+				})
 			}
 		}
 
@@ -59,14 +61,19 @@ func AuthorizeAction(
 
 		for _, claim := range config.Has {
 			if _, ok := claimsMap[claim]; !ok {
-				return nil, errors.New(config.Error)
+				return nil, errorz.Return(config.Error, errorz.Metadata{
+					"claim": claim,
+				})
 			}
 		}
 
 		for claim, value := range config.Check {
 			v := claimsMap[claim]
 			if v != value {
-				return nil, errors.New(config.Error)
+				return nil, errorz.Return(config.Error, errorz.Metadata{
+					"claim": claim,
+					"want":  value,
+				})
 			}
 		}
 
