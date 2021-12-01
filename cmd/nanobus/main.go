@@ -418,8 +418,8 @@ func main() {
 			message, _ = tmpl.Default.Message.Eval(te.Metadata)
 		}
 
-		e := errorz.New(tmpl.Code, message).
-			WithType(te.Template)
+		e := errorz.New(tmpl.Code, message)
+		e.Type = te.Template
 		if tmpl.Type != "" {
 			e.Type = tmpl.Type
 		}

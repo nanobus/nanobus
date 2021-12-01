@@ -82,37 +82,61 @@ func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-func (e *Error) WithType(t string) *Error {
-	e.Type = t
-	return e
+type Builder struct {
+	err *Error
 }
 
-func (e *Error) WithTitle(format string, args ...interface{}) *Error {
-	e.Title = fmt.Sprintf(format, args...)
-	return e
+func Build(code ErrCode) Builder {
+	return Builder{
+		err: New(code),
+	}
 }
 
-func (e *Error) WithMessage(format string, args ...interface{}) *Error {
-	e.Message = fmt.Sprintf(format, args...)
-	return e
+func (b Builder) Type(t string) Builder {
+	b.err.Type = t
+	return b
 }
 
-func (e *Error) WithDetails(details interface{}) *Error {
-	e.Details = details
-	return e
+func (b Builder) Title(format string, args ...interface{}) Builder {
+	b.err.Title = fmt.Sprintf(format, args...)
+	return b
 }
 
-func (e *Error) WithMetadata(metadata Metadata) *Error {
-	e.Metadata = metadata
-	return e
+func (b Builder) Message(message string) Builder {
+	b.err.Message = message
+	return b
 }
 
-func (e *Error) WithError(err error) *Error {
-	e.Err = err
-	return e
+func (b Builder) Messagef(format string, args ...interface{}) Builder {
+	b.err.Message = fmt.Sprintf(format, args...)
+	return b
 }
 
-func (e *Error) WithInstance(instance string) *Error {
-	e.Instance = instance
-	return e
+func (b Builder) Details(details interface{}) Builder {
+	b.err.Details = details
+	return b
+}
+
+func (b Builder) Metadata(metadata Metadata) Builder {
+	b.err.Metadata = metadata
+	return b
+}
+
+func (b Builder) Error(err error) Builder {
+	b.err.Err = err
+	return b
+}
+
+func (b Builder) Instance(instance string) Builder {
+	b.err.Instance = instance
+	return b
+}
+
+func (b Builder) Multi(errs ...*Error) Builder {
+	b.err.Errors = append(b.err.Errors, errs...)
+	return b
+}
+
+func (b Builder) Err() *Error {
+	return b.err
 }
