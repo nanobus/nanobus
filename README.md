@@ -14,7 +14,7 @@ Communicating with other services and Dapr building block is simplified in decla
 
 ### Automatic API endpoints with documentation
 
-Share your service through multiple protocols, including REST, gRPC and NATS, without having to write additional code. OpenAPI/Swagger UI, AsyncAPI and Protobuf provide documentation for your partner teams.
+Share your service through multiple protocols, including REST, gRPC and NATS, without writing additional code. Provide OpenAPI/Swagger UI, AsyncAPI and Protobuf documentation to your partner teams.
 
 ### Consistent polyglot programming model
 
