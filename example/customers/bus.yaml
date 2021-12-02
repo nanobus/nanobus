@@ -30,7 +30,7 @@ errors:
     type: CustomerNotFound
     code: not_found
     title: Customer not found
-    message: Customer {{ .key }} not found
+    message: Customer {{ pick .key .id }} not found
   
 services:
   'customers.v1.Inbound':
