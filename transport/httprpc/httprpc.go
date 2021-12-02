@@ -121,7 +121,7 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 
 	lastDot := strings.LastIndexByte(namespace, '.')
 	if lastDot < 0 {
-		t.handleError(ErrInvalidURISyntax, codec, w, http.StatusBadRequest)
+		t.handleError(ErrInvalidURISyntax, codec, r, w, http.StatusBadRequest)
 		return
 	}
 	service := namespace[lastDot+1:]
@@ -130,21 +130,21 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 	for _, filter := range t.filters {
 		var err error
 		if ctx, err = filter(ctx, r.Header); err != nil {
-			t.handleError(err, codec, w, http.StatusInternalServerError)
+			t.handleError(err, codec, r, w, http.StatusInternalServerError)
 			return
 		}
 	}
 
 	requestBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		t.handleError(err, codec, w, http.StatusInternalServerError)
+		t.handleError(err, codec, r, w, http.StatusInternalServerError)
 		return
 	}
 
 	var input interface{}
 	if len(requestBytes) > 0 {
 		if err := codec.Decode(requestBytes, &input); err != nil {
-			t.handleError(err, codec, w, http.StatusInternalServerError)
+			t.handleError(err, codec, r, w, http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -157,22 +157,23 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, transport.ErrBadInput) {
 			code = http.StatusBadRequest
 		}
-		t.handleError(err, codec, w, code)
+		t.handleError(err, codec, r, w, code)
 		return
 	}
 
 	w.Header().Set("Content-Type", codec.ContentType())
 	responseBytes, err := codec.Encode(response)
 	if err != nil {
-		t.handleError(err, codec, w, http.StatusInternalServerError)
+		t.handleError(err, codec, r, w, http.StatusInternalServerError)
 		return
 	}
 
 	w.Write(responseBytes)
 }
 
-func (t *HTTPRPC) handleError(err error, codec functions.Codec, w http.ResponseWriter, status int) {
+func (t *HTTPRPC) handleError(err error, codec functions.Codec, req *http.Request, w http.ResponseWriter, status int) {
 	errz := t.errorResolver(err)
+	errz.Path = req.RequestURI
 
 	w.Header().Add("Content-Type", codec.ContentType())
 	w.WriteHeader(errz.Status)

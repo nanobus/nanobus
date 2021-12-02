@@ -192,6 +192,7 @@ func (t *NATS) handler(m *nats.Msg) {
 
 func (t *NATS) handleError(err error, codec functions.Codec, m *nats.Msg, status int) {
 	errz := t.errorResolver(err)
+	errz.Path = m.Subject
 
 	header := make(nats.Header)
 	header.Set("Status", strconv.Itoa(errz.Status))

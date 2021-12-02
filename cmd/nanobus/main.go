@@ -430,9 +430,9 @@ func main() {
 			title, _ := tmpl.Title.Eval(te.Metadata)
 			e.Title = title
 		}
-		if tmpl.Instance != nil {
-			instance, _ := tmpl.Instance.Eval(te.Metadata)
-			e.Instance = instance
+		if tmpl.Help != nil {
+			instance, _ := tmpl.Help.Eval(te.Metadata)
+			e.Help = instance
 		}
 		e.Metadata = te.Metadata
 

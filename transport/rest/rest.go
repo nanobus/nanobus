@@ -276,14 +276,14 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		for _, filter := range t.filters {
 			var err error
 			if ctx, err = filter(ctx, r.Header); err != nil {
-				t.handleError(err, codec, w, http.StatusInternalServerError)
+				t.handleError(err, codec, r, w, http.StatusInternalServerError)
 				return
 			}
 		}
 
 		requestBytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			t.handleError(err, codec, w, http.StatusInternalServerError)
+			t.handleError(err, codec, r, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -291,13 +291,13 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		if hasBody && len(requestBytes) > 0 {
 			if bodyParamName == "" {
 				if err := codec.Decode(requestBytes, &input); err != nil {
-					t.handleError(err, codec, w, http.StatusInternalServerError)
+					t.handleError(err, codec, r, w, http.StatusInternalServerError)
 					return
 				}
 			} else {
 				var body interface{}
 				if err := codec.Decode(requestBytes, &body); err != nil {
-					t.handleError(err, codec, w, http.StatusInternalServerError)
+					t.handleError(err, codec, r, w, http.StatusInternalServerError)
 					return
 				}
 				input = map[string]interface{}{
@@ -318,7 +318,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 				if q, ok := queryParams[name]; ok {
 					converted, _, err := q.typeRef.Coalesce(values[0], false)
 					if err != nil {
-						t.handleError(err, codec, w, http.StatusBadRequest)
+						t.handleError(err, codec, r, w, http.StatusBadRequest)
 						return
 					}
 					wrapper := input
@@ -344,14 +344,14 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			if errors.Is(err, transport.ErrBadInput) {
 				code = http.StatusBadRequest
 			}
-			t.handleError(err, codec, w, code)
+			t.handleError(err, codec, r, w, code)
 			return
 		}
 
 		w.Header().Set("Content-Type", codec.ContentType())
 		responseBytes, err := codec.Encode(response)
 		if err != nil {
-			t.handleError(err, codec, w, http.StatusInternalServerError)
+			t.handleError(err, codec, r, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -359,8 +359,9 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	}
 }
 
-func (t *Rest) handleError(err error, codec functions.Codec, w http.ResponseWriter, status int) {
+func (t *Rest) handleError(err error, codec functions.Codec, req *http.Request, w http.ResponseWriter, status int) {
 	errz := t.errorResolver(err)
+	errz.Path = req.RequestURI
 
 	w.Header().Add("Content-Type", codec.ContentType())
 	w.WriteHeader(errz.Status)

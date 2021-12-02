@@ -22,9 +22,12 @@ type Error struct {
 	// Metadata is debugging information structured as key-value
 	// pairs. Metadata is not exposed to external clients.
 	Metadata Metadata `json:"-" yaml:"-" msgpack:"-"`
-	// Instance is a URI that identifies the specific
-	// occurrence of the error.
+	// Path indicates the request path that generated the error.
+	Path string `json:"path,omitempty" yaml:"path,omitempty" msgpack:"path,omitempty"`
+	// Instance is a URI that identifies the specific occurrence of the error.
 	Instance string `json:"instance,omitempty" yaml:"instance,omitempty" msgpack:"instance,omitempty"`
+	// Help is a URI that hosts additional information about the error.
+	Help string `json:"help,omitempty" yaml:"help,omitempty" msgpack:"help,omitempty"`
 	// Err is the underlying error if any.
 	Err error `json:"-" yaml:"-" msgpack:"-"`
 	// Errors encapsulate multiple errors that occurred.
@@ -86,9 +89,13 @@ type Builder struct {
 	err *Error
 }
 
-func Build(code ErrCode) Builder {
+func Build(code ErrCode, err ...error) Builder {
+	var e error
+	if len(err) > 0 {
+		e = err[0]
+	}
 	return Builder{
-		err: New(code),
+		err: Wrap(e, code),
 	}
 }
 
@@ -129,6 +136,11 @@ func (b Builder) Error(err error) Builder {
 
 func (b Builder) Instance(instance string) Builder {
 	b.err.Instance = instance
+	return b
+}
+
+func (b Builder) Help(help string) Builder {
+	b.err.Help = help
 	return b
 }
 
