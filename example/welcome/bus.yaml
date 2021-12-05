@@ -28,7 +28,7 @@ resiliency:
 events:
   "io.nanobus.examples.customers.Customer":
     summary: Receives the customer message
-    actions:
+    steps:
       - summary: Send to route
         name: invoke
         with:
@@ -40,7 +40,7 @@ events:
 
   receiveMessage:
     summary: Receives the customer message
-    actions:
+    steps:
       - summary: Routing message
         name: route
         with:
@@ -61,7 +61,7 @@ providers:
   'welcome.v1.Outbound':
     sendEmail:
       summary: Sends an email to the customer
-      actions:
+      steps:
         - summary: Pretend to send an email by logging the message
           name: log
           with:

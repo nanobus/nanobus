@@ -1,3 +1,6 @@
+import:
+  - common.yaml
+
 specs:
   - type: widl
     with:
@@ -6,26 +9,7 @@ specs:
 compute:
   type: mux
 
-filters:
-  http:
-    - type: jwt
-      with:
-        rsaPublicKeyFile: ../../public.pem
-
-codecs:
-  avro:
-    type: confluentavro
-    with:
-      schemaRegistryURLs:
-        - http://localhost:8081
-
 errors:
-  permission_denied:
-    type: PermissionDenied
-    code: permission_denied
-    title: Permission denied
-    message: You are not authorized to perform this operation.
-
   customer_not_found:
     type: CustomerNotFound
     code: not_found
@@ -36,7 +20,7 @@ services:
   'customers.v1.Inbound':
     getCustomer:
       summary: Gets the customer record
-      actions:
+      steps:
         - summary: Authorize
           name: authorize
           with:
@@ -47,28 +31,30 @@ services:
 
     createCustomer____ignore:
       summary: Saves the customer to the database
-      actions:
+      steps:
         - summary: Authorize the user
           name: authorize
           with:
             check:
               scope: dummy
 
-        - summary: Set the customer key
-          name: '@dapr/set_state'
-          with:
-            store: statestore
-            key: input.id
+        - summary: Call saveCustomer
+          call: saveCustomer
+        # - summary: Set the customer key
+        #   name: '@dapr/set_state'
+        #   with:
+        #     store: statestore
+        #     key: input.id
 
-        - summary: Upsert the customer table
-          name: '@dapr/sql_exec'
-          with:
-            name: postgres
-            sql: |
-              INSERT INTO customers (id, first_name, last_name)
-              VALUES (:input.id, :input.firstName, :input.lastName)
-              ON CONFLICT ON CONSTRAINT customers_pkey
-              DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+        # - summary: Upsert the customer table
+        #   name: '@dapr/sql_exec'
+        #   with:
+        #     name: postgres
+        #     sql: |
+        #       INSERT INTO customers (id, first_name, last_name)
+        #       VALUES (:input.id, :input.firstName, :input.lastName)
+        #       ON CONFLICT ON CONSTRAINT customers_pkey
+        #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
         - summary: Publish a message
           name: '@dapr/publish_message'
@@ -94,26 +80,28 @@ providers:
   'customers.v1.Outbound':
     saveCustomer:
       summary: Saves the customer to the database
-      actions:
-        - summary: Set the customer key
-          name: '@dapr/set_state'
-          with:
-            store: statestore
-            key: input.id
+      steps:
+        - summary: Call saveCustomer
+          call: saveCustomer
+        # - summary: Set the customer key
+        #   name: '@dapr/set_state'
+        #   with:
+        #     store: statestore
+        #     key: input.id
 
-        - summary: Upsert the customer table
-          name: '@dapr/sql_exec'
-          with:
-            name: postgres
-            sql: |
-              INSERT INTO customers (id, first_name, last_name)
-              VALUES (:input.id, :input.firstName, :input.lastName)
-              ON CONFLICT ON CONSTRAINT customers_pkey
-              DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+        # - summary: Upsert the customer table
+        #   name: '@dapr/sql_exec'
+        #   with:
+        #     name: postgres
+        #     sql: |
+        #       INSERT INTO customers (id, first_name, last_name)
+        #       VALUES (:input.id, :input.firstName, :input.lastName)
+        #       ON CONFLICT ON CONSTRAINT customers_pkey
+        #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
     fetchCustomer:
       summary: Loads the customer from the database
-      actions:
+      steps:
         - summary: Get the state
           name: '@dapr/get_state'
           with:
@@ -123,7 +111,7 @@ providers:
 
     customerCreated:
       summary: Send a message to the customer
-      actions:
+      steps:
         - summary: Publish a message
           name: '@dapr/publish_message'
           with:
@@ -138,3 +126,23 @@ providers:
             #     "type": "customer.created",
             #     "data": input
             #   }
+
+flows:
+  saveCustomer:
+    summary: Saves the customer to the database
+    steps:
+      - summary: Set the customer key
+        name: '@dapr/set_state'
+        with:
+          store: statestore
+          key: input.id
+
+      - summary: Upsert the customer table
+        name: '@dapr/sql_exec'
+        with:
+          name: postgres
+          sql: |
+            INSERT INTO customers (id, first_name, last_name)
+            VALUES (:input.id, :input.firstName, :input.lastName)
+            ON CONFLICT ON CONSTRAINT customers_pkey
+            DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;

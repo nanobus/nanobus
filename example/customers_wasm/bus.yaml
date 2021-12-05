@@ -38,7 +38,7 @@ services:
   'customers.v1.Inbound':
     getCustomer:
       summary: Gets the customer record
-      actions:
+      steps:
         - summary: Authorize
           name: authorize
           with:
@@ -49,7 +49,7 @@ services:
 
     createCustomer____ignore:
       summary: Saves the customer to the database
-      actions:
+      steps:
         - summary: Authorize the user
           name: authorize
           with:
@@ -96,7 +96,7 @@ providers:
   'customers.v1.Outbound':
     saveCustomer:
       summary: Saves the customer to the database
-      actions:
+      steps:
         - summary: Set the customer key
           name: '@dapr/set_state'
           with:
@@ -115,7 +115,7 @@ providers:
 
     fetchCustomer:
       summary: Loads the customer from the database
-      actions:
+      steps:
         - summary: Get the state
           name: '@dapr/get_state'
           with:
@@ -125,7 +125,7 @@ providers:
 
     customerCreated:
       summary: Send a message to the customer
-      actions:
+      steps:
         - summary: Publish a message
           name: '@dapr/publish_message'
           with:

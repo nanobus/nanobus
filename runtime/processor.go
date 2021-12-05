@@ -23,19 +23,19 @@ type Processor struct {
 	registry        actions.Registry
 	resolver        resolve.DependencyResolver
 	resolveAs       resolve.ResolveAs
+	timeouts        map[string]time.Duration
 	retries         map[string]*retry.Config
 	circuitBreakers map[string]*breaker.CircuitBreaker
 	services        Namespaces
 	providers       Namespaces
 	events          Functions
+	flows           Functions
 }
 
 type Namespaces map[string]Functions
 type Functions map[string]Runnable
 
-type Runnable interface {
-	Run(ctx context.Context, data actions.Data) (interface{}, error)
-}
+type Runnable func(ctx context.Context, data actions.Data) (interface{}, error)
 
 type runnable struct {
 	config *Pipeline
@@ -51,6 +51,11 @@ type step struct {
 }
 
 func New(configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
+	timeouts := make(map[string]time.Duration, len(configuration.Resiliency.Timeouts))
+	for name, d := range configuration.Resiliency.Timeouts {
+		timeouts[name] = time.Duration(d)
+	}
+
 	retries := make(map[string]*retry.Config, len(configuration.Resiliency.Retries))
 	for name, retryMap := range configuration.Resiliency.Retries {
 		retryConfig, err := retry.DecodeConfig(retryMap)
@@ -72,6 +77,7 @@ func New(configuration *Configuration, registry actions.Registry, resolver resol
 
 	p := Processor{
 		config:          configuration,
+		timeouts:        timeouts,
 		retries:         retries,
 		circuitBreakers: circuitBreakers,
 		registry:        registry,
@@ -100,7 +106,7 @@ func (p *Processor) Service(ctx context.Context, namespace, service, function st
 		return nil, false, nil
 	}
 
-	output, err := pl.Run(ctx, data)
+	output, err := pl(ctx, data)
 	if err == nil && output == nil {
 		output = data["input"]
 	}
@@ -119,19 +125,31 @@ func (p *Processor) Provider(ctx context.Context, namespace, service, function s
 		return nil, fmt.Errorf("function %q in provider %q not found", function, nss)
 	}
 
-	return pl.Run(ctx, data)
+	return pl(ctx, data)
 }
 
-func (p *Processor) Event(ctx context.Context, function string, data actions.Data) (interface{}, error) {
-	pl, ok := p.events[function]
+func (p *Processor) Event(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+	pl, ok := p.events[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown event function %q", function)
+		return nil, fmt.Errorf("unknown event name %q", name)
 	}
 
-	return pl.Run(ctx, data)
+	return pl(ctx, data)
+}
+
+func (p *Processor) Flow(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+	pl, ok := p.flows[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown flow name %q", name)
+	}
+
+	return pl(ctx, data)
 }
 
 func (p *Processor) Initialize() (err error) {
+	if p.flows, err = p.loadFunctionPipelines(p.config.Flows); err != nil {
+		return err
+	}
 	if p.services, err = p.loadServices(p.config.Services); err != nil {
 		return err
 	}
@@ -169,9 +187,15 @@ func (p *Processor) loadFunctionPipelines(fpl FunctionPipelines) (Functions, err
 }
 
 func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
-	steps := make([]step, len(pl.Actions))
-	for i := range pl.Actions {
-		s := &pl.Actions[i]
+	if pl.Call != "" {
+		return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
+			return p.Flow(ctx, pl.Call, data)
+		}, nil
+	}
+
+	steps := make([]step, len(pl.Steps))
+	for i := range pl.Steps {
+		s := &pl.Steps[i]
 		step, err := p.loadStep(s)
 		if err != nil {
 			return nil, err
@@ -179,21 +203,31 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 		steps[i] = *step
 	}
 
-	return &runnable{
+	r := runnable{
 		config: pl,
 		steps:  steps,
-	}, nil
+	}
+
+	return r.Run, nil
 }
 
 func (p *Processor) loadStep(s *Step) (*step, error) {
-	loader, ok := p.registry[s.Name]
-	if !ok {
-		return nil, fmt.Errorf("unregistered action %q", s.Name)
-	}
+	var action actions.Action
+	if s.Call != "" {
+		action = func(ctx context.Context, data actions.Data) (output interface{}, err error) {
+			return p.Flow(ctx, s.Call, data)
+		}
+	} else {
+		loader, ok := p.registry[s.Name]
+		if !ok {
+			return nil, fmt.Errorf("unregistered action %q", s.Name)
+		}
 
-	action, err := loader(s.With, p.resolveAs)
-	if err != nil {
-		return nil, err
+		var err error
+		action, err = loader(s.With, p.resolveAs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var retry *retry.Config
@@ -216,11 +250,15 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 
 	var timeout *time.Duration
 	if s.Timeout != "" {
-		to, err := time.ParseDuration(s.Timeout)
-		if err != nil {
-			return nil, err
+		if named, exists := p.timeouts[s.Timeout]; exists {
+			timeout = &named
+		} else {
+			to, err := time.ParseDuration(s.Timeout)
+			if err != nil {
+				return nil, err
+			}
+			timeout = &to
 		}
-		timeout = &to
 	}
 
 	return &step{

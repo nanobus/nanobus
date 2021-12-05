@@ -37,7 +37,9 @@ func (m *mockProcessor) LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, er
 	m.pipeline = pl
 	fn := m.runnables[pl.Summary]
 
-	return mockRunnable{m, pl.Summary, fn}, m.err
+	runnable := mockRunnable{m, pl.Summary, fn}
+
+	return runnable.Run, m.err
 }
 
 func TestRoute(t *testing.T) {
@@ -94,7 +96,7 @@ func TestRoute(t *testing.T) {
 			},
 			pipeline: runtime.Pipeline{
 				Summary: "B",
-				Actions: []runtime.Step{
+				Steps: []runtime.Step{
 					{
 						Summary: "1",
 						Name:    "test b",
@@ -146,7 +148,7 @@ func TestRoute(t *testing.T) {
 			},
 			pipeline: runtime.Pipeline{
 				Summary: "B",
-				Actions: []runtime.Step{
+				Steps: []runtime.Step{
 					{
 						Summary: "1",
 						Name:    "test b",

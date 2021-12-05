@@ -1234,13 +1234,27 @@ func handleError(err error, w http.ResponseWriter, status int) {
 }
 
 func loadConfiguration(filename string) (*runtime.Configuration, error) {
+	// TODO: Load from file or URI
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	return runtime.LoadYAML(f)
+	c, err := runtime.LoadYAML(f)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, imp := range c.Import {
+		imported, err := loadConfiguration(imp)
+		if err != nil {
+			return nil, err
+		}
+		runtime.Combine(c, imported)
+	}
+
+	return c, nil
 }
 
 func getHTTPClient() *http.Client {

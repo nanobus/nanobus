@@ -1,0 +1,19 @@
+filters:
+  http:
+    - type: jwt
+      with:
+        rsaPublicKeyFile: ../../public.pem
+
+codecs:
+  avro:
+    type: confluentavro
+    with:
+      schemaRegistryURLs:
+        - http://localhost:8081
+
+errors:
+  permission_denied:
+    type: PermissionDenied
+    code: permission_denied
+    title: Permission denied
+    message: You are not authorized to perform this operation.

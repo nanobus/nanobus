@@ -36,12 +36,10 @@ type RouteCondition struct {
 	When *expr.ValueExpr `mapstructure:"when"`
 	// Then is the steps to process.
 	Then []runtime.Step `mapstructure:"then"`
+	// Call is the name of the flow to call.
+	Call string `mapstructure:"call"`
 
 	runnable runtime.Runnable
-}
-
-type Processor interface {
-	LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error)
 }
 
 // Route is the NamedLoader for the filter action.
@@ -63,9 +61,16 @@ func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, 
 
 	for i := range c.Routes {
 		r := &c.Routes[i]
+		if r.Call != "" {
+			r.runnable = func(ctx context.Context, data actions.Data) (interface{}, error) {
+				return processor.Flow(ctx, r.Call, data)
+			}
+			continue
+		}
+
 		runnable, err := processor.LoadPipeline(&runtime.Pipeline{
 			Summary: r.Summary,
-			Actions: r.Then,
+			Steps:   r.Then,
 		})
 		if err != nil {
 			return nil, err
@@ -98,7 +103,7 @@ func RouteAction(
 				}
 			}
 
-			output, err = r.runnable.Run(ctx, data)
+			output, err = r.runnable(ctx, data)
 			if config.Selection == Single || err != nil {
 				return output, err
 			}
