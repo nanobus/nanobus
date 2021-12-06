@@ -2,13 +2,13 @@
 
 NanoBus closely follows the architecture explained in [DDD, Hexagonal, Onion, Clean, CQRS, … How I put it all together](https://herbertograca.com/2017/11/16/explicit-architecture-01-ddd-hexagonal-onion-clean-cqrs-how-i-put-it-all-together/). Its proposed organization of software components is even more relevant now when considered with sidecar technology. The concepts below are paraphrased and sometimes renamed to better fit NanoBus' terminology.
 
-![NanoBus Architecture](images/architecture.svg)
-
 Now we understand Hexagonal/Onion/Clean architecture. Let's break these concepts down as they relate to NanoBus.
 
 ### Ports and Adapters
 
 **Ports** define the entry and exit points (or interfaces) of the application along with the data structures passed in and returned. **Adapters** are components that allow other systems to communicate with your application and vice-versa.
+
+![NanoBus Architecture](images/architecture.svg)
 
 **Primary/Driving Adapters** wrap around ports and instruct the application to perform operations. These can be thought of as transports such as REST/HTTP or gRPC. It can also be events consumed from Pub/Sub brokers such as [Apache Kafka](https://kafka.apache.org). In NanoBus applications, the Ports implemented by Primary Adapters are called **Services**.
 
