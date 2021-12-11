@@ -9,6 +9,7 @@ import (
 )
 
 type CircuitBreaker struct {
+	Name        string          `mapstructure:"name"`
 	MaxRequests uint32          `mapstructure:"maxRequests"`
 	Interval    time.Duration   `mapstructure:"interval"`
 	Timeout     time.Duration   `mapstructure:"timeout"`
@@ -16,7 +17,7 @@ type CircuitBreaker struct {
 	breaker     *gobreaker.CircuitBreaker
 }
 
-func (c *CircuitBreaker) Initialize(name string) {
+func (c *CircuitBreaker) Initialize() {
 	var tripFn func(counts gobreaker.Counts) bool = nil
 
 	if c.Trip != nil {
@@ -42,7 +43,7 @@ func (c *CircuitBreaker) Initialize(name string) {
 	}
 
 	c.breaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
-		Name:        name,
+		Name:        c.Name,
 		MaxRequests: c.MaxRequests,
 		Interval:    c.Interval,
 		Timeout:     c.Timeout,

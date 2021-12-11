@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resiliency"
 	"github.com/nanobus/nanobus/resiliency/breaker"
 	"github.com/nanobus/nanobus/resiliency/retry"
 	"github.com/nanobus/nanobus/resolve"
@@ -45,7 +45,7 @@ type runnable struct {
 type step struct {
 	config         *Step
 	action         actions.Action
-	timeout        *time.Duration
+	timeout        time.Duration
 	retry          *retry.Config
 	circuitBreaker *breaker.CircuitBreaker
 }
@@ -67,11 +67,13 @@ func New(configuration *Configuration, registry actions.Registry, resolver resol
 
 	circuitBreakers := make(map[string]*breaker.CircuitBreaker, len(configuration.Resiliency.CircuitBreakers))
 	for name, circuitBreaker := range configuration.Resiliency.CircuitBreakers {
-		var cb breaker.CircuitBreaker
+		cb := breaker.CircuitBreaker{
+			Name: name,
+		}
 		if err := config.Decode(circuitBreaker, &cb); err != nil {
 			return nil, err
 		}
-		cb.Initialize(name)
+		cb.Initialize()
 		circuitBreakers[name] = &cb
 	}
 
@@ -248,16 +250,16 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 		}
 	}
 
-	var timeout *time.Duration
+	var timeout time.Duration
 	if s.Timeout != "" {
 		if named, exists := p.timeouts[s.Timeout]; exists {
-			timeout = &named
+			timeout = named
 		} else {
 			to, err := time.ParseDuration(s.Timeout)
 			if err != nil {
 				return nil, err
 			}
-			timeout = &to
+			timeout = to
 		}
 	}
 
@@ -274,12 +276,7 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 	var output interface{}
 	var err error
 	for _, s := range r.steps {
-		rp := ResiliencyPolicy{
-			Name:           s.config.Summary,
-			Timeout:        s.timeout,
-			Retry:          s.retry,
-			CircuitBreaker: s.circuitBreaker,
-		}
+		rp := resiliency.NewPolicy(s.config.Summary, s.timeout, s.retry, s.circuitBreaker)
 		err = rp.Run(ctx, func(ctx context.Context) error {
 			output, err = s.action(ctx, data)
 			if errors.Is(err, actions.ErrStop) {
@@ -296,51 +293,4 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 	}
 
 	return output, nil
-}
-
-type ResiliencyPolicy struct {
-	Name           string
-	Timeout        *time.Duration          `mapstructure:"timeout"`
-	Retry          *retry.Config           `mapstructure:"retry"`
-	CircuitBreaker *breaker.CircuitBreaker `mapstructure:"circuitBreaker"`
-}
-
-type Operation func(ctx context.Context) error
-
-func (p *ResiliencyPolicy) Run(ctx context.Context, oper Operation) error {
-	operation := oper
-	if p.Timeout != nil {
-		// Handle timeout
-		operation = func(ctx context.Context) error {
-			ctx, cancel := context.WithTimeout(ctx, *p.Timeout)
-			defer cancel()
-
-			return oper(ctx)
-		}
-	}
-
-	var call func() error
-	if p.Retry == nil {
-		call = func() error {
-			return operation(ctx)
-		}
-	} else {
-		// Use retry/back off
-		b := p.Retry.NewBackOffWithContext(ctx)
-		call = func() error {
-			return retry.NotifyRecover(func() error {
-				return operation(ctx)
-			}, b, func(_ error, _ time.Duration) {
-				log.Printf("Error processing operation %s. Retrying...", p.Name)
-			}, func() {
-				log.Printf("Recovered processing operation %s.", p.Name)
-			})
-		}
-	}
-
-	if p.CircuitBreaker != nil {
-		return p.CircuitBreaker.Execute(call)
-	}
-
-	return call()
 }

@@ -16,9 +16,10 @@ func TestCircuitBreaker(t *testing.T) {
 	err := trip.DecodeString("consecutiveFailures > 2")
 	require.NoError(t, err)
 	cb := breaker.CircuitBreaker{
+		Name: "test",
 		Trip: &trip,
 	}
-	cb.Initialize("test")
+	cb.Initialize()
 	for i := 0; i < 3; i++ {
 		cb.Execute(func() error {
 			return errors.New("test")
