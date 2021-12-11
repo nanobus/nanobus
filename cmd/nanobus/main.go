@@ -7,7 +7,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -23,7 +22,10 @@ import (
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	dapr_rt "github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/embedded"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/gorilla/mux"
+	"github.com/mattn/go-colorable"
 	"github.com/mitchellh/mapstructure"
 	"github.com/nanobus/go-functions"
 	json_codec "github.com/nanobus/go-functions/codecs/json"
@@ -31,6 +33,8 @@ import (
 	"github.com/nanobus/go-functions/stateful"
 	"github.com/oklog/run"
 	"github.com/vmihailenco/msgpack/v5"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
@@ -94,6 +98,7 @@ type pubsubDecoders map[pubsubKey]codecConfig
 type bindingDecoders map[string]codecConfig
 
 type Runtime struct {
+	log        logr.Logger
 	config     *runtime.Configuration
 	namespaces spec.Namespaces
 	processor  *runtime.Processor
@@ -102,13 +107,26 @@ type Runtime struct {
 	env        runtime.Environment
 }
 
-type logger struct{}
-
-func (l *logger) Printf(format string, v ...interface{}) {
-	log.Printf(format, v...)
-}
-
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Initialize logger
+	zapConfig := zap.NewDevelopmentEncoderConfig()
+	zapConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLog := zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zapConfig),
+		zapcore.AddSync(colorable.NewColorableStdout()),
+		zapcore.DebugLevel,
+	))
+	//zapLog, err := zapConfig.Build()
+	//zapLog, err := zap.NewProduction()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// zapLog := zap.NewExample()
+	log := zapr.NewLogger(zapLog)
+
 	daprRuntime := dapr_runtime.New()
 	daprRuntime.AttachFlags()
 
@@ -160,13 +178,15 @@ func main() {
 	args := flag.Args()
 
 	if err := daprRuntime.Initialize(); err != nil {
-		log.Fatal(err)
+		log.Error(err, "could not initialize Dapr runtime")
+		os.Exit(1)
 	}
 
 	// Load the configuration
 	config, err := loadConfiguration(busFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err, "could not load configuration", "file", busFile)
+		os.Exit(1)
 	}
 
 	// Spec registration
@@ -179,11 +199,13 @@ func main() {
 	for _, spec := range config.Specs {
 		loader, ok := specRegistry[spec.Type]
 		if !ok {
-			log.Fatal(fmt.Errorf("could not find spec type %q", spec.Type))
+			log.Error(nil, "could not find spec", "type", spec.Type)
+			os.Exit(1)
 		}
 		nss, err := loader(spec.With)
 		if err != nil {
-			log.Fatal(fmt.Errorf("error loading spec of type %q: %w", spec.Type, err))
+			log.Error(err, "error loading spec", "type", spec.Type)
+			os.Exit(1)
 		}
 		for _, ns := range nss {
 			namespaces[ns.Name] = ns
@@ -209,10 +231,9 @@ func main() {
 		dapr_rt.WithEmbeddedHandlers(&daprComponents),
 	)
 	if err = daprRuntime.Run(); err != nil {
-		log.Fatal(err)
+		log.Error(err, "error running Dapr runtime")
+		os.Exit(1)
 	}
-
-	ctx := context.Background()
 
 	// Filter registration
 	filterRegistry := filter.Registry{}
@@ -251,7 +272,7 @@ func main() {
 	httpClient := getHTTPClient()
 	env := getEnvironment()
 	dependencies := map[string]interface{}{
-		"system:logger":   &logger{},
+		"system:logger":   log,
 		"client:http":     httpClient,
 		"codec:json":      jsoncodec,
 		"codec:msgpack":   msgpackcodec,
@@ -284,11 +305,13 @@ func main() {
 	for name, codec := range config.Codecs {
 		loader, ok := codecRegistry[codec.Type]
 		if !ok {
-			log.Fatal(fmt.Errorf("could not find codec type %q", codec.Type))
+			log.Error(nil, "could not find codec", "type", codec.Type)
+			os.Exit(1)
 		}
 		c, err := loader(codec.With, resolveAs)
 		if err != nil {
-			log.Fatal(fmt.Errorf("error loading codec of type %q", codec.Type))
+			log.Error(err, "error loading codec", "type", codec.Type)
+			os.Exit(1)
 		}
 		codecs[name] = c
 		codecsByContentType[c.ContentType()] = c
@@ -302,13 +325,15 @@ func main() {
 		var dec decoding
 		err = mapstructure.Decode(config.Decoding, &dec)
 		if err != nil {
-			log.Fatal(fmt.Errorf("error reading decoding config %w", err))
+			log.Error(err, "error decoding config")
+			os.Exit(1)
 		}
 
 		for _, psd := range dec.Pubsub {
 			codec, ok := codecs[psd.Codec]
 			if !ok {
-				log.Fatal(fmt.Errorf("codec %q is not configured", psd.Codec))
+				log.Error(err, "codec not configured", "name", psd.Codec)
+				os.Exit(1)
 			}
 			if psd.Args == nil {
 				psd.Args = []interface{}{}
@@ -325,7 +350,8 @@ func main() {
 		for _, bd := range dec.Binding {
 			codec, ok := codecs[bd.Codec]
 			if !ok {
-				log.Fatal(fmt.Errorf("codec %q is not configured", bd.Codec))
+				log.Error(err, "codec not configured", "name", bd.Codec)
+				os.Exit(1)
 			}
 			if bd.Args == nil {
 				bd.Args = []interface{}{}
@@ -338,12 +364,14 @@ func main() {
 	}
 
 	// Create processor
-	processor, err := runtime.New(config, actionRegistry, resolver)
+	processor, err := runtime.NewProcessor(log, config, actionRegistry, resolver)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err, "could not create NanoBus runtime")
+		os.Exit(1)
 	}
 
 	rt := Runtime{
+		log:        log,
 		config:     config,
 		namespaces: namespaces,
 		processor:  processor,
@@ -362,16 +390,19 @@ func main() {
 	}
 	computeLoader, ok := computeRegistry[config.Compute.Type]
 	if !ok {
-		log.Fatal(fmt.Errorf("could not find compute type %q", config.Compute.Type))
+		log.Error(err, "could not find compute", "type", config.Compute.Type)
+		os.Exit(1)
 	}
 	invoker, err = computeLoader(config.Compute.With, resolveAs)
 	if err != nil {
-		log.Fatal(fmt.Errorf("could not load compute type %q", config.Compute.Type))
+		log.Error(err, "could not load compute", "type", config.Compute.Type)
+		os.Exit(1)
 	}
 	dependencies["client:invoker"] = invoker
 
 	if err = processor.Initialize(); err != nil {
-		log.Fatal(err)
+		log.Error(err, "could not initialize processor")
+		os.Exit(1)
 	}
 
 	filters := []filter.Filter{}
@@ -379,12 +410,14 @@ func main() {
 		for _, f := range configFilters {
 			filterLoader, ok := filterRegistry[f.Type]
 			if !ok {
-				log.Fatal(fmt.Errorf("could not find filter type %q", f.Type))
+				log.Error(nil, "could not find filter", "type", f.Type)
+				os.Exit(1)
 			}
 
 			filter, err := filterLoader(f.With, resolveAs)
 			if err != nil {
-				log.Fatal(fmt.Errorf("could not load filter type %q", f.Type))
+				log.Error(err, "could not load filter", "type", f.Type)
+				os.Exit(1)
 			}
 
 			filters = append(filters, filter)
@@ -477,7 +510,7 @@ func main() {
 				target := actorType + "/" + actorID
 
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("==>", target+"/"+fn, string(jsonBytes)+"\n")
+					logInbound(log, target+"/"+fn, string(jsonBytes))
 				}
 
 				ctx := function.ToContext(ctx, function.Function{
@@ -601,7 +634,7 @@ func main() {
 			}
 
 			if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-				log.Println("==>", target, string(jsonBytes)+"\n")
+				logInbound(log, target, string(jsonBytes))
 			}
 
 			ctx := function.ToContext(ctx, function.Function{
@@ -638,7 +671,7 @@ func main() {
 
 			decoded, typeName, err := codec.Decode(msg.Data, args...)
 			if err != nil {
-				log.Println("error decoding event payload", err)
+				log.Error(err, "error decoding event payload")
 				return nil, err
 			}
 			input := map[string]interface{}{
@@ -662,7 +695,7 @@ func main() {
 
 			result, err := rt.processor.Event(ctx, target, data)
 			if err != nil {
-				log.Println("error processing event", err)
+				log.Error(err, "error processing event")
 				return nil, err
 			}
 
@@ -685,7 +718,8 @@ func main() {
 	var inputBindings []InputBinding
 	if rt.config.InputBindings != nil {
 		if err := mapstructure.Decode(rt.config.InputBindings, &inputBindings); err != nil {
-			log.Fatal(err)
+			log.Error(err, "could not decode inout bindings configuration")
+			os.Exit(1)
 		}
 	}
 
@@ -693,20 +727,22 @@ func main() {
 	for _, binding := range inputBindings {
 		p, ok := daprComponents.InputBindings[binding.Binding]
 		if !ok {
-			log.Fatal(fmt.Errorf("input binding %q is not configured", binding.Binding))
+			log.Error(nil, "input binding not configured", "name", binding.Binding)
+			os.Exit(1)
 		}
 		if binding.CodecArgs == nil {
 			binding.CodecArgs = []interface{}{}
 		}
 		c, ok := codecs[binding.Codec]
 		if !ok {
-			log.Fatal(fmt.Errorf("codec %q is not configured", binding.Codec))
+			log.Error(nil, "codec not configured", "name", binding.Codec)
+			os.Exit(1)
 		}
 
 		go func(p bindings.InputBinding, binding InputBinding, c codec.Codec) {
-			log.Printf("reading from input binding %q", binding.Binding)
+			log.Info("reading from input binding", "name", binding.Binding)
 			if err = p.Read(inputBindingHandler(binding.Function, c, binding.CodecArgs)); err != nil {
-				log.Println(err)
+				log.Error(err, "error reading from input binding", "name", binding.Binding)
 			}
 		}(p, binding, c)
 	}
@@ -724,7 +760,7 @@ func main() {
 			Key:       key,
 		})
 		if err != nil {
-			log.Println(err)
+			log.Error(err, "could not get actor state")
 			handleError(err, w, http.StatusInternalServerError)
 			return
 		}
@@ -733,7 +769,7 @@ func main() {
 			var rawItem stateful.RawItem
 			// Dapr stores actor state in JSON
 			if err := json.Unmarshal(resp.Data, &rawItem); err != nil {
-				log.Println(err)
+				log.Error(err, "could not unmarshal raw item")
 				handleError(err, w, http.StatusInternalServerError)
 				return
 			}
@@ -742,7 +778,7 @@ func main() {
 			rawItem.Data = nil
 
 			if resp.Data, err = json.Marshal(rawItem); err != nil {
-				log.Println(err)
+				log.Error(err, "could not marshal raw item")
 				handleError(err, w, http.StatusInternalServerError)
 				return
 			}
@@ -765,7 +801,7 @@ func main() {
 		if codec, ok := bindingDecs[event.BindingName]; ok {
 			decoded, typeName, err := codec.codec.Decode(event.Data, codec.args...)
 			if err != nil {
-				log.Println("error decoding input binding payload", err)
+				log.Error(err, "error decoding input binding payload")
 				return nil, err
 			}
 			input = map[string]interface{}{
@@ -803,7 +839,7 @@ func main() {
 
 			decoded, typeName, err := codec.Decode(msg.Data, args...)
 			if err != nil {
-				log.Println("error decoding event payload", err)
+				log.Error(err, "error decoding event payload")
 				return err
 			}
 			input := map[string]interface{}{
@@ -823,7 +859,7 @@ func main() {
 
 			_, err = rt.processor.Event(ctx, target, data)
 			if err != nil {
-				log.Println("error processing event", err)
+				log.Error(err, "error processing event")
 				return err
 			}
 
@@ -842,28 +878,32 @@ func main() {
 
 	var subscriptions []Subscription
 	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
-		log.Fatal(err)
+		log.Error(err, "error decoding subscriptions")
+		os.Exit(1)
 	}
 
 	// Direct subscriptions
 	for _, sub := range subscriptions {
 		p, ok := daprComponents.PubSubs[sub.Pubsub]
 		if !ok {
-			log.Fatal(fmt.Errorf("pubsub %q is not configured", sub.Pubsub))
+			log.Error(nil, "pubsub not configured", "name", sub.Pubsub)
+			os.Exit(1)
 		}
 		if sub.CodecArgs == nil {
 			sub.CodecArgs = []interface{}{}
 		}
 		codec, ok := codecs[sub.Codec]
 		if !ok {
-			log.Fatal(fmt.Errorf("codec %q is not configured", sub.Codec))
+			log.Error(nil, "codec not configured", "name", sub.Codec)
+			os.Exit(1)
 		}
-		log.Printf("subscribing to pubsub %q, topic %q", sub.Pubsub, sub.Topic)
+		log.Info("subscribing to topic", "pubsub", sub.Pubsub, "topic", sub.Topic)
 		if err = p.Subscribe(pubsub.SubscribeRequest{
 			Topic:    sub.Topic,
 			Metadata: sub.Metadata,
 		}, pubsubHandler(sub.Function, codec, sub.CodecArgs)); err != nil {
-			log.Fatal(err)
+			log.Error(err, "could not subscribe to topic", "pubsub", sub.Pubsub, "topic", sub.Topic)
+			os.Exit(1)
 		}
 	}
 
@@ -872,19 +912,19 @@ func main() {
 		function := event.Path
 
 		if jsonBytes, err := json.MarshalIndent(event.CloudEvent, "", "  "); err == nil {
-			log.Println("==>", function, string(jsonBytes)+"\n")
+			logInbound(log, function, string(jsonBytes))
 		}
 
 		var input interface{} = event.CloudEvent
 		if event.RawPayload {
 			dataBase64String, ok := event.CloudEvent["data_base64"].(string)
 			if !ok {
-				log.Println("error decoding raw payload", err)
+				log.Error(nil, "data_base64 is not a string")
 				return embedded.EventResponseStatusRetry, err
 			}
 			inputBytes, err := base64.StdEncoding.DecodeString(dataBase64String)
 			if err != nil {
-				log.Println("error decoding raw payload", err)
+				log.Error(err, "could not base64 decode raw payload")
 				return embedded.EventResponseStatusRetry, err
 			}
 
@@ -894,7 +934,7 @@ func main() {
 			}]; ok {
 				decoded, typeName, err := codec.codec.Decode(inputBytes, codec.args...)
 				if err != nil {
-					log.Println("error decoding raw payload", err)
+					log.Error(err, "could not decode raw payload bytes")
 					return embedded.EventResponseStatusRetry, err
 				}
 				input = map[string]interface{}{
@@ -914,7 +954,7 @@ func main() {
 
 		_, err := rt.processor.Event(ctx, function, data)
 		if err != nil {
-			log.Println("error processing event", err)
+			log.Error(err, "error processes event")
 			return embedded.EventResponseStatusRetry, err
 		}
 
@@ -950,7 +990,7 @@ func main() {
 			// No pipeline exits for the operation so invoke directly.
 			if id == "" {
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					log.Println("==>", namespace+"."+service+"/"+fn, string(jsonBytes)+"\n")
+					logInbound(log, namespace+"."+service+"/"+fn, string(jsonBytes))
 				}
 
 				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &response); err != nil {
@@ -985,7 +1025,7 @@ func main() {
 
 	var g run.Group
 	if len(args) > 0 {
-		log.Printf("Executing %q", strings.Join(args, " "))
+		log.Info("Executing process", "cmd", strings.Join(args, " "))
 		command := args[0]
 		args = args[1:]
 		cmd := exec.CommandContext(ctx, command, args...)
@@ -1029,10 +1069,11 @@ func main() {
 		r.HandleFunc("/healthz", healthHandler).Methods("GET")
 		//r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
 
-		log.Printf("Bus listening on %s\n", busListenAddr)
+		log.Info("Bus listening", "address", busListenAddr)
 		ln, err := net.Listen("tcp", busListenAddr)
 		if err != nil {
-			log.Fatalln(err)
+			log.Error(err, "could not create bus")
+			os.Exit(1)
 		}
 		g.Add(func() error {
 			return http.Serve(ln, r)
@@ -1042,15 +1083,16 @@ func main() {
 	}
 	{
 		// Expose HTTP-RPC
-		transport, err := httprpc.New(
+		transport, err := httprpc.New(log,
 			httpListenAddr, namespaces, transportInvoker, translateError,
 			httprpc.WithFilters(filters...),
 			httprpc.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err, "could not create HTTP-RPC transport")
+			os.Exit(1)
 		}
 		g.Add(func() error {
-			log.Printf("HTTP-RPC listening on %s\n", httpListenAddr)
+			log.Info("HTTP-RPC listening", "address", httpListenAddr)
 			return transport.Listen()
 		}, func(error) {
 			transport.Close()
@@ -1058,15 +1100,16 @@ func main() {
 	}
 	{
 		// Expose REST
-		transport, err := rest.New(
+		transport, err := rest.New(log,
 			restListenAddr, namespaces, transportInvoker, translateError,
 			rest.WithFilters(filters...),
 			rest.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err, "could not create REST transport")
+			os.Exit(1)
 		}
 		g.Add(func() error {
-			log.Printf("REST listening on %s\n", restListenAddr)
+			log.Info("REST listening", "address", restListenAddr)
 			return transport.Listen()
 		}, func(error) {
 			transport.Close()
@@ -1074,15 +1117,16 @@ func main() {
 	}
 	if natsURL != "" {
 		// Expose NATS
-		transport, err := nats.New(
+		transport, err := nats.New(log,
 			natsURL, namespaces, transportInvoker, translateError,
 			nats.WithFilters(filters...),
 			nats.WithCodecs(jsoncodec, msgpackcodec))
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err, "could not create NATS transport")
+			os.Exit(1)
 		}
 		g.Add(func() error {
-			log.Printf("NATS client connected to %s\n", natsURL)
+			log.Info("NATS client connected", "url", natsURL)
 			return transport.Listen()
 		}, func(error) {
 			transport.Close()
@@ -1094,7 +1138,7 @@ func main() {
 
 	err = g.Run()
 	if _, isSignal := err.(run.SignalError); !isSignal {
-		log.Fatalln(err)
+		log.Error(err, "unexpected error")
 	}
 }
 
@@ -1123,7 +1167,7 @@ func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("<==", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
 	}
 
 	output, err := rt.processor.Provider(r.Context(), namespace, service, function, data)
@@ -1143,7 +1187,7 @@ func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("<==", namespace+"."+service+"/"+function, string(jsonBytes)+"\n")
+		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
 	}
 
 	data := actions.Data{
@@ -1175,7 +1219,7 @@ func (rt *Runtime) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	input = coalesce.Integers(input)
 
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		log.Println("==>", function, string(jsonBytes))
+		logInbound(rt.log, function, string(jsonBytes))
 	}
 
 	data := actions.Data{
@@ -1341,4 +1385,18 @@ func coalesceOutput(namespaces spec.Namespaces, namespace, service, function str
 		coalesce.Integers(output)
 	}
 	return output, err
+}
+
+func logInbound(log logr.Logger, target string, data string) {
+	l := log.V(10)
+	if l.Enabled() {
+		l.Info("==> " + target + " " + data)
+	}
+}
+
+func logOutbound(log logr.Logger, target string, data string) {
+	l := log.V(10)
+	if l.Enabled() {
+		l.Info("<== " + target + " " + data)
+	}
 }

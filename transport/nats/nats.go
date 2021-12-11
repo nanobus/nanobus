@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	"github.com/nanobus/go-functions"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/multierr"
@@ -19,6 +19,7 @@ import (
 )
 
 type NATS struct {
+	log           logr.Logger
 	ctx           context.Context
 	cancel        context.CancelFunc
 	nc            *nats.Conn
@@ -53,7 +54,7 @@ func WithFilters(filters ...filter.Filter) Option {
 	}
 }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
+func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -73,6 +74,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	return &NATS{
+		log:           log,
 		ctx:           ctx,
 		cancel:        cancel,
 		nc:            nc,
@@ -87,7 +89,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 func (t *NATS) Listen() error {
 	subs := make([]*nats.Subscription, 0, len(t.namespaces))
 	for ns := range t.namespaces {
-		log.Printf("Subscribing to namespace %s", ns)
+		t.log.Info("Subscribing", "namespace", ns)
 		sub, err := t.nc.Subscribe(ns+".>", t.handler)
 		if err != nil {
 			for _, sub := range subs {

@@ -2,6 +2,9 @@ package core
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/go-logr/logr"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -30,7 +33,7 @@ func LogLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, er
 		return nil, err
 	}
 
-	var logger Logger
+	var logger logr.Logger
 	if err := resolve.Resolve(resolver,
 		"system:logger", &logger); err != nil {
 		return nil, err
@@ -40,7 +43,7 @@ func LogLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, er
 }
 
 func LogAction(
-	logger Logger,
+	logger logr.Logger,
 	config *LogConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		args := make([]interface{}, len(config.Args))
@@ -51,7 +54,12 @@ func LogAction(
 			}
 		}
 
-		logger.Printf(config.Format, args...)
+		msg := config.Format
+		if len(args) > 0 {
+			msg = fmt.Sprintf(msg, args...)
+		}
+
+		logger.Info(msg)
 
 		return nil, nil
 	}

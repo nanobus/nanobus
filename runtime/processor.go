@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/go-logr/logr"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -19,6 +20,7 @@ import (
 type Environment map[string]string
 
 type Processor struct {
+	log             logr.Logger
 	config          *Configuration
 	registry        actions.Registry
 	resolver        resolve.DependencyResolver
@@ -38,6 +40,7 @@ type Functions map[string]Runnable
 type Runnable func(ctx context.Context, data actions.Data) (interface{}, error)
 
 type runnable struct {
+	log    logr.Logger
 	config *Pipeline
 	steps  []step
 }
@@ -50,7 +53,7 @@ type step struct {
 	circuitBreaker *breaker.CircuitBreaker
 }
 
-func New(configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
+func NewProcessor(log logr.Logger, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
 	timeouts := make(map[string]time.Duration, len(configuration.Resiliency.Timeouts))
 	for name, d := range configuration.Resiliency.Timeouts {
 		timeouts[name] = time.Duration(d)
@@ -78,6 +81,7 @@ func New(configuration *Configuration, registry actions.Registry, resolver resol
 	}
 
 	p := Processor{
+		log:             log,
 		config:          configuration,
 		timeouts:        timeouts,
 		retries:         retries,
@@ -206,6 +210,7 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 	}
 
 	r := runnable{
+		log:    p.log,
 		config: pl,
 		steps:  steps,
 	}
@@ -276,7 +281,7 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 	var output interface{}
 	var err error
 	for _, s := range r.steps {
-		rp := resiliency.NewPolicy(s.config.Summary, s.timeout, s.retry, s.circuitBreaker)
+		rp := resiliency.NewPolicy(r.log, s.config.Summary, s.timeout, s.retry, s.circuitBreaker)
 		err = rp.Run(ctx, func(ctx context.Context) error {
 			output, err = s.action(ctx, data)
 			if errors.Is(err, actions.ErrStop) {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/nanobus/go-functions"
 
@@ -18,6 +19,7 @@ import (
 )
 
 type HTTPRPC struct {
+	log           logr.Logger
 	address       string
 	invoker       transport.Invoker
 	errorResolver errorz.Resolver
@@ -54,7 +56,7 @@ func WithFilters(filters ...filter.Filter) Option {
 // 	return "httprpc", New
 // }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
+func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -67,6 +69,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	}
 
 	return &HTTPRPC{
+		log:           log,
 		address:       address,
 		invoker:       invoker,
 		errorResolver: errorResolver,

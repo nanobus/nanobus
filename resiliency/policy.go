@@ -2,8 +2,9 @@ package resiliency
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"github.com/go-logr/logr"
 
 	"github.com/nanobus/nanobus/resiliency/breaker"
 	"github.com/nanobus/nanobus/resiliency/retry"
@@ -11,6 +12,7 @@ import (
 
 type (
 	Policy struct {
+		log            logr.Logger
 		operationName  string
 		timeout        time.Duration           `mapstructure:"timeout"`
 		retry          *retry.Config           `mapstructure:"retry"`
@@ -20,8 +22,9 @@ type (
 	Operation func(ctx context.Context) error
 )
 
-func NewPolicy(operationName string, t time.Duration, r *retry.Config, cb *breaker.CircuitBreaker) Policy {
+func NewPolicy(log logr.Logger, operationName string, t time.Duration, r *retry.Config, cb *breaker.CircuitBreaker) Policy {
 	return Policy{
+		log:            log,
 		operationName:  operationName,
 		timeout:        t,
 		retry:          r,
@@ -53,9 +56,9 @@ func (p *Policy) Run(ctx context.Context, oper Operation) error {
 			return retry.NotifyRecover(func() error {
 				return operation(ctx)
 			}, b, func(_ error, _ time.Duration) {
-				log.Printf("Error processing operation %s. Retrying...", p.operationName)
+				p.log.Info("Retrying", "operation", p.operationName)
 			}, func() {
-				log.Printf("Recovered processing operation %s.", p.operationName)
+				p.log.Info("Recovered", "operation", p.operationName)
 			})
 		}
 	}

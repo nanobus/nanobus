@@ -11,6 +11,8 @@ require (
 	github.com/dapr/dapr v1.3.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.61.0
+	github.com/go-logr/logr v0.3.0
+	github.com/go-logr/zapr v0.2.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.7.3
@@ -18,6 +20,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hamba/avro v1.5.6
 	github.com/mattn/anko v0.1.8
+	github.com/mattn/go-colorable v0.1.8
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
 	github.com/nats-io/nats.go v1.12.0
@@ -30,6 +33,7 @@ require (
 	github.com/wapc/wapc-go v0.3.1
 	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
 	go.uber.org/multierr v1.7.0
+	go.uber.org/zap v1.18.1
 	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
@@ -70,7 +74,6 @@ require (
 	github.com/fasthttp/router v1.3.8 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.5 // indirect
@@ -109,6 +112,7 @@ require (
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/klauspost/compress v1.12.2 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
+	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect

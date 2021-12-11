@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/nanobus/go-functions"
@@ -22,6 +22,7 @@ import (
 )
 
 type Rest struct {
+	log           logr.Logger
 	address       string
 	namespaces    spec.Namespaces
 	invoker       transport.Invoker
@@ -69,7 +70,7 @@ func WithFilters(filters ...filter.Filter) Option {
 // 	return "rest", New
 // }
 
-func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
+func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -89,12 +90,13 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 	if strings.HasPrefix(swaggerHost, ":") {
 		swaggerHost = "localhost" + swaggerHost
 	}
-	log.Printf("Registering Swagger UI at http://%s/swagger/", swaggerHost)
+	log.Info("Registering Swagger UI", "url", fmt.Sprintf("http://%s/swagger/", swaggerHost))
 	if err := RegisterSwaggerRoutes(r, namespaces); err != nil {
 		return nil, err
 	}
 
 	rest := Rest{
+		log:           log,
 		address:       address,
 		namespaces:    namespaces,
 		invoker:       invoker,
@@ -220,7 +222,7 @@ func New(address string, namespaces spec.Namespaces, invoker transport.Invoker, 
 					}
 				}
 
-				log.Printf("Registering REST handler: %s %s", method, path)
+				log.Info("Registering REST handler", "method", method, "path", path)
 				r.HandleFunc(path, rest.handler(
 					namespace.Name, service.Name, operation.Name, isActor,
 					hasBody, bodyParamName, queryParams)).Methods(method)

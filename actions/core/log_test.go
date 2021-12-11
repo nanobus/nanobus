@@ -2,8 +2,10 @@ package core_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,13 +15,14 @@ import (
 )
 
 type mockLogger struct {
-	format string
-	args   []interface{}
+	logr.Logger
+	msg           string
+	keysAndValues []interface{}
 }
 
-func (m *mockLogger) Printf(format string, args ...interface{}) {
-	m.format = format
-	m.args = args
+func (m *mockLogger) Info(msg string, keysAndValues ...interface{}) {
+	m.msg = msg
+	m.keysAndValues = keysAndValues
 }
 
 func TestLog(t *testing.T) {
@@ -89,8 +92,7 @@ func TestLog(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "action failed")
-			assert.Equal(t, tt.config["format"], logger.format)
-			assert.Equal(t, tt.args, logger.args)
+			assert.Equal(t, fmt.Sprintf(tt.format, tt.args...), logger.msg)
 		})
 	}
 }
