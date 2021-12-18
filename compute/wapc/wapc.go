@@ -14,6 +14,7 @@ import (
 
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/resolve"
 )
 
@@ -30,7 +31,7 @@ func WaPC() (string, compute.Loader) {
 	return "wapc", WaPCLoader
 }
 
-func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker, error) {
+func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
 	var busInvoker compute.BusInvoker
 	var msgpackcodec functions.Codec
 	if err := resolve.Resolve(resolver,
@@ -96,7 +97,22 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoke
 		}
 		return resp, nil
 	}
-	invoker := functions.NewInvoker(invoke, msgpackcodec)
+	invokeStream := func(ctx context.Context, namespace, operation string) (functions.Streamer, error) {
+		return nil, errorz.New(errorz.Unimplemented, "streaming is not implemented for waPC")
+	}
+	invoker := functions.NewInvoker(invoke, invokeStream, msgpackcodec)
+	done := make(chan struct{}, 1)
 
-	return invoker, nil
+	return &compute.Compute{
+		Invoker: invoker,
+		Start:   func() error { return nil },
+		WaitUntilShutdown: func() error {
+			<-done
+			return nil
+		},
+		Close: func() error {
+			close(done)
+			return nil
+		},
+	}, nil
 }

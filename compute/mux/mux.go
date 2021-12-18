@@ -1,6 +1,8 @@
 package mux
 
 import (
+	"context"
+	"errors"
 	"os"
 
 	"github.com/nanobus/go-functions"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/resolve"
 )
 
@@ -23,7 +26,7 @@ func Mux() (string, compute.Loader) {
 	return "mux", MuxLoader
 }
 
-func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker, error) {
+func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
 	baseURL := os.Getenv("APP_URL")
 	if baseURL == "" {
 		baseURL = defaultInvokeURL
@@ -37,7 +40,22 @@ func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker
 
 	msgpackcodec := msgpack_codec.New()
 	m := transport_mux.New(c.BaseURL, msgpackcodec.ContentType())
-	invoker := functions.NewInvoker(m.Invoke, msgpackcodec)
+	invokeStream := func(ctx context.Context, namespace, operation string) (functions.Streamer, error) {
+		return nil, errors.New(errorz.Unimplemented.String())
+	}
+	invoker := functions.NewInvoker(m.Invoke, invokeStream, msgpackcodec)
+	done := make(chan struct{}, 1)
 
-	return invoker, nil
+	return &compute.Compute{
+		Invoker: invoker,
+		Start:   func() error { return nil },
+		WaitUntilShutdown: func() error {
+			<-done
+			return nil
+		},
+		Close: func() error {
+			close(done)
+			return nil
+		},
+	}, nil
 }

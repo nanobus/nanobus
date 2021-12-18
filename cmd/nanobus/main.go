@@ -36,9 +36,14 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	// register transports
+	_ "go.nanomsg.org/mangos/v3/transport/ipc"
+	_ "go.nanomsg.org/mangos/v3/transport/tcp"
+
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
 	"github.com/nanobus/nanobus/actions/dapr"
+	"github.com/nanobus/nanobus/actions/postgres"
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
 	cloudevents_avro "github.com/nanobus/nanobus/codec/cloudevents/avro"
@@ -47,6 +52,7 @@ import (
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
+	compute_stream "github.com/nanobus/nanobus/compute/stream"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
@@ -246,6 +252,7 @@ func main() {
 	computeRegistry.Register(
 		compute_mux.Mux,
 		compute_wapc.WaPC,
+		compute_stream.Stream,
 	)
 
 	// Codec registration
@@ -261,6 +268,7 @@ func main() {
 	actionRegistry := actions.Registry{}
 	actionRegistry.Register(core.All...)
 	actionRegistry.Register(dapr.All...)
+	actionRegistry.Register(postgres.All...)
 
 	// Codecs
 	jsoncodec := json_codec.New()
@@ -381,6 +389,19 @@ func main() {
 	}
 	busInvoker = rt.BusInvoker
 	dependencies["bus:invoker"] = busInvoker
+	dependencies["state:invoker"] = func(ctx context.Context, namespace, id, key string) ([]byte, error) {
+		resp, err := daprComponents.Actors.GetState(ctx, &actors.GetStateRequest{
+			ActorType: namespace,
+			ActorID:   id,
+			Key:       key,
+		})
+		if err != nil {
+			log.Error(err, "could not get actor state")
+			return nil, err
+		}
+
+		return resp.Data, nil
+	}
 
 	appURL := fmt.Sprintf("http://127.0.0.1:%d", appPort)
 	os.Setenv("APP_URL", appURL)
@@ -393,11 +414,12 @@ func main() {
 		log.Error(err, "could not find compute", "type", config.Compute.Type)
 		os.Exit(1)
 	}
-	invoker, err = computeLoader(config.Compute.With, resolveAs)
+	computeInstance, err := computeLoader(config.Compute.With, resolveAs)
 	if err != nil {
 		log.Error(err, "could not load compute", "type", config.Compute.Type)
 		os.Exit(1)
 	}
+	invoker = computeInstance.Invoker
 	dependencies["client:invoker"] = invoker
 
 	if err = processor.Initialize(); err != nil {
@@ -542,11 +564,15 @@ func main() {
 							}
 							value.DataBase64 = ""
 						}
+						valueBytes, err := msgpackcodec.Encode(&value)
+						if err != nil {
+							return nil, "", err
+						}
 						operations[i] = actors.TransactionalOperation{
 							Operation: actors.Upsert,
 							Request: actors.TransactionalUpsert{
 								Key:   key,
-								Value: value,
+								Value: valueBytes,
 							},
 						}
 						i++
@@ -1023,6 +1049,8 @@ func main() {
 		return response, err
 	}
 
+	go computeInstance.Start()
+
 	var g run.Group
 	if len(args) > 0 {
 		log.Info("Executing process", "cmd", strings.Join(args, " "))
@@ -1037,6 +1065,9 @@ func main() {
 			appEnv := []string{
 				fmt.Sprintf("PORT=%d", appPort),
 				fmt.Sprintf("BUS_URL=http://127.0.0.1:%s", busPort),
+			}
+			if computeInstance.Environ != nil {
+				appEnv = append(appEnv, computeInstance.Environ()...)
 			}
 			env := []string{}
 			env = append(env, os.Environ()...)
@@ -1079,6 +1110,13 @@ func main() {
 			return http.Serve(ln, r)
 		}, func(error) {
 			ln.Close()
+		})
+	}
+	{
+		g.Add(func() error {
+			return computeInstance.WaitUntilShutdown()
+		}, func(error) {
+			computeInstance.Close()
 		})
 	}
 	{

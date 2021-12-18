@@ -1,0 +1,180 @@
+import:
+  - common.yaml
+
+specs:
+  - type: widl
+    with:
+      filename: spec.widl
+
+compute:
+  type: stream
+
+errors:
+  customer_not_found:
+    type: CustomerNotFound
+    code: not_found
+    title: Customer not found
+    message: Customer {{ pick .key .id }} not found
+
+services:
+  'customers.v1.Inbound':
+    getCustomer:
+      summary: Gets the customer record
+      steps:
+        - summary: Authorize
+          name: authorize
+          with:
+            has:
+              - foo
+        - summary: forward
+          name: invoke
+
+    createCustomer____ignore:
+      summary: Saves the customer to the database
+      steps:
+        - summary: Authorize the user
+          name: authorize
+          with:
+            check:
+              scope: dummy
+
+        - summary: Call saveCustomer
+          call: saveCustomer
+        # - summary: Set the customer key
+        #   name: '@dapr/set_state'
+        #   with:
+        #     store: statestore
+        #     key: input.id
+
+        # - summary: Upsert the customer table
+        #   name: '@dapr/sql_exec'
+        #   with:
+        #     name: postgres
+        #     sql: |
+        #       INSERT INTO customers (id, first_name, last_name)
+        #       VALUES (:input.id, :input.firstName, :input.lastName)
+        #       ON CONFLICT ON CONSTRAINT customers_pkey
+        #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+
+        - summary: Publish a message
+          name: '@dapr/publish_message'
+          with:
+            pubsub: pubsub
+            topic: test_topic
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }
+
+        - summary: Return the input as the response
+          name: assign
+          with:
+            value: input
+
+providers:
+  'customers.v1.Outbound':
+    saveCustomer:
+      summary: Saves the customer to the database
+      steps:
+        - summary: Call saveCustomer
+          call: saveCustomer
+        # - summary: Set the customer key
+        #   name: '@dapr/set_state'
+        #   with:
+        #     store: statestore
+        #     key: input.id
+
+        # - summary: Upsert the customer table
+        #   name: '@dapr/sql_exec'
+        #   with:
+        #     name: postgres
+        #     sql: |
+        #       INSERT INTO customers (id, first_name, last_name)
+        #       VALUES (:input.id, :input.firstName, :input.lastName)
+        #       ON CONFLICT ON CONSTRAINT customers_pkey
+        #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+
+    getCustomers:
+      summary: Query the database for customers
+      steps:
+        - summary: Get the state
+          name: '@dapr/get_state'
+          with:
+            store: statestore
+            key: '1234'
+            notFoundError: customer_not_found
+            var: state
+        - summary: Testing streaming
+          name: '@postgres/test'
+          with:
+            data: state
+            type: Customer
+            where: .id == ${id}
+            expand:
+              - field: address
+            # data: |
+            #   {
+            #     "id": 1234,
+            #     "firstName": "Foo",
+            #     "lastName": "Bar",
+            #     "email": "foo@bar.com",
+            #     "address": {
+            #       "line1": "1234 Main St.",
+            #       "city": "Coolville",
+            #       "state": "VA",
+            #       "zip": "12345"
+            #     }
+            #   }
+
+    fetchCustomer:
+      summary: Loads the customer from the database
+      steps:
+        - summary: Get the state
+          name: '@dapr/get_state'
+          with:
+            store: statestore
+            key: input.id
+            notFoundError: customer_not_found
+
+    customerCreated:
+      summary: Send a message to the customer
+      steps:
+        - summary: Publish a message
+          name: '@dapr/publish_message'
+          with:
+            pubsub: pubsub
+            topic: test_topic
+            codec: avro
+            codecArgs:
+              - 1
+            # format: cloudevents+json
+            # data: |
+            #   {
+            #     "type": "customer.created",
+            #     "data": input
+            #   }
+
+flows:
+  saveCustomer:
+    summary: Saves the customer to the database
+    steps:
+      - summary: Set the customer key
+        name: '@dapr/set_state'
+        with:
+          store: statestore
+          key: input.id
+
+      - summary: Upsert the customer table
+        name: '@dapr/sql_exec'
+        with:
+          name: postgres
+          sql: |
+            INSERT INTO customers (id, first_name, last_name, email)
+            VALUES (:input.id, :input.firstName, :input.lastName, :input.email)
+            ON CONFLICT ON CONSTRAINT customers_pkey
+            DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName, email = :input.email;

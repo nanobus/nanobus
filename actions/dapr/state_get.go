@@ -2,12 +2,12 @@ package dapr
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/dapr/components-contrib/state"
 
 	"github.com/nanobus/nanobus/actions"
+	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/expr"
@@ -17,10 +17,12 @@ import (
 type GetStateConfig struct {
 	// Name is name of binding to invoke.
 	Store string `mapstructure:"store"`
-	// Operation is the name of the operation type for the binding to invoke
+	// Operation is the name of the operation type for the binding to invoke.
 	Key *expr.ValueExpr `mapstructure:"key"`
-	// NotFoundError is the error to return if the key is not found
+	// NotFoundError is the error to return if the key is not found.
 	NotFoundError string `mapstructure:"notFoundError"`
+	// Var, if set, is the variable that is set with the result.
+	Var string `mapstructure:"var"`
 }
 
 // GetState is the NamedLoader for the Dapr get state operation
@@ -67,12 +69,16 @@ func GetStateAction(
 
 		var response interface{}
 		if len(resp.Data) > 0 {
-			err = json.Unmarshal(resp.Data, &response)
+			err = coalesce.JSONUnmarshal(resp.Data, &response)
 		} else if config.NotFoundError != "" {
 			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
 				"store": config.Store,
 				"key":   key,
 			})
+		}
+
+		if config.Var != "" {
+			data[config.Var] = response
 		}
 
 		return response, err

@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nanobus/go-functions"
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -14,7 +13,7 @@ import (
 func TestRegistry(t *testing.T) {
 	r := compute.Registry{}
 
-	loader := func(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker, error) {
+	loader := func(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
 		return nil, nil
 	}
 	namedLoader := func() (string, compute.Loader) {

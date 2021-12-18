@@ -1,0 +1,171 @@
+import * from "@nanobus/core"
+import * from "@nanobus/rest"
+import * from "@nanobus/openapi"
+import * from "@nanobus/grpc"
+
+namespace "customers.v1"
+  @version("0.1.0")
+  @path("/v1")
+  @info(
+    title: "Customers API",
+    description: """
+    This API contains operations that an application can perform on customers.
+    """,
+    version: "1.0",
+    contact: {
+      name: "MyCompany API Team",
+      email: "apiteam@mycompany.io",
+      url: "http://mycompany.io"
+    },
+    license: {
+      name: "Apache 2.0",
+      url: "https://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  )
+  @host("mycompany.io")
+  @schemes(["https"])
+  @consumes(["application/json"])
+  @produces(["application/json"])
+  @externalDocs(
+    url: "http://mycompany.io/docs"
+  )
+
+"""
+Operations that can be performed on a customer.
+"""
+role Inbound @service @uses(["Outbound"]) @path("/customers") {
+  """
+  Creates a new customer.
+  """
+  createCustomer{customer: Customer}: Customer
+    @POST
+    @response(
+      status: CREATED,
+      description: "Successful response",
+      examples: {
+        "application/json": "json"
+      }
+    )
+
+  """
+  Retrieve a customer by id.
+  """
+  getCustomer(id: u64 @fieldnum(1)): Customer
+    @GET
+    @path("/{id}")
+    @response(
+      status: OK,
+      description: "Successful response",
+      examples: {
+        "application/json": "json"
+      }
+    )
+    @response(
+      status: NOT_FOUND,
+      returns: "Error",
+      description: "No customer with that identifier",
+      examples: {
+        "application/json": "json"
+      }
+    )
+
+  """
+  Return a page of customers using optional search filters.
+  """
+  listCustomers{query: CustomerQuery @query}: CustomerPage
+    @GET
+  
+  somethingSimple(customer: Customer) @nocode
+}
+
+"""
+Stateful operations that can be performed on a customer.
+"""
+role CustomerActor @stateful @path("/customer-actors/{id}") {
+  """
+  Creates the customer state.
+  """
+  createCustomer{customer: Customer}: Customer @POST
+  """
+  Retrieve the customer state.
+  """
+  getCustomer(): Customer @GET
+}
+
+role Outbound @provider {
+  "Saves a customer to the backend database"
+  saveCustomer{customer: Customer}
+  "Fetches a customer from the backend database"
+  fetchCustomer(id: u64): Customer
+  "Sends a customer creation event"
+  customerCreated{customer: Customer}
+}
+
+"""
+Customer information.
+"""
+type Customer @table("customers") {
+  "The customer identifer"
+  id: u64 @key @fieldnum(1) @column("id")
+  "The customer's first name"
+  firstName: string @fieldnum(2) @column("first_name")
+  "The customer's middle name"
+  middleName: string? @fieldnum(3) @column("middle_name")
+  "The customer's last name"
+  lastName: string @fieldnum(4) @column("last_name")
+  "The customer's email address"
+  email: string @email @fieldnum(5) @column("email")
+  "The customer's address"
+  address: Address @fieldnum(6) @column("address_id")
+}
+
+type CustomerQuery {
+  "The customer identifer"
+  id: u64? @fieldnum(1)
+  "The customer's first name"
+  firstName: string? @fieldnum(2)
+  "The customer's middle name"
+  middleName: string? @fieldnum(3)
+  "The customer's last name"
+  lastName: string? @fieldnum(4)
+  "The customer's email address"
+  email: string? @email @fieldnum(5)
+  ""
+  offset: u64 = 0 @fieldnum(10)
+  limit: u64 = 100 @fieldnum(11)
+}
+
+type CustomerPage {
+  offset: u64 @fieldnum(1)
+  limit: u64 @fieldnum(2)
+  items: [Customer] @fieldnum(3)
+}
+
+type Nested {
+  foo: string @fieldnum(1)
+  bar: string @fieldnum(2)
+}
+
+"""
+Address information.
+"""
+type Address @table("addresses") {
+  "The address line 1"
+  line1: string @fieldnum(1) @column("line1")
+  "The address line 2"
+  line2: string? @fieldnum(2) @column("line2")
+  "The city"
+  city: string @fieldnum(3) @column("city")
+  "The state"
+  state: string @fieldnum(4) @length(min: 2, max: 2) @column("state")
+  "The zipcode"
+  zip: string @fieldnum(5) @length(min: 5) @column("zip")
+}
+
+"""
+Error response.
+"""
+type Error {
+  "The detailed error message"
+  message: string @fieldnum(1)
+}

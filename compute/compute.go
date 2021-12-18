@@ -8,10 +8,19 @@ import (
 )
 
 type (
-	BusInvoker  func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error)
-	NamedLoader func() (string, Loader)
-	Loader      func(with interface{}, resolver resolve.ResolveAs) (*functions.Invoker, error)
-	Registry    map[string]Loader
+	BusInvoker   func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error)
+	StateInvoker func(ctx context.Context, namespace, id, key string) ([]byte, error)
+	NamedLoader  func() (string, Loader)
+	Loader       func(with interface{}, resolver resolve.ResolveAs) (*Compute, error)
+	Registry     map[string]Loader
+
+	Compute struct {
+		Invoker           *functions.Invoker
+		Start             func() error
+		WaitUntilShutdown func() error
+		Close             func() error
+		Environ           func() []string
+	}
 )
 
 func (r Registry) Register(loaders ...NamedLoader) {
