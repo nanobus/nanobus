@@ -19,35 +19,35 @@ errors:
 services:
   'customers.v1.Inbound':
     getCustomer:
-      summary: Gets the customer record
+      name: Gets the customer record
       steps:
-        - summary: Authorize
-          name: authorize
+        - name: Authorize
+          uses: authorize
           with:
             has:
               - foo
-        - summary: forward
-          name: invoke
+        - name: Forward
+          uses: invoke
 
     createCustomer____ignore:
-      summary: Saves the customer to the database
+      name: Saves the customer to the database
       steps:
-        - summary: Authorize the user
-          name: authorize
+        - name: Authorize the user
+          uses: authorize
           with:
             check:
               scope: dummy
 
-        - summary: Call saveCustomer
+        - name: Call saveCustomer
           call: saveCustomer
-        # - summary: Set the customer key
-        #   name: '@dapr/set_state'
+        # - name: Set the customer key
+        #   uses: '@dapr/set_state'
         #   with:
         #     store: statestore
         #     key: input.id
 
-        # - summary: Upsert the customer table
-        #   name: '@dapr/sql_exec'
+        # - name: Upsert the customer table
+        #   uses: '@dapr/sql_exec'
         #   with:
         #     name: postgres
         #     sql: |
@@ -56,8 +56,8 @@ services:
         #       ON CONFLICT ON CONSTRAINT customers_pkey
         #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
-        - summary: Publish a message
-          name: '@dapr/publish_message'
+        - name: Publish a message
+          uses: '@dapr/publish_message'
           with:
             pubsub: pubsub
             topic: test_topic
@@ -71,26 +71,26 @@ services:
             #     "data": input
             #   }
 
-        - summary: Return the input as the response
-          name: assign
+        - name: Return the input as the response
+          uses: assign
           with:
             value: input
 
 providers:
   'customers.v1.Outbound':
     saveCustomer:
-      summary: Saves the customer to the database
+      name: Saves the customer to the database
       steps:
-        - summary: Call saveCustomer
+        - name: Call saveCustomer
           call: saveCustomer
-        # - summary: Set the customer key
-        #   name: '@dapr/set_state'
+        # - name: Set the customer key
+        #   uses: '@dapr/set_state'
         #   with:
         #     store: statestore
         #     key: input.id
 
-        # - summary: Upsert the customer table
-        #   name: '@dapr/sql_exec'
+        # - name: Upsert the customer table
+        #   uses: '@dapr/sql_exec'
         #   with:
         #     name: postgres
         #     sql: |
@@ -100,17 +100,17 @@ providers:
         #       DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
     getCustomers:
-      summary: Query the database for customers
+      name: Query the database for customers
       steps:
-        - summary: Get the state
-          name: '@dapr/get_state'
+        - name: Get the state
+          uses: '@dapr/get_state'
           with:
             store: statestore
             key: '1234'
             notFoundError: customer_not_found
             var: state
-        - summary: Testing streaming
-          name: '@postgres/test'
+        - name: Testing streaming
+          uses: '@postgres/test'
           with:
             data: state
             type: Customer
@@ -132,20 +132,20 @@ providers:
             #   }
 
     fetchCustomer:
-      summary: Loads the customer from the database
+      name: Loads the customer from the database
       steps:
-        - summary: Get the state
-          name: '@dapr/get_state'
+        - name: Get the state
+          uses: '@dapr/get_state'
           with:
             store: statestore
             key: input.id
             notFoundError: customer_not_found
 
     customerCreated:
-      summary: Send a message to the customer
+      name: Send a message to the customer
       steps:
-        - summary: Publish a message
-          name: '@dapr/publish_message'
+        - name: Publish a message
+          uses: '@dapr/publish_message'
           with:
             pubsub: pubsub
             topic: test_topic
@@ -161,16 +161,16 @@ providers:
 
 flows:
   saveCustomer:
-    summary: Saves the customer to the database
+    name: Saves the customer to the database
     steps:
-      - summary: Set the customer key
-        name: '@dapr/set_state'
+      - name: Set the customer key
+        uses: '@dapr/set_state'
         with:
           store: statestore
           key: input.id
 
-      - summary: Upsert the customer table
-        name: '@dapr/sql_exec'
+      - name: Upsert the customer table
+        uses: '@dapr/sql_exec'
         with:
           name: postgres
           sql: |

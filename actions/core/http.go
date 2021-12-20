@@ -21,7 +21,7 @@ type HTTPConfig struct {
 	URL string `mapstructure:"url"`
 	// Method is the HTTP method.
 	Method string `mapstructure:"method"`
-	// Data is the input bindings sent
+	// Body is the data to sent as the body payload.
 	Body *expr.DataExpr `mapstructure:"body"`
 	// Metadata is the input binding metadata
 	Headers *expr.DataExpr `mapstructure:"headers"`

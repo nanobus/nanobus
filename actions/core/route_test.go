@@ -22,6 +22,21 @@ type mockProcessor struct {
 	err       error
 }
 
+var _ = (core.Processor)((*mockProcessor)(nil))
+
+func (m *mockProcessor) LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error) {
+	m.pipeline = pl
+	fn := m.runnables[pl.Name]
+
+	runnable := mockRunnable{m, pl.Name, fn}
+
+	return runnable.Run, m.err
+}
+
+func (m *mockProcessor) Flow(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+	return data, nil
+}
+
 type mockRunnable struct {
 	m       *mockProcessor
 	summary string
@@ -31,15 +46,6 @@ type mockRunnable struct {
 func (m mockRunnable) Run(ctx context.Context, data actions.Data) (interface{}, error) {
 	m.m.ran = append(m.m.ran, m.summary)
 	return m.fn(ctx, data)
-}
-
-func (m *mockProcessor) LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error) {
-	m.pipeline = pl
-	fn := m.runnables[pl.Summary]
-
-	runnable := mockRunnable{m, pl.Summary, fn}
-
-	return runnable.Run, m.err
 }
 
 func TestRoute(t *testing.T) {
@@ -66,22 +72,22 @@ func TestRoute(t *testing.T) {
 				"selection": "single",
 				"routes": []interface{}{
 					map[string]interface{}{
-						"summary": "A",
-						"when":    `path == 'A'`,
+						"name": "A",
+						"when": `path == 'A'`,
 						"then": []interface{}{
 							map[string]interface{}{
-								"summary": "1",
-								"name":    "test a",
+								"name": "1",
+								"uses": "test a",
 							},
 						},
 					},
 					map[string]interface{}{
-						"summary": "B",
-						"when":    `path == 'B'`,
+						"name": "B",
+						"when": `path == 'B'`,
 						"then": []interface{}{
 							map[string]interface{}{
-								"summary": "1",
-								"name":    "test b",
+								"name": "1",
+								"uses": "test b",
 							},
 						},
 					},
@@ -95,11 +101,11 @@ func TestRoute(t *testing.T) {
 				},
 			},
 			pipeline: runtime.Pipeline{
-				Summary: "B",
+				Name: "B",
 				Steps: []runtime.Step{
 					{
-						Summary: "1",
-						Name:    "test b",
+						Name: "1",
+						Uses: "test b",
 					},
 				},
 			},
@@ -115,22 +121,22 @@ func TestRoute(t *testing.T) {
 				"selection": "multi",
 				"routes": []interface{}{
 					map[string]interface{}{
-						"summary": "A",
-						"when":    `path == 'A'`,
+						"name": "A",
+						"when": `path == 'A'`,
 						"then": []interface{}{
 							map[string]interface{}{
-								"summary": "1",
-								"name":    "test a",
+								"name": "1",
+								"uses": "test a",
 							},
 						},
 					},
 					map[string]interface{}{
-						"summary": "B",
-						"when":    `other == 'B'`,
+						"name": "B",
+						"when": `other == 'B'`,
 						"then": []interface{}{
 							map[string]interface{}{
-								"summary": "1",
-								"name":    "test b",
+								"name": "1",
+								"uses": "test b",
 							},
 						},
 					},
@@ -147,11 +153,11 @@ func TestRoute(t *testing.T) {
 				},
 			},
 			pipeline: runtime.Pipeline{
-				Summary: "B",
+				Name: "B",
 				Steps: []runtime.Step{
 					{
-						Summary: "1",
-						Name:    "test b",
+						Name: "1",
+						Uses: "test b",
 					},
 				},
 			},

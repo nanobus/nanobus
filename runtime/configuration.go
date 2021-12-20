@@ -45,15 +45,15 @@ type Services map[string]FunctionPipelines
 type FunctionPipelines map[string]Pipeline
 
 type Pipeline struct {
-	Summary string `json:"summary" yaml:"summary"`
-	Call    string `json:"call" yaml:"call" mapstructure:"call"`
-	Steps   []Step `json:"steps" yaml:"steps"`
+	Name  string `json:"name" yaml:"name"`
+	Call  string `json:"call" yaml:"call" mapstructure:"call"`
+	Steps []Step `json:"steps" yaml:"steps"`
 }
 
 type Step struct {
-	Summary        string      `json:"summary" yaml:"summary" mapstructure:"summary"`
-	Call           string      `json:"call" yaml:"call" mapstructure:"call"`
 	Name           string      `json:"name" yaml:"name" mapstructure:"name"`
+	Call           string      `json:"call" yaml:"call" mapstructure:"call"`
+	Uses           string      `json:"uses" yaml:"uses" mapstructure:"uses"`
 	With           interface{} `json:"with" yaml:"with" mapstructure:"with"`
 	Returns        string      `json:"returns" yaml:"returns" mapstructure:"returns"`
 	Timeout        string      `json:"timeout" yaml:"timeout" mapstructure:"timeout"`

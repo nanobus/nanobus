@@ -16,16 +16,16 @@ codecs:
 services:
   'customers.v1.Inbound':
     createCustomer____ignore:
-      summary: Saves the customer to the database
+      name: Saves the customer to the database
       steps:
-        - summary: Set the customer key
-          name: '@dapr/set_state'
+        - name: Set the customer key
+          uses: '@dapr/set_state'
           with:
             store: statestore
             key: input.id
 
-        - summary: Upsert the customer table
-          name: '@dapr/sql_exec'
+        - name: Upsert the customer table
+          uses: '@dapr/sql_exec'
           with:
             name: postgres
             sql: |
@@ -34,8 +34,8 @@ services:
               ON CONFLICT ON CONSTRAINT customers_pkey
               DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
-        - summary: Publish a message
-          name: '@dapr/publish_message'
+        - name: Publish a message
+          uses: '@dapr/publish_message'
           with:
             pubsub: pubsub
             topic: test_topic
@@ -49,24 +49,24 @@ services:
             #     "data": input
             #   }
 
-        - summary: Return the input as the response
-          name: assign
+        - name: Return the input as the response
+          uses: assign
           with:
             value: input
 
 providers:
   'customers.v1.Outbound':
     saveCustomer:
-      summary: Saves the customer to the database
+      name: Saves the customer to the database
       steps:
-        - summary: Set the customer key
-          name: '@dapr/set_state'
+        - name: Set the customer key
+          uses: '@dapr/set_state'
           with:
             store: statestore
             key: input.id
 
-        - summary: Upsert the customer table
-          name: '@dapr/sql_exec'
+        - name: Upsert the customer table
+          uses: '@dapr/sql_exec'
           with:
             name: postgres
             sql: |
@@ -76,19 +76,19 @@ providers:
               DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
 
     fetchCustomer:
-      summary: Loads the customer from the database
+      name: Loads the customer from the database
       steps:
-        - summary: Get the state
-          name: '@dapr/get_state'
+        - name: Get the state
+          uses: '@dapr/get_state'
           with:
             store: statestore
             key: input.id
 
     customerCreated:
-      summary: Send a message to the customer
+      name: Send a message to the customer
       steps:
-        - summary: Publish a message
-          name: '@dapr/publish_message'
+        - name: Publish a message
+          uses: '@dapr/publish_message'
           with:
             pubsub: pubsub
             topic: test_topic

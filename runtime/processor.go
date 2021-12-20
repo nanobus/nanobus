@@ -225,9 +225,9 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 			return p.Flow(ctx, s.Call, data)
 		}
 	} else {
-		loader, ok := p.registry[s.Name]
+		loader, ok := p.registry[s.Uses]
 		if !ok {
-			return nil, fmt.Errorf("unregistered action %q", s.Name)
+			return nil, fmt.Errorf("unregistered action %q", s.Uses)
 		}
 
 		var err error
@@ -281,7 +281,7 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 	var output interface{}
 	var err error
 	for _, s := range r.steps {
-		rp := resiliency.NewPolicy(r.log, s.config.Summary, s.timeout, s.retry, s.circuitBreaker)
+		rp := resiliency.NewPolicy(r.log, s.config.Name, s.timeout, s.retry, s.circuitBreaker)
 		err = rp.Run(ctx, func(ctx context.Context) error {
 			output, err = s.action(ctx, data)
 			if errors.Is(err, actions.ErrStop) {

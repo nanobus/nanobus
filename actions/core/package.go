@@ -15,6 +15,8 @@ var All = []actions.NamedLoader{
 	Filter,
 	HTTP,
 	Invoke,
+	JMESPath,
+	JQ,
 	Log,
 	Route,
 }

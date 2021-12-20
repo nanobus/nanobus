@@ -30,8 +30,8 @@ type RouteConfig struct {
 }
 
 type RouteCondition struct {
-	// Summary if the overall summary of this route.
-	Summary string `mapstructure:"summary"`
+	// Name if the overall summary of this route.
+	Name string `mapstructure:"name"`
 	// When is the predicate expression for filtering.
 	When *expr.ValueExpr `mapstructure:"when"`
 	// Then is the steps to process.
@@ -69,8 +69,8 @@ func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, 
 		}
 
 		runnable, err := processor.LoadPipeline(&runtime.Pipeline{
-			Summary: r.Summary,
-			Steps:   r.Then,
+			Name:  r.Name,
+			Steps: r.Then,
 		})
 		if err != nil {
 			return nil, err

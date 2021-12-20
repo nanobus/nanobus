@@ -3,6 +3,7 @@ package errorz
 import (
 	"bufio"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -64,8 +65,17 @@ func ParseTemplateError(message string) TemplateError {
 func (e *TemplateError) Error() string {
 	var sb strings.Builder
 
+	keys := make([]string, len(e.Metadata))
+	i := 0
+	for k := range e.Metadata {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+
 	sb.WriteString(e.Template)
-	for k, v := range e.Metadata {
+	for _, k := range keys {
+		v := e.Metadata[k]
 		sb.WriteString("\n[")
 		sb.WriteString(k)
 		sb.WriteString("] ")

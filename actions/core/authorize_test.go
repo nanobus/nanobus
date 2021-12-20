@@ -49,7 +49,7 @@ func TestAuthorize(t *testing.T) {
 				"has": []string{"test"},
 			},
 			data:      actions.Data{},
-			actionErr: "permission_denied",
+			actionErr: "permission_denied\n[claim] test",
 		},
 		{
 			name: "using check",
@@ -74,7 +74,7 @@ func TestAuthorize(t *testing.T) {
 				},
 			},
 			data:      actions.Data{},
-			actionErr: "permission_denied",
+			actionErr: "permission_denied\n[claim] test\n[want] false",
 		},
 		{
 			name: "using condition",
@@ -103,7 +103,7 @@ func TestAuthorize(t *testing.T) {
 					"test": true,
 				},
 			},
-			actionErr: "permission_denied",
+			actionErr: "permission_denied\n[expr] claims.test == false",
 		},
 		{
 			name: "unauthorized message",
@@ -115,7 +115,7 @@ func TestAuthorize(t *testing.T) {
 				"error": "whomp whomp",
 			},
 			data:      actions.Data{},
-			actionErr: "whomp whomp",
+			actionErr: "whomp whomp\n[claim] test",
 		},
 		{
 			name: "loader error",

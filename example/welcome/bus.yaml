@@ -27,10 +27,10 @@ resiliency:
 
 events:
   "io.nanobus.examples.customers.Customer":
-    summary: Receives the customer message
+    name: Receives the customer message
     steps:
-      - summary: Send to route
-        name: invoke
+      - name: Send to route
+        uses: invoke
         with:
           namespace: welcome.v1.Inbound
           operation: greetCustomer
@@ -39,17 +39,17 @@ events:
         circuitBreaker: pubsub
 
   receiveMessage:
-    summary: Receives the customer message
+    name: Receives the customer message
     steps:
-      - summary: Routing message
-        name: route
+      - name: Routing message
+        uses: route
         with:
           routes:
             #- when: input.type == 'customer.created'
             - when: input.type == 'io.nanobus.examples.customers.Customer'
               then:
-                - summary: Send to route
-                  name: invoke
+                - name: Send to route
+                  uses: invoke
                   with:
                     namespace: welcome.v1.Inbound
                     operation: greetCustomer
@@ -60,10 +60,10 @@ events:
 providers:
   'welcome.v1.Outbound':
     sendEmail:
-      summary: Sends an email to the customer
+      name: Sends an email to the customer
       steps:
-        - summary: Pretend to send an email by logging the message
-          name: log
+        - name: Pretend to send an email by logging the message
+          uses: log
           with:
             format: "Sending email to %s with message %q"
             args:
