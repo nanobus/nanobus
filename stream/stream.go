@@ -73,6 +73,8 @@ func (s *Streamer) SendData(v interface{}, end ...bool) error {
 func (s *Streamer) SendUnary(md metadata.MD, v interface{}) error {
 	var valBytes []byte
 	switch v := v.(type) {
+	case nil:
+		return s.s.SendMetadata(md, true)
 	case []byte:
 		valBytes = v
 	default:

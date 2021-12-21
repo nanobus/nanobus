@@ -61,6 +61,8 @@ func StreamLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Comput
 
 	handler := func(ctx context.Context, strm *frames.Stream) {
 		s := stream.New(strm, msgpackcodec)
+		defer strm.Close()
+
 		ctx = stream.NewContext(ctx, &s)
 
 		path, _ := s.Metadata().Scalar(":path")

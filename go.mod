@@ -3,42 +3,43 @@ module github.com/nanobus/nanobus
 go 1.17
 
 require (
-	github.com/actgardner/gogen-avro/v9 v9.0.0
+	github.com/actgardner/gogen-avro/v9 v9.2.0
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
 	github.com/antonmedv/expr v1.9.0
-	github.com/cenkalti/backoff/v4 v4.1.1
-	github.com/dapr/components-contrib v1.5.0-rc.1
-	github.com/dapr/dapr v1.3.0
+	github.com/cenkalti/backoff/v4 v4.1.2
+	github.com/dapr/components-contrib v1.5.1
+	github.com/dapr/dapr v1.5.1
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
-	github.com/getkin/kin-openapi v0.61.0
-	github.com/go-logr/logr v0.3.0
-	github.com/go-logr/zapr v0.2.0
-	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/getkin/kin-openapi v0.87.0
+	github.com/go-logr/logr v1.2.2
+	github.com/go-logr/zapr v1.2.2
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/google/cel-go v0.7.3
+	github.com/google/cel-go v0.9.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/hamba/avro v1.5.6
+	github.com/hamba/avro v1.6.3
 	github.com/itchyny/gojq v0.12.6
+	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/mattn/anko v0.1.8
-	github.com/mattn/go-colorable v0.1.8
-	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mattn/go-colorable v0.1.12
+	github.com/mitchellh/mapstructure v1.4.3
 	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
-	github.com/nats-io/nats.go v1.12.0
+	github.com/nats-io/nats.go v1.13.0
 	github.com/oklog/run v1.1.0
-	github.com/sony/gobreaker v0.4.1
-	github.com/spf13/cast v1.4.0
+	github.com/sony/gobreaker v0.5.0
+	github.com/spf13/cast v1.4.1
 	github.com/stretchr/testify v1.7.0
-	github.com/valyala/fasthttp v1.28.0
-	github.com/vmihailenco/msgpack/v5 v5.3.4
+	github.com/valyala/fasthttp v1.31.0
+	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/wapc/wapc-go v0.3.1
 	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.nanomsg.org/mangos/v3 v3.3.0
 	go.uber.org/multierr v1.7.0
-	go.uber.org/zap v1.18.1
-	google.golang.org/genproto v0.0.0-20210813162853-db860fec028c
+	go.uber.org/zap v1.19.1
+	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
@@ -85,7 +86,7 @@ require (
 	github.com/go-redis/redis/v8 v8.8.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
@@ -106,17 +107,16 @@ require (
 	github.com/imdario/mergo v0.3.10 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.5.0 // indirect
+	github.com/jackc/pgconn v1.10.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.0.1 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20200307190119-3430c5407db8 // indirect
-	github.com/jackc/pgtype v1.3.0 // indirect
-	github.com/jackc/pgx/v4 v4.6.0 // indirect
-	github.com/jackc/puddle v1.1.0 // indirect
+	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/jackc/pgtype v1.9.1 // indirect
+	github.com/jackc/puddle v1.2.0 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.11 // indirect
-	github.com/klauspost/compress v1.12.2 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.13.4 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -124,7 +124,7 @@ require (
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
@@ -160,16 +160,15 @@ require (
 	go.opentelemetry.io/otel/metric v0.19.0 // indirect
 	go.opentelemetry.io/otel/trace v0.19.0 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
+	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
 	golang.org/x/oauth2 v0.0.0-20210220000619-9bb904979d93 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
-	google.golang.org/grpc v1.39.1 // indirect
+	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -183,7 +182,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.20.0 // indirect
 	k8s.io/apimachinery v0.20.0 // indirect
 	k8s.io/client-go v0.20.0 // indirect
-	k8s.io/klog/v2 v2.4.0 // indirect
+	k8s.io/klog/v2 v2.40.1 // indirect
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 	sigs.k8s.io/controller-runtime v0.7.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect

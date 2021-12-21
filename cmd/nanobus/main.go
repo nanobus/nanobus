@@ -57,6 +57,7 @@ import (
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 	"github.com/nanobus/nanobus/runtime"
 	dapr_runtime "github.com/nanobus/nanobus/runtime/dapr"
 	"github.com/nanobus/nanobus/security/claims"
@@ -264,6 +265,11 @@ func main() {
 		cloudevents_avro.CloudEventsAvro,
 	)
 
+	resourceRegistry := resource.Registry{}
+	resourceRegistry.Register(
+		postgres.Connection,
+	)
+
 	// Action registration
 	actionRegistry := actions.Registry{}
 	actionRegistry.Register(core.All...)
@@ -310,15 +316,15 @@ func main() {
 
 	codecs := make(codec.Codecs)
 	codecsByContentType := make(codec.Codecs)
-	for name, codec := range config.Codecs {
-		loader, ok := codecRegistry[codec.Type]
+	for name, component := range config.Codecs {
+		loader, ok := codecRegistry[component.Type]
 		if !ok {
-			log.Error(nil, "could not find codec", "type", codec.Type)
+			log.Error(nil, "could not find codec", "type", component.Type)
 			os.Exit(1)
 		}
-		c, err := loader(codec.With, resolveAs)
+		c, err := loader(component.With, resolveAs)
 		if err != nil {
-			log.Error(err, "error loading codec", "type", codec.Type)
+			log.Error(err, "error loading codec", "type", component.Type)
 			os.Exit(1)
 		}
 		codecs[name] = c
@@ -326,6 +332,22 @@ func main() {
 	}
 	dependencies["codec:lookup"] = codecs
 	dependencies["codec:byContentType"] = codecsByContentType
+
+	resources := resource.Resources{}
+	for name, component := range config.Resources {
+		loader, ok := resourceRegistry[component.Type]
+		if !ok {
+			log.Error(nil, "could not find resource", "type", component.Type)
+			os.Exit(1)
+		}
+		c, err := loader(ctx, component.With, resolveAs)
+		if err != nil {
+			log.Error(err, "error loading resource", "type", component.Type)
+			os.Exit(1)
+		}
+		resources[name] = c
+	}
+	dependencies["resource:lookup"] = resources
 
 	pubsubDecs := pubsubDecoders{}
 	bindingDecs := bindingDecoders{}

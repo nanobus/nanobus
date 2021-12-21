@@ -16,6 +16,7 @@ type Configuration struct {
 	Specs         []Component                `json:"specs" yaml:"specs"`
 	Filters       map[string][]Component     `json:"filters" yaml:"filters"`
 	Codecs        map[string]Component       `json:"codecs" yaml:"codecs"`
+	Resources     map[string]Component       `json:"resources" yaml:"resources"`
 	Compute       Component                  `json:"compute" yaml:"compute"`
 	Resiliency    Resiliency                 `json:"resiliency" yaml:"resiliency"`
 	Services      Services                   `json:"services" yaml:"services"`

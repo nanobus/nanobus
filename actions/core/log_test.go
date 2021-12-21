@@ -14,15 +14,23 @@ import (
 	"github.com/nanobus/nanobus/resolve"
 )
 
-type mockLogger struct {
-	logr.Logger
+type mockLogSink struct {
+	logr.LogSink
 	msg           string
 	keysAndValues []interface{}
 }
 
-func (m *mockLogger) Info(msg string, keysAndValues ...interface{}) {
+func (m *mockLogSink) Init(info logr.RuntimeInfo) {}
+
+func (m *mockLogSink) Enabled(level int) bool { return true }
+
+func (m *mockLogSink) Info(level int, msg string, keysAndValues ...interface{}) {
 	m.msg = msg
 	m.keysAndValues = keysAndValues
+}
+
+func (m *mockLogSink) WithName(name string) logr.LogSink {
+	return m
 }
 
 func TestLog(t *testing.T) {
@@ -70,11 +78,12 @@ func TestLog(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var logger mockLogger
+			var logSink mockLogSink
+			logger := logr.New(&logSink)
 			resolver := func(name string, target interface{}) bool {
 				switch name {
 				case "system:logger":
-					return resolve.As(&logger, target)
+					return resolve.As(logger, target)
 				}
 				return false
 			}
@@ -92,7 +101,7 @@ func TestLog(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "action failed")
-			assert.Equal(t, fmt.Sprintf(tt.format, tt.args...), logger.msg)
+			assert.Equal(t, fmt.Sprintf(tt.format, tt.args...), logSink.msg)
 		})
 	}
 }

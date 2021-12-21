@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nanobus/nanobus/resiliency"
 	"github.com/nanobus/nanobus/resiliency/breaker"
 	"github.com/nanobus/nanobus/resiliency/retry"
-	"github.com/nanobus/nanobus/test"
 )
 
 func TestPolicy(t *testing.T) {
@@ -43,7 +43,7 @@ func TestPolicy(t *testing.T) {
 
 				return nil
 			}
-			policy := resiliency.NewPolicy(test.NoOpLogger, name, tt.t, tt.r, tt.cb)
+			policy := resiliency.NewPolicy(logr.Discard(), name, tt.t, tt.r, tt.cb)
 			policy.Run(ctx, fn)
 			assert.True(t, called)
 		})

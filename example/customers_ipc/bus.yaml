@@ -9,6 +9,12 @@ specs:
 compute:
   type: stream
 
+resources:
+  db:
+    type: postgres
+    with:
+      url: postgres://postgres:postgres@localhost:5432/nanobus
+
 errors:
   customer_not_found:
     type: CustomerNotFound
@@ -102,34 +108,29 @@ providers:
     getCustomers:
       name: Query the database for customers
       steps:
-        - name: Get the state
-          uses: '@dapr/get_state'
+        # - name: Get the state
+        #   uses: '@dapr/get_state'
+        #   with:
+        #     store: statestore
+        #     key: '1234'
+        #     notFoundError: customer_not_found
+        #     var: state
+
+        # - name: Get customers
+        #   uses: '@postgres/load'
+        #   with:
+        #     resource: db
+        #     namespace: customers.v1
+        #     type: Customer
+        #     id: ${id}
+        #     expand:
+        #       - field: address
+
+        - name: Query customers
+          uses: '@postgres/query'
           with:
-            store: statestore
-            key: '1234'
-            notFoundError: customer_not_found
-            var: state
-        - name: Testing streaming
-          uses: '@postgres/test'
-          with:
-            data: state
-            type: Customer
-            where: .id == ${id}
-            expand:
-              - field: address
-            # data: |
-            #   {
-            #     "id": 1234,
-            #     "firstName": "Foo",
-            #     "lastName": "Bar",
-            #     "email": "foo@bar.com",
-            #     "address": {
-            #       "line1": "1234 Main St.",
-            #       "city": "Coolville",
-            #       "state": "VA",
-            #       "zip": "12345"
-            #     }
-            #   }
+            resource: db
+            sql: SELECT id, first_name, last_name, email FROM customers
 
     fetchCustomer:
       name: Loads the customer from the database
