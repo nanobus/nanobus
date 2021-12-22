@@ -108,24 +108,6 @@ providers:
     getCustomers:
       name: Query the database for customers
       steps:
-        # - name: Get the state
-        #   uses: '@dapr/get_state'
-        #   with:
-        #     store: statestore
-        #     key: '1234'
-        #     notFoundError: customer_not_found
-        #     var: state
-
-        # - name: Get customers
-        #   uses: '@postgres/load'
-        #   with:
-        #     resource: db
-        #     namespace: customers.v1
-        #     type: Customer
-        #     id: ${id}
-        #     expand:
-        #       - field: address
-
         - name: Query customers
           uses: '@postgres/query'
           with:
@@ -135,12 +117,22 @@ providers:
     fetchCustomer:
       name: Loads the customer from the database
       steps:
-        - name: Get the state
-          uses: '@dapr/get_state'
+        # - name: Get the state
+        #   uses: '@dapr/get_state'
+        #   with:
+        #     store: statestore
+        #     key: input.id
+        #     notFoundError: customer_not_found
+        
+        - name: Get customers
+          uses: '@postgres/load'
           with:
-            store: statestore
-            key: input.id
-            notFoundError: customer_not_found
+            resource: db
+            namespace: customers.v1
+            type: Customer
+            id: input.id
+            preload:
+              - field: address
 
     customerCreated:
       name: Send a message to the customer

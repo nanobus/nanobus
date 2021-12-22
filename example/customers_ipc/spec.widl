@@ -104,19 +104,36 @@ role Outbound @provider {
 """
 Customer information.
 """
-type Customer @table("customers") {
+type Customer @table(name: "customers") {
   "The customer identifer"
-  id: u64 @key @fieldnum(1) @column("id")
+  id: u64 @key @fieldnum(1) @column(name: "id") @key
   "The customer's first name"
-  firstName: string @fieldnum(2) @column("first_name")
+  firstName: string @fieldnum(2) @column(name: "first_name")
   "The customer's middle name"
-  middleName: string? @fieldnum(3) @column("middle_name")
+  middleName: string? @fieldnum(3) @column(name: "middle_name")
   "The customer's last name"
-  lastName: string @fieldnum(4) @column("last_name")
+  lastName: string @fieldnum(4) @column(name: "last_name")
   "The customer's email address"
-  email: string @email @fieldnum(5) @column("email")
+  email: string @email @fieldnum(5) @column(name: "email")
   "The customer's address"
-  address: Address @fieldnum(6) @column("address_id")
+  address: Address @fieldnum(6) @hasOne(key: "customer_id")
+}
+
+"""
+Address information.
+"""
+type Address @table(name: "customer_addresses")
+  @belongsTo(type: Customer, column: "customer_id") {
+  "The address line 1"
+  line1: string @fieldnum(1) @column(name: "line1")
+  "The address line 2"
+  line2: string? @fieldnum(2) @column(name: "line2")
+  "The city"
+  city: string @fieldnum(3) @column(name: "city")
+  "The state"
+  state: string @fieldnum(4) @length(min: 2, max: 2) @column(name: "state")
+  "The zipcode"
+  zip: string @fieldnum(5) @length(min: 5) @column(name: "zip")
 }
 
 type CustomerQuery {
@@ -139,27 +156,6 @@ type CustomerPage {
   offset: u64 @fieldnum(1)
   limit: u64 @fieldnum(2)
   items: [Customer] @fieldnum(3)
-}
-
-type Nested {
-  foo: string @fieldnum(1)
-  bar: string @fieldnum(2)
-}
-
-"""
-Address information.
-"""
-type Address @table("addresses") {
-  "The address line 1"
-  line1: string @fieldnum(1) @column("line1")
-  "The address line 2"
-  line2: string? @fieldnum(2) @column("line2")
-  "The city"
-  city: string @fieldnum(3) @column("city")
-  "The state"
-  state: string @fieldnum(4) @length(min: 2, max: 2) @column("state")
-  "The zipcode"
-  zip: string @fieldnum(5) @length(min: 5) @column("zip")
 }
 
 """

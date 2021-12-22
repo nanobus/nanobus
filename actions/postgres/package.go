@@ -5,6 +5,7 @@ import (
 )
 
 var All = []actions.NamedLoader{
+	Load,
 	Query,
 	Test,
 }

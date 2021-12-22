@@ -51,11 +51,6 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 		}
 	})
 
-	// return &Customer{
-	// 	ID:        id,
-	// 	FirstName: "TEST",
-	// }, nil
-
 	return s.outbound.FetchCustomer(ctx, id)
 }
 

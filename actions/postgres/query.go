@@ -74,6 +74,7 @@ func QueryAction(
 		if err != nil {
 			return nil, err
 		}
+		defer rows.Close()
 
 		fields := rows.FieldDescriptions()
 		fieldNames := make([]string, len(fields))
@@ -91,7 +92,6 @@ func QueryAction(
 			}
 
 			if err = s.SendData(record); err != nil {
-				fmt.Println(err)
 				return nil, err
 			}
 		}

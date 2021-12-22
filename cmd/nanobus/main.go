@@ -1439,7 +1439,7 @@ func coalesceOutput(namespaces spec.Namespaces, namespace, service, function str
 			if !ok {
 				return nil, errors.New("output is not a map")
 			}
-			output, _, err = oper.Returns.Coalesce(outputMap, true)
+			output, _, err = oper.Returns.Coalesce(outputMap, false)
 		}
 	} else {
 		coalesce.Integers(output)
