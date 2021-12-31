@@ -27,11 +27,11 @@ services:
     getCustomer:
       name: Gets the customer record
       steps:
-        - name: Authorize
-          uses: authorize
-          with:
-            has:
-              - foo
+        # - name: Authorize
+        #   uses: authorize
+        #   with:
+        #     has:
+        #       - foo
         - name: Forward
           uses: invoke
 
@@ -133,6 +133,7 @@ providers:
             id: input.id
             preload:
               - field: address
+            notFoundError: customer_not_found
 
     customerCreated:
       name: Send a message to the customer

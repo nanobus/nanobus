@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/resource"
@@ -25,6 +26,8 @@ type LoadConfig struct {
 	ID *expr.ValueExpr `mapstructure:"id"`
 	// Preload lists the relationship to expand/load.
 	Preload []Preload `mapstructure:"preload"`
+	// NotFoundError is the error to return if the key is not found.
+	NotFoundError string `mapstructure:"notFoundError"`
 }
 
 type Preload struct {
@@ -38,7 +41,9 @@ func Load() (string, actions.Loader) {
 }
 
 func LoadLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	c := LoadConfig{}
+	c := LoadConfig{
+		NotFoundError: "not_found",
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -95,15 +100,22 @@ func LoadAction(
 
 		var result interface{}
 		err = pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) (err error) {
-			result, err = getOne(ctx, conn, t, idColumn, idValue, config.Preload)
+			result, err = getOne(ctx, conn, config, t, idColumn, idValue, config.Preload)
 			return err
 		})
+
+		if result == nil {
+			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
+				"resource": config,
+				"key":      idValue,
+			})
+		}
 
 		return result, err
 	}
 }
 
-func getOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idColumn string, idValue interface{}, toExpand []Preload) (interface{}, error) {
+func getOne(ctx context.Context, conn *pgxpool.Conn, config *LoadConfig, t *spec.Type, idColumn string, idValue interface{}, toPreload []Preload) (interface{}, error) {
 	keyCol := keyColumn(t)
 	sql := generateTableSQL(t)
 	rows, err := conn.Query(ctx, sql+" WHERE "+idColumn+"=$1", idValue)
@@ -122,22 +134,22 @@ func getOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idColumn stri
 			record[t.Fields[i].Name] = v
 		}
 
-		for _, expand := range toExpand {
-			ex, ok := t.Field(expand.Field)
+		for _, preload := range toPreload {
+			ex, ok := t.Field(preload.Field)
 			if !ok {
-				return nil, fmt.Errorf("%s is not a field of %s", expand.Field, t.Name)
+				return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 			}
 			fk := annotationValue(ex, "hasOne", "key", "")
 			if fk == "" {
 				return nil, fmt.Errorf("hasOne is not specified on %s", ex.Name)
 			}
 
-			res, err := getOne(ctx, conn, ex.Type.Type, fk, record[keyCol], expand.Preload)
+			res, err := getOne(ctx, conn, config, ex.Type.Type, fk, record[keyCol], preload.Preload)
 			if err != nil {
 				return nil, err
 			}
 
-			record[expand.Field] = res
+			record[preload.Field] = res
 		}
 
 		return record, nil
@@ -172,7 +184,7 @@ func generateTableSQL(t *spec.Type) string {
 		buf.WriteString(column)
 	}
 	buf.WriteString(" FROM ")
-	table := annotationValue(t, "table", "name", t.Name)
+	table := annotationValue(t, "entity", "table", t.Name)
 	buf.WriteString(table)
 
 	return buf.String()

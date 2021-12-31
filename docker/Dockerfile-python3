@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/python3
+COPY /dist/nanobus-linux_linux_amd64/nanobus /app/nanobus
+COPY /lib/linux-amd64/libwasmer.so /usr/local/lib/libwasmer.so
+ENV LD_LIBRARY_PATH /usr/local/lib
+WORKDIR /app
+ENTRYPOINT ["/app/nanobus"]

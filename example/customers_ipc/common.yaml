@@ -1,8 +1,8 @@
-filters:
-  http:
-    - type: jwt
-      with:
-        rsaPublicKeyFile: ../../public.pem
+# filters:
+#   http:
+#     - type: jwt
+#       with:
+#         rsaPublicKeyFile: ../../public.pem
 
 codecs:
   avro:

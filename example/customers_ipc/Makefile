@@ -7,7 +7,7 @@ METRICS_PORT           ?= 19091
 
 PLACEMENT_HOST_ADDRESS ?= localhost:50005
 
-.PHONY: all deps codegen watch build run run-nanobus run-app clean doc test
+.PHONY: all deps codegen watch build run run-nanobus run-app clean doc test docker run-docker
 
 all: deps codegen tidy build
 
@@ -25,6 +25,14 @@ tidy:
 build:
 	mkdir -p build
 	go build -o build/$(APP_ID) cmd/main.go
+
+docker:
+	mkdir -p build
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/$(APP_ID)-linux-amd64 cmd/main.go
+	docker build --platform linux/amd64 -t nanobus/customers .
+
+run-docker:
+	docker run -it --rm -p 8091:8091 -p 18081:18081 nanobus/customers
 
 run: build
 	@nanobus --components-path ../components --app-id $(APP_ID) --metrics-port $(METRICS_PORT) --placement-host-address $(PLACEMENT_HOST_ADDRESS) --http-listen-addr $(HTTP_LISTEN_ADDRESS) --rest-listen-addr $(REST_LISTEN_ADDRESS) --bus-listen-addr $(BUS_LISTEN_ADDRESS) --app-port $(APP_PORT) -- build/$(APP_ID)

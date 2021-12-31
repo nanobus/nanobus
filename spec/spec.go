@@ -494,6 +494,12 @@ func (t *TypeRef) IsPrimitive() bool {
 func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool, error) {
 	var err error
 	var changed bool
+	if value == nil {
+		if validate && t.Kind != KindOptional {
+			return nil, false, fmt.Errorf("value is required")
+		}
+		return nil, false, nil
+	}
 	switch t.Kind {
 	case KindOptional:
 		if value == nil {
@@ -583,8 +589,9 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool,
 			changed = true
 		}
 		value = valueMap
-		//KindEnum
-		//KindUnion
+
+		//case KindEnum:
+		//case KindUnion:
 	}
 
 	return value, changed, err
@@ -629,6 +636,9 @@ func (t *TypeRef) jsonValue() interface{} {
 }
 
 func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
+	if v == nil {
+		return nil
+	}
 	for fieldName, value := range v {
 		f, ok := t.fieldsByName[fieldName]
 		if !ok {

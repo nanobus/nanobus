@@ -104,7 +104,7 @@ role Outbound @provider {
 """
 Customer information.
 """
-type Customer @table(name: "customers") {
+type Customer @entity(table: "customers") {
   "The customer identifer"
   id: u64 @key @fieldnum(1) @column(name: "id") @key
   "The customer's first name"
@@ -122,7 +122,7 @@ type Customer @table(name: "customers") {
 """
 Address information.
 """
-type Address @table(name: "customer_addresses")
+type Address @entity(table: "customer_addresses")
   @belongsTo(type: Customer, column: "customer_id") {
   "The address line 1"
   line1: string @fieldnum(1) @column(name: "line1")

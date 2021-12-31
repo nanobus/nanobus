@@ -31,7 +31,9 @@ func GetState() (string, actions.Loader) {
 }
 
 func GetStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c GetStateConfig
+	c := GetStateConfig{
+		NotFoundError: "not_found",
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
