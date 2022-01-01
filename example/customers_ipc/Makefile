@@ -24,11 +24,13 @@ tidy:
 
 build:
 	mkdir -p build
-	go build -o build/$(APP_ID) cmd/main.go
+	CGO_ENABLED=0 go build -o build/$(APP_ID) cmd/main.go
 
-docker:
+build-linux:
 	mkdir -p build
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/$(APP_ID)-linux-amd64 cmd/main.go
+
+docker: build-linux
 	docker build --platform linux/amd64 -t nanobus/customers .
 
 run-docker:

@@ -35,21 +35,23 @@ func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (*Custo
 func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error) {
 	log.Printf("RECEIVED: %d\n", id)
 
-	s.outbound.GetCustomers(ctx, func(recv RecvCustomer) error {
-		for {
-			var customer Customer
-			if err := recv(&customer); err != nil {
-				if err == io.EOF {
-					return nil
-				}
-				fmt.Println(err)
-				return err
+	stream, err := s.outbound.GetCustomers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		var customer Customer
+		if err := stream.Recv(&customer); err != nil {
+			if err == io.EOF {
+				break
 			}
-
-			jsonBytes, _ := json.MarshalIndent(&customer, "", "  ")
-			fmt.Println(string(jsonBytes))
+			fmt.Println(err)
+			return nil, err
 		}
-	})
+
+		jsonBytes, _ := json.MarshalIndent(&customer, "", "  ")
+		fmt.Println(string(jsonBytes))
+	}
 
 	return s.outbound.FetchCustomer(ctx, id)
 }

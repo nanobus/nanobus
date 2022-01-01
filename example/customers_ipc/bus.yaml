@@ -13,7 +13,7 @@ resources:
   db:
     type: postgres
     with:
-      url: postgres://postgres:postgres@localhost:5432/nanobus
+      url: postgres://postgres:postgres@host.docker.internal:5432/nanobus
 
 errors:
   customer_not_found:

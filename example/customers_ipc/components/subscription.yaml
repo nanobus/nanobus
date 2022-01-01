@@ -1,0 +1,12 @@
+apiVersion: dapr.io/v1alpha1
+kind: Subscription
+metadata:
+  name: myevent-subscription
+spec:
+  topic: test_topic
+  route: receiveMessage
+  pubsubname: pubsub
+  metadata:
+    rawPayload: "true"
+scopes:
+- welcome_disabled

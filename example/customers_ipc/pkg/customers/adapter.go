@@ -53,16 +53,45 @@ func (m *OutboundImpl) SaveCustomer(ctx context.Context, customer Customer) erro
 	return m.invoker.Invoke(ctx, "customers.v1.Outbound", "saveCustomer", customer)
 }
 
-func (m *OutboundImpl) GetCustomers(ctx context.Context, stream func(recv RecvCustomer) error) error {
+type customerRecv struct {
+	s *functions.Stream
+}
+
+func (s customerRecv) Recv(customer *Customer) error {
+	return s.s.RecvData(customer)
+}
+
+type customerSend struct {
+	s *functions.Stream
+}
+
+func (s customerSend) Send(customer *Customer) error {
+	return s.s.SendData(customer)
+}
+
+func (s customerSend) End() error {
+	return s.s.Close()
+}
+
+type getCustomersStream struct {
+	customerRecv
+	customerSend
+}
+
+func (m *OutboundImpl) GetCustomers(ctx context.Context) (CustomerRecv, error) {
 	s, err := m.invoker.InvokeStream(ctx, "customers.v1.Outbound", "getCustomers")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.SendData(map[string]interface{}{}, true)
+	if err = s.Close(); err != nil {
+		return nil, err
+	}
 
-	return stream(func(target *Customer) error {
-		return s.RecvData(target)
-	})
+	//return customerRecv{s}, nil
+	return getCustomersStream{
+		customerRecv{s},
+		customerSend{s},
+	}, nil
 }
 
 // Fetches a customer from the backend database

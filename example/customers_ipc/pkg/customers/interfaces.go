@@ -49,13 +49,18 @@ type CustomerActor interface {
 	GetCustomer(ctx Context) (*Customer, error)
 }
 
-type RecvCustomer func(*Customer) error
-type SendCustomer func(*Customer) error
+type CustomerRecv interface {
+	Recv(*Customer) error
+}
+
+type CustomerSend interface {
+	Send(*Customer) error
+	End() error
+}
 
 type GetCustomersStream interface {
-	Recv(*Customer) error
-	Send(*Customer) error
-	Close() error
+	CustomerRecv
+	CustomerSend
 }
 
 type Outbound interface {
@@ -65,8 +70,8 @@ type Outbound interface {
 	FetchCustomer(ctx context.Context, id uint64) (*Customer, error)
 	// Sends a customer creation event
 	CustomerCreated(ctx context.Context, customer Customer) error
-	//GetCustomers(ctx context.Context) (GetCustomersStream, error)
-	GetCustomers(ctx context.Context, stream func(recv RecvCustomer) error) error
+	// Get customers from the database
+	GetCustomers(ctx context.Context) (CustomerRecv, error)
 }
 
 // Customer information.
