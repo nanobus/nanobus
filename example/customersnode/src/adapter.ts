@@ -2,7 +2,7 @@ import logger from "./lib/logger";
 import dotenv from "dotenv";
 import {
   HTTPHandlers,
-  HTTPInvoker,
+  // HTTPInvoker,
   Invoker,
   jsonCodec,
   msgpackCodec,
@@ -15,12 +15,36 @@ import {
   CustomerQuery,
   CustomerActor,
   Outbound,
+  RecvStream,
 } from "./interfaces";
+
+import nano from "nanomsg";
+import { NanomsgHandlers, NanomsgInvoker } from "./nm";
+import { Connection, CLIENT_STARTING_STREAM_ID } from "./functions/connection";
+
+// npm install https://github.com/den1zk/node-nanomsg#nodeversionupdate
+var pair = nano.socket("pair");
+pair.connect("ipc://bus.sock");
+
+const socket = {
+  async send(msg: ArrayBuffer): Promise<void> {
+    pair.send(Buffer.from(msg));
+  },
+  onData(cb: (msg: ArrayBuffer) => void): void {
+    pair.on("data", function (buf: Buffer) {
+      cb(buf.buffer);
+    });
+  },
+};
+
+const conn = new Connection(socket, CLIENT_STARTING_STREAM_ID);
+const invoker = new NanomsgInvoker("/", conn, msgpackCodec);
+const handlers = new NanomsgHandlers(conn, msgpackCodec);
 
 const busUrl = process.env.BUS_URL || "http://127.0.0.1:32321";
 
-const invoker = HTTPInvoker(busUrl + "/providers", msgpackCodec);
-const handlers = new HTTPHandlers(msgpackCodec);
+//const invoker = HTTPInvoker(busUrl + "/providers", msgpackCodec);
+//const handlers = new HTTPHandlers(msgpackCodec);
 const cache = new LRUCache();
 const storage = new Storage(busUrl, jsonCodec);
 const stateManager = new Manager(cache, storage, jsonCodec);
@@ -122,7 +146,7 @@ export class OutboundImpl implements Outbound {
 
   // Saves a customer to the backend database
   async saveCustomer(customer: Customer): Promise<void> {
-    return this.invoker(
+    return this.invoker.unary(
       "customers.v1.Outbound",
       "saveCustomer",
       customer
@@ -134,12 +158,17 @@ export class OutboundImpl implements Outbound {
     const inputArgs: OutboundFetchCustomerArgs = {
       id,
     };
-    return this.invoker("customers.v1.Outbound", "fetchCustomer", inputArgs);
+    return this.invoker.unary("customers.v1.Outbound", "fetchCustomer", inputArgs);
+  }
+
+  // Queries customers from the backend database
+  getCustomers(): RecvStream<Customer> {
+    return this.invoker.stream<any, Customer>("customers.v1.Outbound", "getCustomers", true);
   }
 
   // Sends a customer creation event
   async customerCreated(customer: Customer): Promise<void> {
-    return this.invoker(
+    return this.invoker.unary(
       "customers.v1.Outbound",
       "customerCreated",
       customer
@@ -158,7 +187,7 @@ const PORT = parseInt(process.env.PORT) || 9000;
 const HOST = process.env.HOST || "127.0.0.1";
 
 export function start(): void {
-  handlers.listen(PORT, HOST, () => {
-    logger.info(`🌏 Nanoserver started at http://${HOST}:${PORT}`);
-  });
+  // handlers.listen(PORT, HOST, () => {
+  //   logger.info(`🌏 Nanoserver started at http://${HOST}:${PORT}`);
+  // });
 }

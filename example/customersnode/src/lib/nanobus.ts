@@ -1,4 +1,4 @@
-import url from "url";
+// import url from "url";
 import http, { RequestListener, Server } from "http";
 import { encode, decode } from "@msgpack/msgpack";
 
@@ -109,69 +109,84 @@ export class HTTPHandlers implements Handlers {
   }
 }
 
-export type Invoker = (
-  namespace: string,
-  operation: string,
-  payload?: any
-) => Promise<any>;
-
-export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
-  const u = url.parse(baseURL);
-
-  return async (
-    namespace: string,
+export interface Invoker {
+  unary<S, R>(namespace: string,
     operation: string,
-    payload?: any
-  ): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      const data = payload ? codec.encoder(payload) : new ArrayBuffer(0);
-      const options = {
-        hostname: u.hostname,
-        port: u.port,
-        path: u.path + "/" + namespace + "/" + operation,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/msgpack",
-          "Content-Length": data.byteLength,
-        },
-      };
-
-      const req = http.request(options, (res) => {
-        const buffers: Uint8Array[] = [];
-        res.on("data", (chunk) => {
-          buffers.push(chunk);
-        });
-
-        res.on("end", () => {
-          try {
-            if (buffers.length === 0) {
-              resolve(null);
-              return;
-            }
-
-            const data = Buffer.concat(buffers);
-            const resp = codec.decoder(data);
-            resolve(resp);
-          } catch (error) {
-            console.error(error);
-            reject(error);
-          }
-        });
-      });
-
-      req.on("error", (error) => {
-        console.error(error);
-        reject(error);
-      });
-
-      req.write(Buffer.from(data));
-      req.end();
-    });
-  };
+    payload?: S): Promise<R | undefined>
+  stream<S, R>(namespace: string,
+    operation: string, sendEnd: boolean): Stream<S, R>
 }
 
+export interface Stream<S, R> {
+  receive(): Promise<R | undefined>
+  forEach(cb: (ab: R) => Promise<void>): Promise<void>;
+  send(input: S): void
+  end(): void
+}
+
+// export type Invoker = (
+//   namespace: string,
+//   operation: string,
+//   payload?: any
+// ) => Promise<any>;
+
+// export function HTTPInvoker(baseURL: string, codec: Codec): Invoker {
+//   const u = url.parse(baseURL);
+
+//   return async (
+//     namespace: string,
+//     operation: string,
+//     payload?: any
+//   ): Promise<any> => {
+//     return new Promise((resolve, reject) => {
+//       const data = payload ? codec.encoder(payload) : new ArrayBuffer(0);
+//       const options = {
+//         hostname: u.hostname,
+//         port: u.port,
+//         path: u.path + "/" + namespace + "/" + operation,
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/msgpack",
+//           "Content-Length": data.byteLength,
+//         },
+//       };
+
+//       const req = http.request(options, (res) => {
+//         const buffers: Uint8Array[] = [];
+//         res.on("data", (chunk) => {
+//           buffers.push(chunk);
+//         });
+
+//         res.on("end", () => {
+//           try {
+//             if (buffers.length === 0) {
+//               resolve(null);
+//               return;
+//             }
+
+//             const data = Buffer.concat(buffers);
+//             const resp = codec.decoder(data);
+//             resolve(resp);
+//           } catch (error) {
+//             console.error(error);
+//             reject(error);
+//           }
+//         });
+//       });
+
+//       req.on("error", (error) => {
+//         console.error(error);
+//         reject(error);
+//       });
+
+//       req.write(Buffer.from(data));
+//       req.end();
+//     });
+//   };
+// }
+
 export const msgpackCodec: Codec = {
-  encoder: (data) => encode(data).buffer,
+  encoder: (data) => toArrayBuffer(encode(data)),
   decoder: (data) => decode(data),
 };
 
@@ -181,3 +196,12 @@ export const jsonCodec: Codec = {
     return JSON.parse(Buffer.from(data).toString());
   },
 };
+
+function toArrayBuffer(buf: Buffer | Uint8Array) {
+  const ab = new ArrayBuffer(buf.length);
+  const view = new Uint8Array(ab);
+  for (let i = 0; i < buf.length; ++i) {
+    view[i] = buf[i];
+  }
+  return ab;
+}

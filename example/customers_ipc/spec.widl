@@ -99,6 +99,8 @@ role Outbound @provider {
   fetchCustomer(id: u64): Customer
   "Sends a customer creation event"
   customerCreated{customer: Customer}
+  #"Get customers from the database"
+  #getCustomers(): stream Customer
 }
 
 """

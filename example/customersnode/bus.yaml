@@ -4,7 +4,13 @@ specs:
       filename: spec.widl
 
 compute:
-  type: mux
+  type: stream
+
+resources:
+  db:
+    type: postgres
+    with:
+      url: postgres://postgres:postgres@host.docker.internal:5432/nanobus
 
 codecs:
   avro:
@@ -74,6 +80,15 @@ providers:
               VALUES (:input.id, :input.firstName, :input.lastName)
               ON CONFLICT ON CONSTRAINT customers_pkey
               DO UPDATE SET first_name = :input.firstName, last_name = :input.lastName;
+
+    getCustomers:
+      name: Query the database for customers
+      steps:
+        - name: Query customers
+          uses: '@postgres/query'
+          with:
+            resource: db
+            sql: SELECT id, first_name, last_name, email FROM customers
 
     fetchCustomer:
       name: Loads the customer from the database

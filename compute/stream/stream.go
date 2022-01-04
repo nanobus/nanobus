@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/nanobus/go-functions"
@@ -110,7 +111,7 @@ func StreamLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Comput
 
 		var input interface{}
 		err := s.RecvData(&input)
-		if err != nil {
+		if err != nil && err != io.EOF {
 			s.SendError(err)
 			return
 		}

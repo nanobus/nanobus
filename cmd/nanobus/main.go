@@ -1197,8 +1197,10 @@ func main() {
 	}
 
 	err = g.Run()
-	if _, isSignal := err.(run.SignalError); !isSignal {
-		log.Error(err, "unexpected error")
+	if err != nil {
+		if _, isSignal := err.(run.SignalError); !isSignal {
+			log.Error(err, "unexpected error")
+		}
 	}
 }
 

@@ -35,6 +35,19 @@ export interface CustomerActor {
   getCustomer(ctx: Context): Promise<Customer>;
 }
 
+export interface SendStream<S> {
+  send(out: S): void;
+  end(): void;
+}
+
+export interface RecvStream<R> {
+  receive(): Promise<R | undefined>;
+  forEach(cb: (ab: R) => Promise<void>): Promise<void>;
+}
+
+export interface BiStream<S, R> extends SendStream<S>, RecvStream<R> {
+}
+
 export interface Outbound {
   // Saves a customer to the backend database
   saveCustomer(customer: Customer): Promise<void>;
@@ -42,6 +55,8 @@ export interface Outbound {
   fetchCustomer(id: number): Promise<Customer>;
   // Sends a customer creation event
   customerCreated(customer: Customer): Promise<void>;
+  // Get customers from the database
+  getCustomers(): RecvStream<Customer>;
 }
 
 // Customer information.
