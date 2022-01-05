@@ -1,5 +1,11 @@
-import { Flag, isFlagSet } from "./flags";
-import { Frame, FrameHeader, Type, stripPadding } from "./frame";
+import {
+  Frame,
+  FrameHeader,
+  Type,
+  Flag,
+  isFlagSet,
+  stripPadding,
+} from "./frame";
 
 export class Data implements Frame {
   readonly type: Type = Type.DATA;

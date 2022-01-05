@@ -11,8 +11,8 @@ export interface Socket {
   onData(cb: (msg: ArrayBuffer) => void): void;
 }
 
-export const CLIENT_STARTING_STREAM_ID = 1
-export const SERVER_STARTING_STREAM_ID = 2
+export const CLIENT_STARTING_STREAM_ID = 1;
+export const SERVER_STARTING_STREAM_ID = 2;
 
 export class Connection {
   private socket: Socket;
@@ -97,7 +97,7 @@ export class Connection {
 
   newStream(parentStreamId: number = 0): Stream {
     const streamID = this.nextStreamId;
-    this.nextStreamId+=2;
+    this.nextStreamId += 2;
     const s = new Stream(this, this.framer, streamID, parentStreamId);
     this.streams.set(streamID, s);
     return s;
@@ -113,10 +113,15 @@ export class Stream {
   private selfClosed: boolean = false;
   private otherClosed: boolean = false;
   private closed: boolean = false;
-  md: { [ key: string ]: string[] };
+  md: { [key: string]: string[] };
   private q: queue<ArrayBuffer>;
 
-  constructor(conn: Connection, framer: Framer, streamId: number, parentStreamId: number = 0) {
+  constructor(
+    conn: Connection,
+    framer: Framer,
+    streamId: number,
+    parentStreamId: number = 0
+  ) {
     this.conn = conn;
     this.framer = framer;
     this.streamId = streamId;
@@ -164,7 +169,10 @@ export class Stream {
     this.q.push(buffer);
   }
 
-  sendMetadata(metadata: { [ key: string]: string[] }, end: boolean = false): void {
+  sendMetadata(
+    metadata: { [key: string]: string[] },
+    end: boolean = false
+  ): void {
     var blockFragment: ArrayBuffer;
     if (Object.keys(metadata).length > 0) {
       const mdJson = JSON.stringify(metadata);
@@ -203,7 +211,7 @@ export class Stream {
     }
   }
 
-  sendUnary(metadata: { [ key: string]: string[] }, data: ArrayBuffer): void {
+  sendUnary(metadata: { [key: string]: string[] }, data: ArrayBuffer): void {
     const frameEnd = data === undefined || data.byteLength === 0;
     this.sendMetadata(metadata, frameEnd);
     if (!frameEnd) {

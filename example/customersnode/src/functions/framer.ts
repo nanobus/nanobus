@@ -27,11 +27,11 @@ export class Framer {
 type FrameParser = (fh: FrameHeader, payload: ArrayBuffer) => Frame;
 
 const frameParsers: FrameParser[] = [Data.decode, Headers.decode];
-  // parseUnknownFrame,
-  // parseUnknownFrame,
-  // parseUnknownFrame,
-  // parseUnknownFrame,
-  // parsePingFrame,
+// parseUnknownFrame,
+// parseUnknownFrame,
+// parseUnknownFrame,
+// parseUnknownFrame,
+// parsePingFrame,
 
 function typeFrameParser(t: Type): FrameParser {
   if (t >= frameParsers.length) {

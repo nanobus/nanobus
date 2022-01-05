@@ -1,5 +1,3 @@
-import { Flag } from "./flags";
-
 export enum Type {
   DATA = 0x00,
   HEADERS = 0x01,
@@ -12,6 +10,21 @@ export interface Frame {
   readonly endStream: boolean;
   size(): number;
   encode(buffer: ArrayBuffer): void;
+}
+
+// Flags is a bitwise mask to determine is a flag is set in a frame.
+export enum Flag {
+  END_STREAM = 0x01,
+  END_HEADERS = 0x04,
+  PADDED = 0x08,
+}
+
+export function isFlagSet(f: Flag, flagsByte: Flag): boolean {
+  return (flagsByte & f) !== 0;
+}
+
+export function hasFlag(f: Flag, other: Flag): boolean {
+  return (other & f) !== 0;
 }
 
 export class FrameHeader {
@@ -52,21 +65,20 @@ export class FrameHeader {
 }
 
 function uint32IgnoreFirstBit(src: Uint8Array): number {
-  const buffer = new Uint8Array(4);  // implicitly initialized with zero bytes
-	for (var i = 0; i < Math.min(4, src.length); i++) {
-		buffer[4-(1+i)] = src[4-(1+i)];
-	}
-  buffer[0] &= 0x7F; // clear first bit
+  const buffer = new Uint8Array(4); // implicitly initialized with zero bytes
+  for (var i = 0; i < Math.min(4, src.length); i++) {
+    buffer[4 - (1 + i)] = src[4 - (1 + i)];
+  }
+  buffer[0] &= 0x7f; // clear first bit
   const buf = new DataView(buffer.buffer);
   return buf.getUint32(0);
 }
 
-
 export function stripPadding(payload: ArrayBuffer): ArrayBuffer {
   const dv = new DataView(payload);
   const padLength = dv.getUint8(0);
-	if (payload.byteLength <= padLength) {
-		throw new Error("Invalid HEADERS: padding >= payload.");
-	}
-  return payload.slice(1, payload.byteLength-padLength);
+  if (payload.byteLength <= padLength) {
+    throw new Error("Invalid HEADERS: padding >= payload.");
+  }
+  return payload.slice(1, payload.byteLength - padLength);
 }
