@@ -43,8 +43,8 @@ func TestPolicy(t *testing.T) {
 
 				return nil
 			}
-			policy := resiliency.NewPolicy(logr.Discard(), name, tt.t, tt.r, tt.cb)
-			policy.Run(ctx, fn)
+			policy := resiliency.Policy(logr.Discard(), name, tt.t, tt.r, tt.cb)
+			policy(ctx, fn)
 			assert.True(t, called)
 		})
 	}

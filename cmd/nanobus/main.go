@@ -571,7 +571,11 @@ func main() {
 				}
 
 				var statefulResponse stateful.Response
-				if err = invoker.InvokeWithReturn(ctx, target, fn, input, &statefulResponse); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+					Namespace: actorType,
+					Operation: fn,
+					EntityID:  actorID,
+				}, input, &statefulResponse); err != nil {
 					return nil, "", translateError(err)
 				}
 
@@ -636,7 +640,11 @@ func main() {
 				callback := parts[4] // "timer" or "remind"
 				function := parts[5] // timer or reminder name
 
-				if err = invoker.Invoke(ctx, actorType+"/"+actorID, callback+"."+function, input); err != nil {
+				if err = invoker.Invoke(ctx, functions.Receiver{
+					Namespace: actorType,
+					Operation: callback + "." + function,
+					EntityID:  actorID,
+				}, input); err != nil {
 					return nil, "", translateError(err)
 				}
 
@@ -646,7 +654,11 @@ func main() {
 				actorID := parts[2]
 
 				fmt.Println("Deactivating " + actorType + "/" + actorID)
-				if err = invoker.Invoke(ctx, actorType+"/"+actorID, "deactivate", input); err != nil {
+				if err = invoker.Invoke(ctx, functions.Receiver{
+					Namespace: actorType,
+					Operation: "deactivate",
+					EntityID:  actorID,
+				}, input); err != nil {
 					return nil, "", translateError(err)
 				}
 
@@ -697,7 +709,10 @@ func main() {
 
 			if !ok {
 				// No pipeline exits for the operation so invoke directly.
-				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &output); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+					Namespace: ns,
+					Operation: fn,
+				}, input, &output); err != nil {
 					return nil, "", translateError(err)
 				}
 			}
@@ -1041,7 +1056,10 @@ func main() {
 					logInbound(log, namespace+"."+service+"/"+fn, string(jsonBytes))
 				}
 
-				if err = invoker.InvokeWithReturn(ctx, ns, fn, input, &response); err != nil {
+				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+					Namespace: ns,
+					Operation: fn,
+				}, input, &response); err != nil {
 					return nil, translateError(err)
 				}
 			} else {

@@ -281,8 +281,8 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 	var output interface{}
 	var err error
 	for _, s := range r.steps {
-		rp := resiliency.NewPolicy(r.log, s.config.Name, s.timeout, s.retry, s.circuitBreaker)
-		err = rp.Run(ctx, func(ctx context.Context) error {
+		rp := resiliency.Policy(r.log, s.config.Name, s.timeout, s.retry, s.circuitBreaker)
+		err = rp(ctx, func(ctx context.Context) error {
 			output, err = s.action(ctx, data)
 			if errors.Is(err, actions.ErrStop) {
 				return backoff.Permanent(err)

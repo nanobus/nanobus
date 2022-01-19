@@ -40,7 +40,7 @@ func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, 
 
 	msgpackcodec := msgpack_codec.New()
 	m := transport_mux.New(c.BaseURL, msgpackcodec.ContentType())
-	invokeStream := func(ctx context.Context, namespace, operation string) (functions.Streamer, error) {
+	invokeStream := func(ctx context.Context, receiver functions.Receiver) (functions.Streamer, error) {
 		return nil, errors.New(errorz.Unimplemented.String())
 	}
 	invoker := functions.NewInvoker(m.Invoke, invokeStream, msgpackcodec)

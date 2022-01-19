@@ -28,6 +28,7 @@ require (
 	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
 	github.com/nats-io/nats.go v1.13.0
 	github.com/oklog/run v1.1.0
+	github.com/rsocket/rsocket-go v0.8.6
 	github.com/sony/gobreaker v0.5.0
 	github.com/spf13/cast v1.4.1
 	github.com/stretchr/testify v1.7.0
@@ -94,6 +95,7 @@ require (
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.1 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grandcat/zeroconf v0.0.0-20190424104450-85eadb44205c // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2 // indirect
 	github.com/hashicorp/consul/api v1.3.0 // indirect
@@ -116,6 +118,7 @@ require (
 	github.com/jackc/pgtype v1.9.1 // indirect
 	github.com/jackc/puddle v1.2.0 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
+	github.com/jjeffcaii/reactor-go v0.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
@@ -131,6 +134,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/open-policy-agent/opa v0.23.2 // indirect
 	github.com/openzipkin/zipkin-go v0.2.2 // indirect
+	github.com/panjf2000/ants/v2 v2.4.3 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect

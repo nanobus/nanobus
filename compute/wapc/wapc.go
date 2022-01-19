@@ -83,8 +83,8 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 	if err != nil {
 		return nil, err
 	}
-	invoke := func(ctx context.Context, namespace, operation string, payload []byte) ([]byte, error) {
-		resp, err := m.Invoke(ctx, namespace, operation, payload)
+	invoke := func(ctx context.Context, receiver functions.Receiver, payload []byte) ([]byte, error) {
+		resp, err := m.Invoke(ctx, receiver, payload)
 		if err != nil {
 			// Trim out wrapped message.
 			msg := err.Error()
@@ -97,7 +97,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 		}
 		return resp, nil
 	}
-	invokeStream := func(ctx context.Context, namespace, operation string) (functions.Streamer, error) {
+	invokeStream := func(ctx context.Context, receiver functions.Receiver) (functions.Streamer, error) {
 		return nil, errorz.New(errorz.Unimplemented, "streaming is not implemented for waPC")
 	}
 	invoker := functions.NewInvoker(invoke, invokeStream, msgpackcodec)

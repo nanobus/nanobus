@@ -20,18 +20,18 @@ import (
 
 var ErrInvalidURISyntax = errors.New("invalid invocation URI syntax")
 
-type MuxConfig struct {
+type StreamConfig struct {
 	BasePath      string `mapstructure:"basePath"`
 	SocketAddress string `mapstructure:"socketAddress"`
 }
 
-// Stream is the NamedLoader for the mux compute.
+// Stream is the NamedLoader for the stream compute.
 func Stream() (string, compute.Loader) {
 	return "stream", StreamLoader
 }
 
 func StreamLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
-	c := MuxConfig{
+	c := StreamConfig{
 		BasePath:      "/",
 		SocketAddress: "ipc://bus.sock",
 	}

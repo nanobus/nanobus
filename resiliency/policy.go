@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/go-logr/logr"
 
 	"github.com/nanobus/nanobus/resiliency/breaker"
@@ -11,61 +12,55 @@ import (
 )
 
 type (
-	Policy struct {
-		log            logr.Logger
-		operationName  string
-		timeout        time.Duration           `mapstructure:"timeout"`
-		retry          *retry.Config           `mapstructure:"retry"`
-		circuitBreaker *breaker.CircuitBreaker `mapstructure:"circuitBreaker"`
-	}
-
+	// Operation represents a function to invoke with resiliency policies applied.
 	Operation func(ctx context.Context) error
+
+	// Runner represents a function to invoke `oper` with resiliency policies applied.
+	Runner func(ctx context.Context, oper Operation) error
 )
 
-func NewPolicy(log logr.Logger, operationName string, t time.Duration, r *retry.Config, cb *breaker.CircuitBreaker) Policy {
-	return Policy{
-		log:            log,
-		operationName:  operationName,
-		timeout:        t,
-		retry:          r,
-		circuitBreaker: cb,
-	}
-}
+// Policy returns a policy runner that encapsulates the configured
+// resiliency policies in a simple execution wrapper.
+func Policy(log logr.Logger, operationName string, t time.Duration, r *retry.Config, cb *breaker.CircuitBreaker) Runner {
+	return func(ctx context.Context, oper Operation) error {
+		operation := oper
+		if t > 0 {
+			// Handle timeout
+			operCopy := operation
+			operation = func(ctx context.Context) error {
+				ctx, cancel := context.WithTimeout(ctx, t)
+				defer cancel()
 
-func (p *Policy) Run(ctx context.Context, oper Operation) error {
-	operation := oper
-	if p.timeout > 0 {
-		// Handle timeout
-		operation = func(ctx context.Context) error {
-			ctx, cancel := context.WithTimeout(ctx, p.timeout)
-			defer cancel()
-
-			return oper(ctx)
+				return operCopy(ctx)
+			}
 		}
-	}
 
-	var call func() error
-	if p.retry == nil {
-		call = func() error {
+		if cb != nil {
+			operCopy := operation
+			operation = func(ctx context.Context) error {
+				err := cb.Execute(func() error {
+					return operCopy(ctx)
+				})
+				if r != nil && breaker.IsErrorPermanent(err) {
+					// Break out of retry.
+					err = backoff.Permanent(err)
+				}
+				return err
+			}
+		}
+
+		if r == nil {
 			return operation(ctx)
 		}
-	} else {
+
 		// Use retry/back off
-		b := p.retry.NewBackOffWithContext(ctx)
-		call = func() error {
-			return retry.NotifyRecover(func() error {
-				return operation(ctx)
-			}, b, func(_ error, _ time.Duration) {
-				p.log.Info("Retrying", "operation", p.operationName)
-			}, func() {
-				p.log.Info("Recovered", "operation", p.operationName)
-			})
-		}
+		b := r.NewBackOffWithContext(ctx)
+		return retry.NotifyRecover(func() error {
+			return operation(ctx)
+		}, b, func(_ error, _ time.Duration) {
+			log.Info("Error processing operation. Retrying...", "operation", operationName)
+		}, func() {
+			log.Info("Recovered processing operation.", "operation", operationName)
+		})
 	}
-
-	if p.circuitBreaker != nil {
-		return p.circuitBreaker.Execute(call)
-	}
-
-	return call()
 }
