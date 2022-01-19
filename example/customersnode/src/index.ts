@@ -1,4 +1,4 @@
-import { outbound, registerCustomerActor, registerInbound, start } from "./adapter";
+import { registerInbound, registerCustomerActor, outbound, start } from "./adapter";
 import { CustomerActorImpl, InboundImpl } from "./service";
 
 registerInbound(new InboundImpl(outbound));

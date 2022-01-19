@@ -1,8 +1,8 @@
 import url, { UrlWithStringQuery } from "url";
 import http from "http";
 import { LRUCache as LRU } from "typescript-lru-cache";
-import { Codec, StatefulHandler } from "./nanobus";
-import { plainToClass } from "class-transformer";
+import { Codec } from "./nanobus";
+import { Expose, plainToClass } from "class-transformer";
 
 export class LogicalAddress {
   type: string;
@@ -18,11 +18,11 @@ export class LogicalAddress {
   }
 }
 
-export class Response {
+export class Response<T> {
   mutation: Mutation;
-  result: any;
+  result: T;
 
-  constructor(mutation: Mutation, result: any) {
+  constructor(mutation: Mutation, result: T) {
     this.mutation = mutation;
     this.result = result;
   }
@@ -33,7 +33,6 @@ export declare type ClassConstructor<T> = {
 };
 
 export class Context {
-  // context.Context;
   readonly self: LogicalAddress;
   private state: State;
 
@@ -62,7 +61,7 @@ export class Context {
     this.state.remove(key);
   }
 
-  response(result: any): Response {
+  response<T>(result: T): Response<T> {
     const mutation = this.state.toMutation();
     return new Response(mutation, result);
   }
@@ -88,10 +87,10 @@ export class Item<T> {
 }
 
 export class RawItem {
-  namespace?: string;
-  type?: string;
-  version?: string;
-  data: ArrayBuffer;
+  @Expose() namespace?: string;
+  @Expose() type?: string;
+  @Expose() version?: string;
+  @Expose() data: Uint8Array;
 
   constructor({
     namespace = undefined,
@@ -102,7 +101,7 @@ export class RawItem {
     namespace?: string;
     type?: string;
     version?: string;
-    data?: ArrayBuffer;
+    data?: Uint8Array;
   } = {}) {
     this.namespace = namespace;
     this.type = type;
@@ -205,7 +204,8 @@ export class Storage implements Store {
             }
 
             const data = Buffer.concat(buffers);
-            const item: any = this.codec.decoder(data);
+            console.log(data);
+            const item: any = this.codec.deserialize(data);
             if (
               item.data &&
               (typeof item.data === "string" || item.data instanceof String)
@@ -294,7 +294,7 @@ export class State {
       return undefined;
     }
 
-    const data = this.codec.decoder(rawItem.data);
+    const data = this.codec.deserialize(rawItem.data);
     const value = plainToClass(cls, data);
     item = new Item({
       namespace: rawItem.namespace,
@@ -353,7 +353,9 @@ export class State {
         if (!item.data) {
           return;
         }
-        const data = this.codec.encoder(item.data);
+        console.log(item.data);
+        const data = this.codec.serialize(item.data);
+        console.log(data);
         set[key] = new RawItem({
           namespace: item.namespace,
           type: item.type,
@@ -462,23 +464,12 @@ export class Manager {
       this.cache.remove(address);
     }
   }
-
-  deactivateHandler(type: string, actor: any): StatefulHandler {
-    return async (id, _) => {
-      const sctx = this.toContext(type, id, actor);
-      if (isDeactivator(actor)) {
-        (actor as Deactivator).deactivate(sctx);
-      }
-      this.deactivate(sctx.self);
-      return new ArrayBuffer(0);
-    };
-  }
 }
 
-function isActivator(object: any): object is Activator {
+export function isActivator(object: any): object is Activator {
   return (<Activator>object).activate !== undefined;
 }
 
-function isDeactivator(object: any): object is Deactivator {
+export function isDeactivator(object: any): object is Deactivator {
   return (<Deactivator>object).deactivate !== undefined;
 }

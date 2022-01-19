@@ -32,13 +32,21 @@ type Context interface {
 }
 
 // Operations that can be performed on a customer.
-type Inbound struct {
+// type Inbound struct {
+// 	// Creates a new customer.
+// 	CreateCustomer func(ctx context.Context, customer Customer) (*Customer, error)
+// 	// Retrieve a customer by id.
+// 	GetCustomer func(ctx context.Context, id uint64) (*Customer, error)
+// 	// Return a page of customers using optional search filters.
+// 	ListCustomers func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
+// }
+type Inbound interface {
 	// Creates a new customer.
-	CreateCustomer func(ctx context.Context, customer Customer) (*Customer, error)
+	CreateCustomer(ctx context.Context, customer Customer) (*Customer, error)
 	// Retrieve a customer by id.
-	GetCustomer func(ctx context.Context, id uint64) (*Customer, error)
+	GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 	// Return a page of customers using optional search filters.
-	ListCustomers func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
+	ListCustomers(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
 }
 
 // Stateful operations that can be performed on a customer.
@@ -49,18 +57,20 @@ type CustomerActor interface {
 	GetCustomer(ctx Context) (*Customer, error)
 }
 
-type CustomerRecv interface {
-	Recv(*Customer) error
+type CustomerSource interface {
+	Receive() (*Customer, error)
+	//Subscribe(next func(*Customer), complete func(error))
 }
 
-type CustomerSend interface {
-	Send(*Customer) error
-	End() error
+type CustomerSink interface {
+	Send(*Customer)
+	Complete()
+	Error(err error)
 }
 
-type GetCustomersStream interface {
-	CustomerRecv
-	CustomerSend
+type GetCustomersProcessor interface {
+	CustomerSource
+	CustomerSink
 }
 
 type Outbound interface {
@@ -71,7 +81,7 @@ type Outbound interface {
 	// Sends a customer creation event
 	CustomerCreated(ctx context.Context, customer Customer) error
 	// Get customers from the database
-	GetCustomers(ctx context.Context) (CustomerRecv, error)
+	GetCustomers(ctx context.Context) (CustomerSource, error)
 }
 
 // Customer information.
@@ -124,16 +134,6 @@ type CustomerPage struct {
 
 func (c *CustomerPage) Type() string {
 	return "CustomerPage"
-}
-
-type Nested struct {
-	ns
-	Foo string `json:"foo" msgpack:"foo"`
-	Bar string `json:"bar" msgpack:"bar"`
-}
-
-func (n *Nested) Type() string {
-	return "Nested"
 }
 
 // Address information.

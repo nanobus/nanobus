@@ -2,27 +2,418 @@ package customers
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"os"
-	"syscall"
+	"errors"
+	"io"
 
-	"github.com/oklog/run"
-
-	"go.nanomsg.org/mangos/v3/protocol/pair"
-
-	// register transports
-	_ "go.nanomsg.org/mangos/v3/transport/ipc"
-	_ "go.nanomsg.org/mangos/v3/transport/tcp"
-
-	functions "github.com/nanobus/go-functions"
+	"github.com/nanobus/go-functions"
 	"github.com/nanobus/go-functions/codecs/msgpack"
-	"github.com/nanobus/go-functions/frames"
+	"github.com/nanobus/go-functions/metadata"
 	"github.com/nanobus/go-functions/stateful"
-	"github.com/nanobus/go-functions/transports/stream"
+	"github.com/rsocket/rsocket-go"
+	"github.com/rsocket/rsocket-go/payload"
+	"github.com/rsocket/rsocket-go/rx/flux"
+	"github.com/rsocket/rsocket-go/rx/mono"
 )
 
-var busSocketAddress = lookupEnvOrString("BUS_SOCKET_ADDR", "ipc://bus.sock")
+var ErrNotFound = errors.New("not_found")
+
+type HandlerRR func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink)
+type HandlerRS func(ctx context.Context, md metadata.MD, request payload.Payload, sink flux.Sink)
+type HandlerRC func(ctx context.Context, md metadata.MD, requests flux.Flux, sink flux.Sink)
+
+type Adapter struct {
+	starter      rsocket.ClientStarter
+	client       rsocket.Client
+	codec        functions.Codec
+	stateManager *stateful.Manager
+	handlersRR   map[string]HandlerRR
+	handlersRS   map[string]HandlerRS
+	handlersRC   map[string]HandlerRC
+	done         chan struct{}
+}
+
+func NewAdapter() *Adapter {
+	a := Adapter{
+		codec:      msgpack.New(),
+		handlersRR: make(map[string]HandlerRR),
+		handlersRS: make(map[string]HandlerRS),
+		handlersRC: make(map[string]HandlerRC),
+		done:       make(chan struct{}),
+	}
+
+	cache, _ := stateful.NewLRUCache(200)
+	storage := NewStorage(&a)
+	a.stateManager = stateful.NewManager(cache, storage, a.codec)
+
+	// Start a client connection
+	contentType := a.codec.ContentType()
+	tp := rsocket.TCPClient().SetHostAndPort("127.0.0.1", 7878).Build()
+
+	a.starter = rsocket.Connect().
+		OnClose(func(error) {
+			close(a.done)
+		}).
+		DataMimeType(contentType).
+		MetadataMimeType(contentType).
+		Acceptor(func(ctx context.Context, socket rsocket.RSocket) rsocket.RSocket {
+			return rsocket.NewAbstractSocket(
+				rsocket.RequestResponse(a.requestResponseHandler),
+				rsocket.RequestStream(a.requestStreamHandler),
+				rsocket.RequestChannel(a.requestChannelHandler),
+			)
+		}).
+		Transport(tp)
+
+	return &a
+}
+
+func (a *Adapter) Start(ctx context.Context) error {
+	client, err := a.starter.Start(ctx)
+	if err != nil {
+		return err
+	}
+	a.client = client
+	<-a.done
+	return nil
+}
+
+func (a *Adapter) parseMetadata(pl payload.Payload) (metadata.MD, bool) {
+	if mdBytes, ok := pl.Metadata(); ok {
+		var md metadata.MD
+		if err := a.codec.Decode(mdBytes, &md); err == nil {
+			return md, true
+		}
+	}
+	return nil, false
+}
+
+func (a *Adapter) requestResponseHandler(request payload.Payload) mono.Mono {
+	return mono.Create(func(ctx context.Context, sink mono.Sink) {
+		md, ok := a.parseMetadata(request)
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+		path, _ := md.Scalar(":path")
+		handler, ok := a.handlersRR[path]
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+
+		handler(ctx, md, request, sink)
+	})
+}
+
+func (a *Adapter) requestStreamHandler(request payload.Payload) (responses flux.Flux) {
+	return flux.Create(func(ctx context.Context, sink flux.Sink) {
+		md, ok := a.parseMetadata(request)
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+		path, _ := md.Scalar(":path")
+		handler, ok := a.handlersRS[path]
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+
+		handler(ctx, md, request, sink)
+	})
+}
+
+func (a *Adapter) requestChannelHandler(requests flux.Flux) (responses flux.Flux) {
+	return flux.Create(func(ctx context.Context, sink flux.Sink) {
+		request, err := requests.BlockFirst(ctx)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+
+		md, ok := a.parseMetadata(request)
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+		path, _ := md.Scalar(":path")
+		handler, ok := a.handlersRS[path]
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
+		}
+
+		handler(ctx, md, request, sink)
+	})
+}
+
+func (a *Adapter) NewOutbound() Outbound {
+	return NewOutboundImpl(a)
+}
+
+func (a *Adapter) RegisterRR(path string, handler HandlerRR) {
+	a.handlersRR[path] = handler
+}
+
+func (a *Adapter) RegisterRS(path string, handler HandlerRS) {
+	a.handlersRS[path] = handler
+}
+
+func (a *Adapter) RegisterRC(path string, handler HandlerRC) {
+	a.handlersRC[path] = handler
+}
+
+func (a *Adapter) RegisterInbound(handlers Inbound) {
+	a.RegisterRR("/customers.v1.Inbound/createCustomer", a.inbound_createCustomerWrapper(handlers.CreateCustomer))
+	a.RegisterRR("/customers.v1.Inbound/getCustomer", a.inbound_getCustomerWrapper(handlers.GetCustomer))
+	a.RegisterRR("/customers.v1.Inbound/listCustomers", a.inbound_listCustomersWrapper(handlers.ListCustomers))
+}
+
+func (a *Adapter) inbound_createCustomerWrapper(handler func(ctx context.Context, customer Customer) (*Customer, error)) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		var customer Customer
+		a.invokeRR(request, sink, &customer,
+			func() (interface{}, error) {
+				return handler(ctx, customer)
+			},
+		)
+	}
+}
+
+func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, id uint64) (*Customer, error)) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		var inputArgs inboundGetCustomerArgs
+		a.invokeRR(request, sink, &inputArgs,
+			func() (interface{}, error) {
+				return handler(ctx, inputArgs.ID)
+			},
+		)
+	}
+}
+
+func (a *Adapter) inbound_listCustomersWrapper(handler func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		var query CustomerQuery
+		a.invokeRR(request, sink, &query,
+			func() (interface{}, error) {
+				return handler(ctx, query)
+			},
+		)
+	}
+}
+
+func (a Adapter) invokeRR(request payload.Payload, sink mono.Sink, input interface{}, fn func() (interface{}, error)) {
+	if err := a.codec.Decode(request.Data(), input); err != nil {
+		sink.Error(err)
+		return
+	}
+
+	response, err := fn()
+	if err != nil {
+		sink.Error(err)
+		return
+	}
+
+	responseBytes, err := a.codec.Encode(response)
+	if err != nil {
+		sink.Error(err)
+		return
+	}
+
+	sink.Success(payload.New(responseBytes, nil))
+}
+
+func (a Adapter) requestPayload(path string, data interface{}) (payload.Payload, error) {
+	metadataBytes, err := a.codec.Encode(metadata.MD{
+		":path": []string{path},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var requestBytes []byte
+	if data != nil {
+		requestBytes, err = a.codec.Encode(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return payload.New(requestBytes, metadataBytes), nil
+}
+
+type OutboundImpl struct {
+	a *Adapter
+}
+
+func NewOutboundImpl(a *Adapter) *OutboundImpl {
+	return &OutboundImpl{
+		a: a,
+	}
+}
+
+func (p *OutboundImpl) SaveCustomer(ctx context.Context, customer Customer) error {
+	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.a.client.RequestResponse(request).Block(ctx)
+	return err
+}
+
+func (p *OutboundImpl) FetchCustomer(ctx context.Context, id uint64) (*Customer, error) {
+	inputArgs := outboundFetchCustomerArgs{
+		ID: id,
+	}
+	var result Customer
+	if err := p.handleRR(ctx, "/customers.v1.Outbound/fetchCustomer", &inputArgs, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (p *OutboundImpl) CustomerCreated(ctx context.Context, customer Customer) error {
+	return p.handleFF(ctx, "/customers.v1.Outbound/customerCreated", &customer)
+}
+
+func (p *OutboundImpl) GetCustomers(ctx context.Context) (CustomerSource, error) {
+	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	f := p.a.client.RequestStream(request)
+	source := newCustomerSource(ctx, p.a.codec)
+	source.subscribe(ctx, f)
+
+	return source, nil
+}
+
+func (p *OutboundImpl) handleFF(ctx context.Context, path string, input interface{}) error {
+	request, err := p.requestPayload(path, input)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.a.client.RequestResponse(request).Block(ctx)
+	return err
+}
+
+func (p *OutboundImpl) handleRR(ctx context.Context, path string, input interface{}, dst interface{}) error {
+	request, err := p.requestPayload(path, input)
+	if err != nil {
+		return err
+	}
+
+	resp, err := p.a.client.RequestResponse(request).Block(ctx)
+	if err != nil {
+		return err
+	}
+
+	return p.a.codec.Decode(resp.Data(), dst)
+}
+
+func (p *OutboundImpl) requestPayload(path string, data interface{}) (payload.Payload, error) {
+	metadataBytes, err := p.a.codec.Encode(metadata.MD{
+		":path": []string{path},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var requestBytes []byte
+	if data != nil {
+		requestBytes, err = p.a.codec.Encode(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return payload.New(requestBytes, metadataBytes), nil
+}
+
+type customerSource struct {
+	ctx   context.Context
+	codec functions.Codec
+	c     chan *Customer
+	e     chan error
+}
+
+func newCustomerSource(ctx context.Context, codec functions.Codec) *customerSource {
+	return &customerSource{
+		ctx:   ctx,
+		codec: codec,
+		c:     make(chan *Customer, 100),
+		e:     make(chan error, 1),
+	}
+}
+
+func (s *customerSource) Receive() (customer *Customer, err error) {
+	var ok bool
+	select {
+	case customer, ok = <-s.c:
+	case err, ok = <-s.e:
+	case <-s.ctx.Done():
+		return nil, context.Canceled
+	}
+	if !ok {
+		return nil, io.EOF
+	}
+	return customer, err
+}
+
+func (s *customerSource) subscribe(ctx context.Context, f flux.Flux) {
+	f.DoOnNext(func(input payload.Payload) error {
+		var customer Customer
+		if err := s.codec.Decode(input.Data(), &customer); err != nil {
+			return err
+		}
+		s.c <- &customer
+		return nil
+	}).DoOnError(func(err error) {
+		s.e <- err
+	}).DoOnComplete(func() {
+		close(s.c)
+		close(s.e)
+	}).Subscribe(ctx)
+}
+
+type customerSink struct {
+	codec functions.Codec
+	sink  flux.Sink
+}
+
+func newCustomerSink(codec functions.Codec, sink flux.Sink) *customerSink {
+	return &customerSink{
+		codec: codec,
+		sink:  sink,
+	}
+}
+
+func (s *customerSink) Send(customer *Customer) {
+	responseBytes, err := s.codec.Encode(customer)
+	if err != nil {
+		s.sink.Error(err)
+		return
+	}
+	s.sink.Next(payload.New(responseBytes, nil))
+}
+
+func (s *customerSink) Complete() {
+	s.sink.Complete()
+}
+
+func (s *customerSink) Error(err error) {
+	s.sink.Error(err)
+}
+
+type inboundGetCustomerArgs struct {
+	ID uint64 `json:"id" msgpack:"id"`
+}
+
+type outboundFetchCustomerArgs struct {
+	ID uint64 `json:"id" msgpack:"id"`
+}
 
 type AdapterContext struct {
 	*stateful.Context
@@ -36,114 +427,18 @@ func (c *AdapterContext) Self() LogicalAddress {
 	}
 }
 
-type OutboundImpl struct {
-	invoker *functions.Invoker
-	codec   functions.Codec
-}
-
-func NewOutboundImpl(invoker *functions.Invoker, codec functions.Codec) *OutboundImpl {
-	return &OutboundImpl{
-		invoker: invoker,
-		codec:   codec,
-	}
-}
-
-// Saves a customer to the backend database
-func (m *OutboundImpl) SaveCustomer(ctx context.Context, customer Customer) error {
-	return m.invoker.Invoke(ctx, "customers.v1.Outbound", "saveCustomer", customer)
-}
-
-type customerRecv struct {
-	s *functions.Stream
-}
-
-func (s customerRecv) Recv(customer *Customer) error {
-	return s.s.RecvData(customer)
-}
-
-type customerSend struct {
-	s *functions.Stream
-}
-
-func (s customerSend) Send(customer *Customer) error {
-	return s.s.SendData(customer)
-}
-
-func (s customerSend) End() error {
-	return s.s.Close()
-}
-
-type getCustomersStream struct {
-	customerRecv
-	customerSend
-}
-
-func (m *OutboundImpl) GetCustomers(ctx context.Context) (CustomerRecv, error) {
-	s, err := m.invoker.InvokeStream(ctx, "customers.v1.Outbound", "getCustomers")
-	if err != nil {
-		return nil, err
-	}
-	if err = s.Close(); err != nil {
-		return nil, err
-	}
-
-	//return customerRecv{s}, nil
-	return getCustomersStream{
-		customerRecv{s},
-		customerSend{s},
-	}, nil
-}
-
-// Fetches a customer from the backend database
-func (m *OutboundImpl) FetchCustomer(ctx context.Context, id uint64) (*Customer, error) {
-	var ret Customer
-	inputArgs := outboundFetchCustomerArgs{
-		ID: id,
-	}
-	if err := m.invoker.InvokeWithReturn(ctx, "customers.v1.Outbound", "fetchCustomer", &inputArgs, &ret); err != nil {
-		return nil, err
-	}
-	return &ret, nil
-}
-
-// Sends a customer creation event
-func (m *OutboundImpl) CustomerCreated(ctx context.Context, customer Customer) error {
-	return m.invoker.Invoke(ctx, "customers.v1.Outbound", "customerCreated", customer)
-}
-
-func lookupEnvOrString(key string, defaultVal string) string {
-	if val, ok := os.LookupEnv(key); ok {
-		return val
-	}
-	return defaultVal
-}
-
-func NewConnection() (*frames.Connection, error) {
-	sock, err := pair.NewSocket()
-	if err != nil {
-		return nil, err
-	}
-	if err = sock.Dial(busSocketAddress); err != nil {
-		return nil, err
-	}
-
-	framer := frames.NewFramer(sock)
-	conn := frames.NewConnection("client", framer, frames.ClientStartingStreamID)
-
-	return conn, nil
-}
-
 type Storage struct {
-	invoker *functions.Invoker
+	a *Adapter
 }
 
-func NewStorage(invoker *functions.Invoker) *Storage {
+func NewStorage(a *Adapter) *Storage {
 	return &Storage{
-		invoker: invoker,
+		a: a,
 	}
 }
 
 func (s *Storage) Get(namespace, id, key string) (stateful.RawItem, bool, error) {
+	ctx := context.Background()
 	var item stateful.RawItem
 
 	type Args struct {
@@ -152,205 +447,248 @@ func (s *Storage) Get(namespace, id, key string) (stateful.RawItem, bool, error)
 		Key       string `json:"key" msgpack:"key"`
 	}
 
-	if err := s.invoker.InvokeWithReturn(context.Background(), "nanobus:state", "get", &Args{
+	request, err := s.a.requestPayload("nanobus:state/get", &Args{
 		Namespace: namespace,
 		ID:        id,
 		Key:       key,
-	}, &item); err != nil {
+	})
+	if err != nil {
+		return item, false, err
+	}
+
+	resp, err := s.a.client.RequestResponse(request).Block(ctx)
+	if err != nil {
+		return item, false, err
+	}
+
+	if err := s.a.codec.Decode(resp.Data(), &item); err != nil {
 		return item, false, err
 	}
 
 	return item, true, nil
 }
 
-type Adapter struct {
-	stateManager       *stateful.Manager
-	codec              functions.Codec
-	invoker            *functions.Invoker
-	registerFn         functions.Register
-	registerStatefulFn functions.RegisterStateful
-	listen             func() error
-	close              func() error
-}
-
-func NewAdapter() (*Adapter, error) {
-	conn, err := NewConnection()
-	if err != nil {
-		return nil, fmt.Errorf("could not create connection: %w", err)
-	}
-	codec := msgpack.New()
-	s := stream.New(conn, "/", codec.ContentType())
-
-	cache, err := stateful.NewLRUCache(200)
-	if err != nil {
-		return nil, fmt.Errorf("could not create cache: %w", err)
-	}
-	stateInvoker := functions.NewInvoker(s.Invoke, s.InvokeStream, codec)
-	storage := NewStorage(stateInvoker)
-	stateManager := stateful.NewManager(cache, storage, codec)
-
-	conn.SetHandler(s.Router)
-	invoker := functions.NewInvoker(s.Invoke, s.InvokeStream, codec)
-
-	app := Adapter{
-		stateManager:       stateManager,
-		codec:              codec,
-		invoker:            invoker,
-		registerFn:         s.Register,
-		registerStatefulFn: s.RegisterStateful,
-		listen:             conn.ReceiveLoop,
-		close:              conn.Close,
-	}
-
-	return &app, nil
-}
-
-func (a *Adapter) Start() (err error) {
-	defer fmt.Println("Start stopped")
-	fmt.Printf("🌏 Nanoserver connected to %s\n", busSocketAddress)
-	return a.listen()
-}
-
-func (a *Adapter) Stop() (err error) {
-	if a.close != nil {
-		err = a.close()
-	}
-	return err
-}
-
-func (a *Adapter) Run() {
-	ctx := context.Background()
-	var g run.Group
-	{
-		g.Add(func() error {
-			return a.Start()
-		}, func(error) {
-			a.Stop()
-		})
-	}
-	{
-		g.Add(run.SignalHandler(ctx, syscall.SIGINT, syscall.SIGTERM))
-	}
-
-	if err := g.Run(); err.Error() != "received signal interrupt" {
-		log.Fatalln(err)
-	}
-}
-
-func (a *Adapter) Invoker() *functions.Invoker {
-	return a.invoker
-}
-
-func (a *Adapter) RegisterInbound(handlers Inbound) *Adapter {
-	if handlers.CreateCustomer != nil {
-		a.registerFn("customers.v1.Inbound", "createCustomer", a.inbound_createCustomerWrapper(handlers.CreateCustomer))
-	}
-	if handlers.GetCustomer != nil {
-		a.registerFn("customers.v1.Inbound", "getCustomer", a.inbound_getCustomerWrapper(handlers.GetCustomer))
-	}
-	if handlers.ListCustomers != nil {
-		a.registerFn("customers.v1.Inbound", "listCustomers", a.inbound_listCustomersWrapper(handlers.ListCustomers))
-	}
-	return a
-}
-
 func (a *Adapter) RegisterCustomerActor(stateful CustomerActor) *Adapter {
-	a.registerStatefulFn("customers.v1.CustomerActor", "deactivate", a.stateManager.DeactivateHandler("customers.v1.CustomerActor", stateful))
-	a.registerStatefulFn("customers.v1.CustomerActor", "createCustomer", a.customerActor_createCustomerWrapper(stateful))
-	a.registerStatefulFn("customers.v1.CustomerActor", "getCustomer", a.customerActor_getCustomerWrapper(stateful))
+	a.RegisterRR("customers.v1.CustomerActor/deactivate", a.deactivateHandler("customers.v1.CustomerActor", stateful))
+	a.RegisterRR("/customers.v1.CustomerActor/createCustomer", a.customerActor_createCustomerWrapper(stateful))
+	a.RegisterRR("/customers.v1.CustomerActor/getCustomer", a.customerActor_getCustomerWrapper(stateful))
 	return a
 }
 
-func (a *Adapter) inbound_createCustomerWrapper(handler func(ctx context.Context, customer Customer) (*Customer, error)) functions.Handler {
-	return func(ctx context.Context, payload []byte) ([]byte, error) {
-		var request Customer
-		if err := a.codec.Decode(payload, &request); err != nil {
-			return nil, err
+func (a *Adapter) deactivateHandler(actorType string, actor interface{}) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		id, ok := md.Scalar(":id")
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
 		}
-		response, err := handler(ctx, request)
+
+		sctx, err := a.stateManager.ToContext(ctx, actorType, id, actor)
 		if err != nil {
-			return nil, err
+			sink.Error(ErrNotFound)
+			return
 		}
-		return a.codec.Encode(response)
+		if deactivator, ok := actor.(stateful.Deactivator); ok {
+			deactivator.Deactivate(sctx)
+		}
+		a.stateManager.Deactivate(stateful.LogicalAddress{
+			Type: actorType,
+			ID:   id,
+		})
+
+		sink.Success(payload.Empty())
 	}
 }
 
-func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, id uint64) (*Customer, error)) functions.Handler {
-	return func(ctx context.Context, payload []byte) ([]byte, error) {
-		var inputArgs inboundGetCustomerArgs
-		if err := a.codec.Decode(payload, &inputArgs); err != nil {
-			return nil, err
+func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		var input Customer
+		id, ok := md.Scalar(":id")
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
 		}
-		response, err := handler(ctx, inputArgs.ID)
-		if err != nil {
-			return nil, err
-		}
-		return a.codec.Encode(response)
+
+		a.invokeRR(request, sink, &input,
+			func() (interface{}, error) {
+				sctx, err := a.stateManager.ToContext(ctx, "customers.v1.CustomerActor", id, stateful)
+				if err != nil {
+					return nil, err
+				}
+				return stateful.CreateCustomer(&AdapterContext{&sctx}, input)
+			},
+		)
 	}
 }
 
-func (a *Adapter) inbound_listCustomersWrapper(handler func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)) functions.Handler {
-	return func(ctx context.Context, payload []byte) ([]byte, error) {
-		var request CustomerQuery
-		if err := a.codec.Decode(payload, &request); err != nil {
-			return nil, err
+func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) HandlerRR {
+	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
+		id, ok := md.Scalar(":id")
+		if !ok {
+			sink.Error(ErrNotFound)
+			return
 		}
-		response, err := handler(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-		return a.codec.Encode(response)
-	}
-}
 
-func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) functions.StatefulHandler {
-	return func(ctx context.Context, id string, payload []byte) ([]byte, error) {
-		var request Customer
-		if err := a.codec.Decode(payload, &request); err != nil {
-			return nil, err
-		}
 		sctx, err := a.stateManager.ToContext(ctx, "customers.v1.CustomerActor", id, stateful)
 		if err != nil {
-			return nil, err
-		}
-		response, err := stateful.CreateCustomer(&AdapterContext{&sctx}, request)
-		if err != nil {
-			return nil, err
-		}
-		statefulResponse, err := sctx.Response(response)
-		if err != nil {
-			return nil, err
-		}
-		return a.codec.Encode(statefulResponse)
-	}
-}
-
-func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) functions.StatefulHandler {
-	return func(ctx context.Context, id string, payload []byte) ([]byte, error) {
-		sctx, err := a.stateManager.ToContext(ctx, "customers.v1.CustomerActor", id, stateful)
-		if err != nil {
-			return nil, err
+			sink.Error(err)
+			return
 		}
 		response, err := stateful.GetCustomer(&AdapterContext{&sctx})
 		if err != nil {
-			return nil, err
+			sink.Error(err)
+			return
 		}
-		statefulResponse, err := sctx.Response(response)
+
+		responseBytes, err := a.codec.Encode(response)
 		if err != nil {
-			return nil, err
+			sink.Error(err)
+			return
 		}
-		return a.codec.Encode(statefulResponse)
+
+		sink.Success(payload.New(responseBytes, nil))
 	}
 }
 
-type inboundGetCustomerArgs struct {
-	ID uint64 `json:"id" msgpack:"id"`
-}
+// type SC struct {
+// 	client rsocket.Client
+// 	codec  functions.Codec
+// }
 
-func (a *Adapter) NewOutbound() Outbound {
-	return NewOutboundImpl(a.invoker, a.codec)
-}
+// func (p *SC) RR(ctx context.Context, customer *Customer) (*Customer, error) {
+// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-type outboundFetchCustomerArgs struct {
-	ID uint64 `json:"id" msgpack:"id"`
-}
+// 	resp, err := p.client.RequestResponse(request).Block(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var result Customer
+// 	if err = p.codec.Decode(resp.Data(), &result); err != nil {
+// 		return nil, err
+// 	}
+
+// 	return &result, nil
+// }
+
+// func (p *SC) RS(ctx context.Context, customer *Customer) (CustomerSource, error) {
+// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	f := p.client.RequestStream(request)
+// 	source := newCustomerSource(ctx, p.codec)
+// 	source.subscribe(ctx, f)
+
+// 	return source, nil
+// }
+
+// func (p *SC) RC(ctx context.Context, customer *Customer) (CustomerSink, CustomerSource, error) {
+// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+
+// 	sink := newCustomerSink(p.codec, nil)
+// 	source := newCustomerSource(ctx, p.codec)
+// 	in := flux.Create(func(ctx context.Context, s flux.Sink) {
+// 		sink.sink = s
+// 	})
+// 	f := p.client.RequestChannel(in)
+// 	// If arguments are passed
+// 	sink.sink.Next(request)
+// 	source.subscribe(ctx, f)
+
+// 	return sink, source, nil
+// }
+
+// func (p *SC) requestPayload(path string, data interface{}) (payload.Payload, error) {
+// 	metadataBytes, err := p.codec.Encode(metadata.MD{
+// 		":path": []string{path},
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var requestBytes []byte
+// 	if data != nil {
+// 		requestBytes, err = p.codec.Encode(data)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return payload.New(requestBytes, metadataBytes), nil
+// }
+
+// type SB struct {
+// 	codec     functions.Codec
+// 	handlerRR func(ctx context.Context, customer *Customer) (*Customer, error)
+// 	handlerRS func(ctx context.Context, customer *Customer, sink CustomerSink) error
+// 	handlerRC func(ctx context.Context, customer *Customer, source CustomerSource, sink CustomerSink) error
+// }
+
+// // RequestResponse register request handler for RequestResponse.
+// func (s *SB) RequestResponse(request payload.Payload) (response mono.Mono) {
+// 	mono.Create(func(ctx context.Context, sink mono.Sink) {
+// 		var customer Customer
+// 		if err := s.codec.Decode(request.Data(), &customer); err != nil {
+// 			sink.Error(err)
+// 			return
+// 		}
+
+// 		response, err := s.handlerRR(ctx, &customer)
+// 		if err != nil {
+// 			sink.Error(err)
+// 			return
+// 		}
+
+// 		responseBytes, err := s.codec.Encode(response)
+// 		if err != nil {
+// 			sink.Error(err)
+// 			return
+// 		}
+
+// 		sink.Success(payload.New(responseBytes, nil))
+// 	})
+
+// 	return nil
+// }
+
+// // RequestStream register request handler for RequestStream.
+// func (s *SB) RequestStream(request payload.Payload) (responses flux.Flux) {
+// 	flux.Create(func(ctx context.Context, sink flux.Sink) {
+// 		var customer Customer
+// 		if err := s.codec.Decode(request.Data(), &customer); err != nil {
+// 			sink.Error(err)
+// 			return
+// 		}
+
+// 		typedSink := newCustomerSink(s.codec, sink)
+// 		s.handlerRS(ctx, &customer, typedSink)
+// 	})
+
+// 	return nil
+// }
+
+// // RequestChannel register request handler for RequestChannel.
+// func (s *SB) RequestChannel(requests flux.Flux) (responses flux.Flux) {
+// 	flux.Create(func(ctx context.Context, sink flux.Sink) {
+// 		source := newCustomerSource(ctx, s.codec)
+// 		source.subscribe(ctx, requests)
+
+// 		customer, err := source.Receive()
+// 		if err != nil {
+// 			sink.Error(err)
+// 			return
+// 		}
+
+// 		typedSink := newCustomerSink(s.codec, sink)
+// 		s.handlerRC(ctx, customer, source, typedSink)
+// 	})
+
+// 	return nil
+// }

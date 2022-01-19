@@ -1,13 +1,6 @@
 import logger from "./lib/logger";
 import dotenv from "dotenv";
-import {
-  HTTPHandlers,
-  // HTTPInvoker,
-  Invoker,
-  jsonCodec,
-  msgpackCodec,
-} from "./lib/nanobus";
-import { Manager, Storage, LRUCache } from "./lib/stateful";
+import { Manager, LRUCache, Deactivator, isDeactivator } from "./lib/stateful";
 import { Expose } from "class-transformer";
 import {
   Inbound,
@@ -15,39 +8,64 @@ import {
   CustomerQuery,
   CustomerActor,
   Outbound,
-  RecvStream,
 } from "./interfaces";
+import {
+  jsonSerializer,
+  msgPackSerializer,
+  IAdapter,
+  Metadata,
+  Source,
+  IPublisher,
+} from "./lib/nanobus";
+import { RSocketAdapter, RSocketStorage } from "./lib/rsocket";
 
-import nano from "nanomsg";
-import { NanomsgHandlers, NanomsgInvoker } from "./nm";
-import { Connection, CLIENT_STARTING_STREAM_ID } from "./functions/connection";
+const result = dotenv.config();
+if (result.error) {
+  dotenv.config({ path: ".env.default" });
+}
 
-// npm install https://github.com/den1zk/node-nanomsg#nodeversionupdate
-var pair = nano.socket("pair");
-pair.connect("ipc://bus.sock");
+const HOST = process.env.RSOCKET_HOST || "127.0.0.1";
+const PORT = parseInt(process.env.RSOCKET_PORT) || 7878;
 
-const socket = {
-  async send(msg: ArrayBuffer): Promise<void> {
-    pair.send(Buffer.from(msg));
-  },
-  onData(cb: (msg: ArrayBuffer) => void): void {
-    pair.on("data", function (buf: Buffer) {
-      cb(buf.buffer);
-    });
-  },
-};
-
-const conn = new Connection(socket, CLIENT_STARTING_STREAM_ID);
-const invoker = new NanomsgInvoker("/", conn, msgpackCodec);
-const handlers = new NanomsgHandlers(conn, msgpackCodec);
+const adapter = new RSocketAdapter(msgPackSerializer, {
+  host: HOST,
+  port: PORT,
+});
 
 const busUrl = process.env.BUS_URL || "http://127.0.0.1:32321";
-
-//const invoker = HTTPInvoker(busUrl + "/providers", msgpackCodec);
-//const handlers = new HTTPHandlers(msgpackCodec);
 const cache = new LRUCache();
-const storage = new Storage(busUrl, jsonCodec);
-const stateManager = new Manager(cache, storage, jsonCodec);
+const storage = new RSocketStorage(adapter);
+const stateManager = new Manager(cache, storage, jsonSerializer);
+
+export function registerInbound(h: Inbound): void {
+  if (h.createCustomer) {
+    adapter.registerRequestResponseHandler(
+      "/customers.v1.Inbound/createCustomer",
+      async (_: Metadata, input: any): Promise<any> => {
+        const payload = input as Customer;
+        return h.createCustomer(payload);
+      }
+    );
+  }
+  if (h.getCustomer) {
+    adapter.registerRequestResponseHandler(
+      "/customers.v1.Inbound/getCustomer",
+      async (_: Metadata, input: any): Promise<any> => {
+        const inputArgs = input as InboundGetCustomerArgs;
+        return h.getCustomer(inputArgs.id);
+      }
+    );
+  }
+  if (h.listCustomers) {
+    adapter.registerRequestResponseHandler(
+      "/customers.v1.Inbound/listCustomers",
+      async (_: Metadata, input: any): Promise<any> => {
+        const payload = input as CustomerQuery;
+        return h.listCustomers(payload);
+      }
+    );
+  }
+}
 
 class InboundGetCustomerArgs {
   @Expose() id: number;
@@ -57,74 +75,47 @@ class InboundGetCustomerArgs {
   }
 }
 
-export function registerInbound(h: Inbound): void {
-  if (h.createCustomer) {
-    handlers.registerHandler(
-      "customers.v1.Inbound",
-      "createCustomer",
-      (input: ArrayBuffer): Promise<ArrayBuffer> => {
-        const payload = handlers.codec.decoder(input) as Customer;
-        return h
-          .createCustomer(payload)
-          .then((result) => handlers.codec.encoder(result));
+export function registerCustomerActor(actor: CustomerActor): void {
+  adapter.registerRequestResponseHandler(
+    "/customers.v1.CustomerActor/deactivate",
+    async (md: Metadata, _: any): Promise<void> => {
+      const id = md[":id"][0];
+      const sctx = stateManager.toContext(
+        "customers.v1.CustomerActor",
+        id,
+        actor
+      );
+      if (isDeactivator(actor)) {
+        (actor as Deactivator).deactivate(sctx);
       }
-    );
-  }
-  if (h.getCustomer) {
-    handlers.registerHandler(
-      "customers.v1.Inbound",
-      "getCustomer",
-      (input: ArrayBuffer): Promise<ArrayBuffer> => {
-        const inputArgs = handlers.codec.decoder(
-          input
-        ) as InboundGetCustomerArgs;
-        return h
-          .getCustomer(inputArgs.id)
-          .then((result) => handlers.codec.encoder(result));
-      }
-    );
-  }
-  if (h.listCustomers) {
-    handlers.registerHandler(
-      "customers.v1.Inbound",
-      "listCustomers",
-      (input: ArrayBuffer): Promise<ArrayBuffer> => {
-        const payload = handlers.codec.decoder(input) as CustomerQuery;
-        return h
-          .listCustomers(payload)
-          .then((result) => handlers.codec.encoder(result));
-      }
-    );
-  }
-}
-
-export function registerCustomerActor(h: CustomerActor): void {
-  handlers.registerStatefulHandler(
-    "customers.v1.CustomerActor",
-    "deactivate",
-    stateManager.deactivateHandler("customers.v1.CustomerActor", h)
-  );
-  handlers.registerStatefulHandler(
-    "customers.v1.CustomerActor",
-    "createCustomer",
-    (id: string, input: ArrayBuffer): Promise<ArrayBuffer> => {
-      const payload = handlers.codec.decoder(input) as Customer;
-      const sctx = stateManager.toContext("customers.v1.CustomerActor", id, h);
-      return h
-        .createCustomer(sctx, payload)
-        .then((result) => sctx.response(result))
-        .then((result) => handlers.codec.encoder(result));
+      stateManager.deactivate(sctx.self);
     }
   );
-  handlers.registerStatefulHandler(
-    "customers.v1.CustomerActor",
-    "getCustomer",
-    (id: string, input: ArrayBuffer): Promise<ArrayBuffer> => {
-      const sctx = stateManager.toContext("customers.v1.CustomerActor", id, h);
-      return h
-        .getCustomer(sctx)
-        .then((result) => sctx.response(result))
-        .then((result) => handlers.codec.encoder(result));
+  adapter.registerRequestResponseHandler(
+    "/customers.v1.CustomerActor/createCustomer",
+    async (md: Metadata, input: any): Promise<any> => {
+      const id = md[":id"][0];
+      const payload = input as Customer;
+      const sctx = stateManager.toContext(
+        "customers.v1.CustomerActor",
+        id,
+        actor
+      );
+      return actor
+        .createCustomer(sctx, payload)
+        .then((result) => sctx.response(result));
+    }
+  );
+  adapter.registerRequestResponseHandler(
+    "/customers.v1.CustomerActor/getCustomer",
+    async (md: Metadata, _: any): Promise<any> => {
+      const id = md[":id"][0];
+      const sctx = stateManager.toContext(
+        "customers.v1.CustomerActor",
+        id,
+        actor
+      );
+      return actor.getCustomer(sctx).then((result) => sctx.response(result));
     }
   );
 }
@@ -138,19 +129,17 @@ class OutboundFetchCustomerArgs {
 }
 
 export class OutboundImpl implements Outbound {
-  private invoker: Invoker;
+  private adapter: IAdapter;
 
-  constructor(invoker: Invoker) {
-    this.invoker = invoker;
+  constructor(adapter: IAdapter) {
+    this.adapter = adapter;
   }
 
   // Saves a customer to the backend database
   async saveCustomer(customer: Customer): Promise<void> {
-    return this.invoker.unary(
-      "customers.v1.Outbound",
-      "saveCustomer",
-      customer
-    ).then();
+    return this.adapter
+      .requestResponse<void>("/customers.v1.Outbound/saveCustomer", customer)
+      .then();
   }
 
   // Fetches a customer from the backend database
@@ -158,36 +147,50 @@ export class OutboundImpl implements Outbound {
     const inputArgs: OutboundFetchCustomerArgs = {
       id,
     };
-    return this.invoker.unary("customers.v1.Outbound", "fetchCustomer", inputArgs);
+    return this.adapter
+      .requestResponse<Customer>(
+        "/customers.v1.Outbound/fetchCustomer",
+        inputArgs
+      )
+      .then();
   }
 
   // Queries customers from the backend database
-  getCustomers(): RecvStream<Customer> {
-    return this.invoker.stream<any, Customer>("customers.v1.Outbound", "getCustomers", true);
+  getCustomers(): IPublisher<Customer> {
+    return this.adapter.requestStream<Customer>(
+      "/customers.v1.Outbound/getCustomers"
+    );
   }
 
   // Sends a customer creation event
   async customerCreated(customer: Customer): Promise<void> {
-    return this.invoker.unary(
-      "customers.v1.Outbound",
-      "customerCreated",
-      customer
-    ).then();
+    return this.adapter
+      .requestResponse("/customers.v1.Outbound/customerCreated", customer)
+      .then();
+  }
+
+  transformCustomers(
+    prefix: string,
+    source: Source<Customer>
+  ): IPublisher<Customer> {
+    return this.adapter.requestChannel(
+      "/customers.v1.Outbound/transformCustomers",
+      {
+        prefix: prefix,
+      },
+      source
+    );
   }
 }
 
-export var outbound = new OutboundImpl(invoker);
-
-const result = dotenv.config();
-if (result.error) {
-  dotenv.config({ path: ".env.default" });
-}
-
-const PORT = parseInt(process.env.PORT) || 9000;
-const HOST = process.env.HOST || "127.0.0.1";
+export var outbound = new OutboundImpl(adapter);
 
 export function start(): void {
-  // handlers.listen(PORT, HOST, () => {
-  //   logger.info(`🌏 Nanoserver started at http://${HOST}:${PORT}`);
-  // });
+  Promise.resolve(adapter.connect()).then(
+    () => {},
+    (error) => {
+      console.error(error.stack);
+      process.exit(1);
+    }
+  );
 }

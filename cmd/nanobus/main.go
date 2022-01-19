@@ -52,6 +52,7 @@ import (
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
+	compute_rsocket "github.com/nanobus/nanobus/compute/rsocket"
 	compute_stream "github.com/nanobus/nanobus/compute/stream"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
 	"github.com/nanobus/nanobus/errorz"
@@ -254,6 +255,7 @@ func main() {
 		compute_mux.Mux,
 		compute_wapc.WaPC,
 		compute_stream.Stream,
+		compute_rsocket.RSocket,
 	)
 
 	// Codec registration

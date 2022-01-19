@@ -23,9 +23,24 @@ export class InboundImpl implements Inbound {
 
   async getCustomer(id: number): Promise<Customer> {
     const stream = this.outbound.getCustomers();
-    await stream.forEach(async (customer) => {
-      console.log(customer);
+    await stream.forEach((customer) => console.log(customer));
+
+    const pub = this.outbound.transformCustomers("TEST_", (sub) => {
+      sub.onSubscribe({
+        cancel: () => {},
+        request: (n) => {
+          sub.onNext(new Customer({
+            id: 1234,
+            firstName: "John",
+            lastName: "Doe",
+            email: "john.doe@email.com",
+          }));
+          sub.onComplete();
+        },
+      });
     });
+    await pub.forEach((customer) => console.log(customer));
+
     return this.outbound.fetchCustomer(id);
   }
 

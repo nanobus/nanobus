@@ -18,9 +18,15 @@
   "dependencies": {
     "@msgpack/msgpack": "^2.7.0",
     "@types/nanomsg": "^3.2.3",
+    "@types/rsocket-core": "^0.0.7",
+    "@types/rsocket-flowable": "^0.0.5",
+    "@types/rsocket-tcp-client": "^0.0.1",
     "class-transformer": "^0.4.0",
     "dotenv": "10.0.0",
     "nanomsg": "^4.1.0",
+    "rsocket-core": "^0.0.27",
+    "rsocket-flowable": "^0.0.27",
+    "rsocket-tcp-client": "^0.0.27",
     "typescript-lru-cache": "^1.2.1",
     "winston": "3.3.3",
     "winston-transport": "4.4.0"

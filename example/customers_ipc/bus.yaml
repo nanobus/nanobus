@@ -7,7 +7,7 @@ specs:
       filename: spec.widl
 
 compute:
-  type: stream
+  type: rsocket
 
 resources:
   db:

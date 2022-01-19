@@ -12,6 +12,8 @@ type Service struct {
 	outbound Outbound
 }
 
+var _ = (Inbound)((*Service)(nil))
+
 func NewService(outbound Outbound) *Service {
 	return &Service{
 		outbound: outbound,
@@ -40,8 +42,8 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 		return nil, err
 	}
 	for {
-		var customer Customer
-		if err := stream.Recv(&customer); err != nil {
+		customer, err := stream.Receive()
+		if err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -49,7 +51,10 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 			return nil, err
 		}
 
-		jsonBytes, _ := json.MarshalIndent(&customer, "", "  ")
+		jsonBytes, err := json.MarshalIndent(customer, "", "  ")
+		if err != nil {
+			fmt.Println(err)
+		}
 		fmt.Println(string(jsonBytes))
 	}
 

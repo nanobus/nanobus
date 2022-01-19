@@ -17,6 +17,26 @@ export interface Context {
   remove(key: string): void;
 }
 
+export interface IPublisher<T> {
+  subscribe(subscriber?: Partial<ISubscriber<T>>): void;
+  map<R>(fn: (data: T) => R): IPublisher<R>;
+  forEach(onNextFn: (next: T) => void, requestN?: number): void;
+}
+
+export type Source<I> = (subscriber: ISubscriber<I>) => void;
+
+export interface ISubscriber<T> {
+  onComplete(): void;
+  onError(error: Error): void;
+  onNext(value: T): void;
+  onSubscribe(subscription: ISubscription): void;
+}
+
+export interface ISubscription {
+  cancel(): void;
+  request(n: number): void;
+}
+
 // Operations that can be performed on a customer.
 export interface Inbound {
   // Creates a new customer.
@@ -35,19 +55,6 @@ export interface CustomerActor {
   getCustomer(ctx: Context): Promise<Customer>;
 }
 
-export interface SendStream<S> {
-  send(out: S): void;
-  end(): void;
-}
-
-export interface RecvStream<R> {
-  receive(): Promise<R | undefined>;
-  forEach(cb: (ab: R) => Promise<void>): Promise<void>;
-}
-
-export interface BiStream<S, R> extends SendStream<S>, RecvStream<R> {
-}
-
 export interface Outbound {
   // Saves a customer to the backend database
   saveCustomer(customer: Customer): Promise<void>;
@@ -56,7 +63,12 @@ export interface Outbound {
   // Sends a customer creation event
   customerCreated(customer: Customer): Promise<void>;
   // Get customers from the database
-  getCustomers(): RecvStream<Customer>;
+  getCustomers(): IPublisher<Customer>;
+  // Get customers from the database
+  transformCustomers(
+    prefix: string,
+    source: Source<Customer>
+  ): IPublisher<Customer>;
 }
 
 // Customer information.

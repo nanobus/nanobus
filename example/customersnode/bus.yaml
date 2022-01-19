@@ -4,7 +4,7 @@ specs:
       filename: spec.widl
 
 compute:
-  type: stream
+  type: rsocket
 
 resources:
   db:
@@ -89,6 +89,12 @@ providers:
           with:
             resource: db
             sql: SELECT id, first_name, last_name, email FROM customers
+    
+    transformCustomers:
+      name: Query the database for customers
+      steps:
+        - name: Channel Test
+          uses: 'channel_test'
 
     fetchCustomer:
       name: Loads the customer from the database
