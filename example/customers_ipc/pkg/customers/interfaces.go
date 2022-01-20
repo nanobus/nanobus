@@ -32,14 +32,6 @@ type Context interface {
 }
 
 // Operations that can be performed on a customer.
-// type Inbound struct {
-// 	// Creates a new customer.
-// 	CreateCustomer func(ctx context.Context, customer Customer) (*Customer, error)
-// 	// Retrieve a customer by id.
-// 	GetCustomer func(ctx context.Context, id uint64) (*Customer, error)
-// 	// Return a page of customers using optional search filters.
-// 	ListCustomers func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)
-// }
 type Inbound interface {
 	// Creates a new customer.
 	CreateCustomer(ctx context.Context, customer Customer) (*Customer, error)
@@ -57,21 +49,17 @@ type CustomerActor interface {
 	GetCustomer(ctx Context) (*Customer, error)
 }
 
-type CustomerSource interface {
+type CustomerPublisher interface {
 	Receive() (*Customer, error)
-	//Subscribe(next func(*Customer), complete func(error))
 }
 
-type CustomerSink interface {
-	Send(*Customer)
-	Complete()
-	Error(err error)
+type CustomerSubscriber struct {
+	OnComplete func()
+	OnError    func(error)
+	OnNext     func(*Customer)
 }
 
-type GetCustomersProcessor interface {
-	CustomerSource
-	CustomerSink
-}
+type CustomerSource func(CustomerSubscriber)
 
 type Outbound interface {
 	// Saves a customer to the backend database
@@ -81,7 +69,9 @@ type Outbound interface {
 	// Sends a customer creation event
 	CustomerCreated(ctx context.Context, customer Customer) error
 	// Get customers from the database
-	GetCustomers(ctx context.Context) (CustomerSource, error)
+	GetCustomers(ctx context.Context) (CustomerPublisher, error)
+	// Transform customers
+	TransformCustomers(ctx context.Context, prefix string, source CustomerSource) (CustomerPublisher, error)
 }
 
 // Customer information.

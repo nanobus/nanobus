@@ -13,13 +13,7 @@ func main() {
 	service := customers.NewService(outbound)
 
 	adapter.RegisterInbound(service)
-
-	// adapter.RegisterInbound(customers.Inbound{
-	// 	CreateCustomer: service.CreateCustomer,
-	// 	GetCustomer:    service.GetCustomer,
-	// 	ListCustomers:  service.ListCustomers,
-	// })
-	// adapter.RegisterCustomerActor(customers.NewCustomerActorImpl())
+	adapter.RegisterCustomerActor(customers.NewCustomerActorImpl())
 
 	log.Fatal(adapter.Start(context.Background()))
 }

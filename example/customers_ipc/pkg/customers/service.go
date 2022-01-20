@@ -58,6 +58,35 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 		fmt.Println(string(jsonBytes))
 	}
 
+	stream, err = s.outbound.TransformCustomers(ctx, "TEST_", func(sub CustomerSubscriber) {
+		sub.OnNext(&Customer{
+			ID:        1234,
+			FirstName: "John",
+			LastName:  "Doe",
+			Email:     "john.doe@email.com",
+		})
+		sub.OnComplete()
+	})
+	if err != nil {
+		return nil, err
+	}
+	for {
+		customer, err := stream.Receive()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			fmt.Println(err)
+			return nil, err
+		}
+
+		jsonBytes, err := json.MarshalIndent(customer, "", "  ")
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(string(jsonBytes))
+	}
+
 	return s.outbound.FetchCustomer(ctx, id)
 }
 

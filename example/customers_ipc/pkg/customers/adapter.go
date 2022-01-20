@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/nanobus/go-functions"
+	"github.com/nanobus/go-functions/codecs/json"
 	"github.com/nanobus/go-functions/codecs/msgpack"
 	"github.com/nanobus/go-functions/metadata"
 	"github.com/nanobus/go-functions/stateful"
@@ -17,33 +18,35 @@ import (
 
 var ErrNotFound = errors.New("not_found")
 
-type HandlerRR func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink)
-type HandlerRS func(ctx context.Context, md metadata.MD, request payload.Payload, sink flux.Sink)
-type HandlerRC func(ctx context.Context, md metadata.MD, requests flux.Flux, sink flux.Sink)
+type (
+	RequestResponseHandler func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink)
+	RequestStreamHandler   func(ctx context.Context, md metadata.MD, request payload.Payload, sink flux.Sink)
+	RequestChannelHandler  func(ctx context.Context, md metadata.MD, requests flux.Flux, sink flux.Sink)
+)
 
 type Adapter struct {
 	starter      rsocket.ClientStarter
 	client       rsocket.Client
 	codec        functions.Codec
 	stateManager *stateful.Manager
-	handlersRR   map[string]HandlerRR
-	handlersRS   map[string]HandlerRS
-	handlersRC   map[string]HandlerRC
+	handlersRR   map[string]RequestResponseHandler
+	handlersRS   map[string]RequestStreamHandler
+	handlersRC   map[string]RequestChannelHandler
 	done         chan struct{}
 }
 
 func NewAdapter() *Adapter {
 	a := Adapter{
 		codec:      msgpack.New(),
-		handlersRR: make(map[string]HandlerRR),
-		handlersRS: make(map[string]HandlerRS),
-		handlersRC: make(map[string]HandlerRC),
+		handlersRR: make(map[string]RequestResponseHandler),
+		handlersRS: make(map[string]RequestStreamHandler),
+		handlersRC: make(map[string]RequestChannelHandler),
 		done:       make(chan struct{}),
 	}
 
 	cache, _ := stateful.NewLRUCache(200)
 	storage := NewStorage(&a)
-	a.stateManager = stateful.NewManager(cache, storage, a.codec)
+	a.stateManager = stateful.NewManager(cache, storage, json.New())
 
 	// Start a client connection
 	contentType := a.codec.ContentType()
@@ -151,15 +154,15 @@ func (a *Adapter) NewOutbound() Outbound {
 	return NewOutboundImpl(a)
 }
 
-func (a *Adapter) RegisterRR(path string, handler HandlerRR) {
+func (a *Adapter) RegisterRR(path string, handler RequestResponseHandler) {
 	a.handlersRR[path] = handler
 }
 
-func (a *Adapter) RegisterRS(path string, handler HandlerRS) {
+func (a *Adapter) RegisterRS(path string, handler RequestStreamHandler) {
 	a.handlersRS[path] = handler
 }
 
-func (a *Adapter) RegisterRC(path string, handler HandlerRC) {
+func (a *Adapter) RegisterRC(path string, handler RequestChannelHandler) {
 	a.handlersRC[path] = handler
 }
 
@@ -169,7 +172,7 @@ func (a *Adapter) RegisterInbound(handlers Inbound) {
 	a.RegisterRR("/customers.v1.Inbound/listCustomers", a.inbound_listCustomersWrapper(handlers.ListCustomers))
 }
 
-func (a *Adapter) inbound_createCustomerWrapper(handler func(ctx context.Context, customer Customer) (*Customer, error)) HandlerRR {
+func (a *Adapter) inbound_createCustomerWrapper(handler func(ctx context.Context, customer Customer) (*Customer, error)) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		var customer Customer
 		a.invokeRR(request, sink, &customer,
@@ -180,7 +183,7 @@ func (a *Adapter) inbound_createCustomerWrapper(handler func(ctx context.Context
 	}
 }
 
-func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, id uint64) (*Customer, error)) HandlerRR {
+func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, id uint64) (*Customer, error)) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		var inputArgs inboundGetCustomerArgs
 		a.invokeRR(request, sink, &inputArgs,
@@ -191,7 +194,7 @@ func (a *Adapter) inbound_getCustomerWrapper(handler func(ctx context.Context, i
 	}
 }
 
-func (a *Adapter) inbound_listCustomersWrapper(handler func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)) HandlerRR {
+func (a *Adapter) inbound_listCustomersWrapper(handler func(ctx context.Context, query CustomerQuery) (*CustomerPage, error)) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		var query CustomerQuery
 		a.invokeRR(request, sink, &query,
@@ -266,7 +269,7 @@ func (p *OutboundImpl) FetchCustomer(ctx context.Context, id uint64) (*Customer,
 		ID: id,
 	}
 	var result Customer
-	if err := p.handleRR(ctx, "/customers.v1.Outbound/fetchCustomer", &inputArgs, &result); err != nil {
+	if err := p.requestResponse(ctx, "/customers.v1.Outbound/fetchCustomer", &inputArgs, &result); err != nil {
 		return nil, err
 	}
 
@@ -277,17 +280,53 @@ func (p *OutboundImpl) CustomerCreated(ctx context.Context, customer Customer) e
 	return p.handleFF(ctx, "/customers.v1.Outbound/customerCreated", &customer)
 }
 
-func (p *OutboundImpl) GetCustomers(ctx context.Context) (CustomerSource, error) {
+func (p *OutboundImpl) GetCustomers(ctx context.Context) (CustomerPublisher, error) {
 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	f := p.a.client.RequestStream(request)
-	source := newCustomerSource(ctx, p.a.codec)
+	source := newCustomerPublisher(ctx, p.a.codec)
 	source.subscribe(ctx, f)
 
 	return source, nil
+}
+
+func (p *OutboundImpl) TransformCustomers(ctx context.Context, prefix string, source CustomerSource) (CustomerPublisher, error) {
+	request, err := p.requestPayload("/customers.v1.Outbound/transformCustomers", &transformCustomersArgs{
+		Prefix: prefix,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	in := flux.Create(func(ctx context.Context, emitter flux.Sink) {
+		emitter.Next(request)
+
+		source(CustomerSubscriber{
+			OnComplete: func() { emitter.Complete() },
+			OnError:    func(err error) { emitter.Error(err) },
+			OnNext: func(item *Customer) {
+				data, err := p.a.codec.Encode(item)
+				if err != nil {
+					emitter.Error(err)
+					return
+				}
+				emitter.Next(payload.New(data, nil))
+			},
+		})
+	})
+
+	f := p.a.client.RequestChannel(in)
+	publisher := newCustomerPublisher(ctx, p.a.codec)
+	publisher.subscribe(ctx, f)
+
+	return publisher, nil
+}
+
+type transformCustomersArgs struct {
+	Prefix string `json:"prefix" msgpack:"prefix"`
 }
 
 func (p *OutboundImpl) handleFF(ctx context.Context, path string, input interface{}) error {
@@ -300,7 +339,7 @@ func (p *OutboundImpl) handleFF(ctx context.Context, path string, input interfac
 	return err
 }
 
-func (p *OutboundImpl) handleRR(ctx context.Context, path string, input interface{}, dst interface{}) error {
+func (p *OutboundImpl) requestResponse(ctx context.Context, path string, input interface{}, dst interface{}) error {
 	request, err := p.requestPayload(path, input)
 	if err != nil {
 		return err
@@ -332,15 +371,15 @@ func (p *OutboundImpl) requestPayload(path string, data interface{}) (payload.Pa
 	return payload.New(requestBytes, metadataBytes), nil
 }
 
-type customerSource struct {
+type customerPublisher struct {
 	ctx   context.Context
 	codec functions.Codec
 	c     chan *Customer
 	e     chan error
 }
 
-func newCustomerSource(ctx context.Context, codec functions.Codec) *customerSource {
-	return &customerSource{
+func newCustomerPublisher(ctx context.Context, codec functions.Codec) *customerPublisher {
+	return &customerPublisher{
 		ctx:   ctx,
 		codec: codec,
 		c:     make(chan *Customer, 100),
@@ -348,7 +387,7 @@ func newCustomerSource(ctx context.Context, codec functions.Codec) *customerSour
 	}
 }
 
-func (s *customerSource) Receive() (customer *Customer, err error) {
+func (s *customerPublisher) Receive() (customer *Customer, err error) {
 	var ok bool
 	select {
 	case customer, ok = <-s.c:
@@ -362,7 +401,7 @@ func (s *customerSource) Receive() (customer *Customer, err error) {
 	return customer, err
 }
 
-func (s *customerSource) subscribe(ctx context.Context, f flux.Flux) {
+func (s *customerPublisher) subscribe(ctx context.Context, f flux.Flux) {
 	f.DoOnNext(func(input payload.Payload) error {
 		var customer Customer
 		if err := s.codec.Decode(input.Data(), &customer); err != nil {
@@ -378,34 +417,34 @@ func (s *customerSource) subscribe(ctx context.Context, f flux.Flux) {
 	}).Subscribe(ctx)
 }
 
-type customerSink struct {
-	codec functions.Codec
-	sink  flux.Sink
-}
+// type customerSink struct {
+// 	codec functions.Codec
+// 	sink  flux.Sink
+// }
 
-func newCustomerSink(codec functions.Codec, sink flux.Sink) *customerSink {
-	return &customerSink{
-		codec: codec,
-		sink:  sink,
-	}
-}
+// func newCustomerSink(codec functions.Codec, sink flux.Sink) *customerSink {
+// 	return &customerSink{
+// 		codec: codec,
+// 		sink:  sink,
+// 	}
+// }
 
-func (s *customerSink) Send(customer *Customer) {
-	responseBytes, err := s.codec.Encode(customer)
-	if err != nil {
-		s.sink.Error(err)
-		return
-	}
-	s.sink.Next(payload.New(responseBytes, nil))
-}
+// func (s *customerSink) Send(customer *Customer) {
+// 	responseBytes, err := s.codec.Encode(customer)
+// 	if err != nil {
+// 		s.sink.Error(err)
+// 		return
+// 	}
+// 	s.sink.Next(payload.New(responseBytes, nil))
+// }
 
-func (s *customerSink) Complete() {
-	s.sink.Complete()
-}
+// func (s *customerSink) Complete() {
+// 	s.sink.Complete()
+// }
 
-func (s *customerSink) Error(err error) {
-	s.sink.Error(err)
-}
+// func (s *customerSink) Error(err error) {
+// 	s.sink.Error(err)
+// }
 
 type inboundGetCustomerArgs struct {
 	ID uint64 `json:"id" msgpack:"id"`
@@ -469,13 +508,13 @@ func (s *Storage) Get(namespace, id, key string) (stateful.RawItem, bool, error)
 }
 
 func (a *Adapter) RegisterCustomerActor(stateful CustomerActor) *Adapter {
-	a.RegisterRR("customers.v1.CustomerActor/deactivate", a.deactivateHandler("customers.v1.CustomerActor", stateful))
+	a.RegisterRR("/customers.v1.CustomerActor/deactivate", a.deactivateHandler("customers.v1.CustomerActor", stateful))
 	a.RegisterRR("/customers.v1.CustomerActor/createCustomer", a.customerActor_createCustomerWrapper(stateful))
 	a.RegisterRR("/customers.v1.CustomerActor/getCustomer", a.customerActor_getCustomerWrapper(stateful))
 	return a
 }
 
-func (a *Adapter) deactivateHandler(actorType string, actor interface{}) HandlerRR {
+func (a *Adapter) deactivateHandler(actorType string, actor interface{}) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		id, ok := md.Scalar(":id")
 		if !ok {
@@ -500,7 +539,7 @@ func (a *Adapter) deactivateHandler(actorType string, actor interface{}) Handler
 	}
 }
 
-func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) HandlerRR {
+func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		var input Customer
 		id, ok := md.Scalar(":id")
@@ -509,19 +548,39 @@ func (a *Adapter) customerActor_createCustomerWrapper(stateful CustomerActor) Ha
 			return
 		}
 
-		a.invokeRR(request, sink, &input,
-			func() (interface{}, error) {
-				sctx, err := a.stateManager.ToContext(ctx, "customers.v1.CustomerActor", id, stateful)
-				if err != nil {
-					return nil, err
-				}
-				return stateful.CreateCustomer(&AdapterContext{&sctx}, input)
-			},
-		)
+		if err := a.codec.Decode(request.Data(), &input); err != nil {
+			sink.Error(err)
+			return
+		}
+
+		sctx, err := a.stateManager.ToContext(ctx, "customers.v1.CustomerActor", id, stateful)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+		result, err := stateful.CreateCustomer(&AdapterContext{&sctx}, input)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+
+		response, err := sctx.Response(result)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+
+		responseBytes, err := a.codec.Encode(response)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+
+		sink.Success(payload.New(responseBytes, nil))
 	}
 }
 
-func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) HandlerRR {
+func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) RequestResponseHandler {
 	return func(ctx context.Context, md metadata.MD, request payload.Payload, sink mono.Sink) {
 		id, ok := md.Scalar(":id")
 		if !ok {
@@ -540,7 +599,13 @@ func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) Handl
 			return
 		}
 
-		responseBytes, err := a.codec.Encode(response)
+		resp, err := sctx.Response(response)
+		if err != nil {
+			sink.Error(err)
+			return
+		}
+
+		responseBytes, err := a.codec.Encode(resp)
 		if err != nil {
 			sink.Error(err)
 			return
@@ -549,146 +614,3 @@ func (a *Adapter) customerActor_getCustomerWrapper(stateful CustomerActor) Handl
 		sink.Success(payload.New(responseBytes, nil))
 	}
 }
-
-// type SC struct {
-// 	client rsocket.Client
-// 	codec  functions.Codec
-// }
-
-// func (p *SC) RR(ctx context.Context, customer *Customer) (*Customer, error) {
-// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	resp, err := p.client.RequestResponse(request).Block(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var result Customer
-// 	if err = p.codec.Decode(resp.Data(), &result); err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &result, nil
-// }
-
-// func (p *SC) RS(ctx context.Context, customer *Customer) (CustomerSource, error) {
-// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	f := p.client.RequestStream(request)
-// 	source := newCustomerSource(ctx, p.codec)
-// 	source.subscribe(ctx, f)
-
-// 	return source, nil
-// }
-
-// func (p *SC) RC(ctx context.Context, customer *Customer) (CustomerSink, CustomerSource, error) {
-// 	request, err := p.requestPayload("/customers.v1.Outbound/getCustomers", customer)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-
-// 	sink := newCustomerSink(p.codec, nil)
-// 	source := newCustomerSource(ctx, p.codec)
-// 	in := flux.Create(func(ctx context.Context, s flux.Sink) {
-// 		sink.sink = s
-// 	})
-// 	f := p.client.RequestChannel(in)
-// 	// If arguments are passed
-// 	sink.sink.Next(request)
-// 	source.subscribe(ctx, f)
-
-// 	return sink, source, nil
-// }
-
-// func (p *SC) requestPayload(path string, data interface{}) (payload.Payload, error) {
-// 	metadataBytes, err := p.codec.Encode(metadata.MD{
-// 		":path": []string{path},
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var requestBytes []byte
-// 	if data != nil {
-// 		requestBytes, err = p.codec.Encode(data)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
-
-// 	return payload.New(requestBytes, metadataBytes), nil
-// }
-
-// type SB struct {
-// 	codec     functions.Codec
-// 	handlerRR func(ctx context.Context, customer *Customer) (*Customer, error)
-// 	handlerRS func(ctx context.Context, customer *Customer, sink CustomerSink) error
-// 	handlerRC func(ctx context.Context, customer *Customer, source CustomerSource, sink CustomerSink) error
-// }
-
-// // RequestResponse register request handler for RequestResponse.
-// func (s *SB) RequestResponse(request payload.Payload) (response mono.Mono) {
-// 	mono.Create(func(ctx context.Context, sink mono.Sink) {
-// 		var customer Customer
-// 		if err := s.codec.Decode(request.Data(), &customer); err != nil {
-// 			sink.Error(err)
-// 			return
-// 		}
-
-// 		response, err := s.handlerRR(ctx, &customer)
-// 		if err != nil {
-// 			sink.Error(err)
-// 			return
-// 		}
-
-// 		responseBytes, err := s.codec.Encode(response)
-// 		if err != nil {
-// 			sink.Error(err)
-// 			return
-// 		}
-
-// 		sink.Success(payload.New(responseBytes, nil))
-// 	})
-
-// 	return nil
-// }
-
-// // RequestStream register request handler for RequestStream.
-// func (s *SB) RequestStream(request payload.Payload) (responses flux.Flux) {
-// 	flux.Create(func(ctx context.Context, sink flux.Sink) {
-// 		var customer Customer
-// 		if err := s.codec.Decode(request.Data(), &customer); err != nil {
-// 			sink.Error(err)
-// 			return
-// 		}
-
-// 		typedSink := newCustomerSink(s.codec, sink)
-// 		s.handlerRS(ctx, &customer, typedSink)
-// 	})
-
-// 	return nil
-// }
-
-// // RequestChannel register request handler for RequestChannel.
-// func (s *SB) RequestChannel(requests flux.Flux) (responses flux.Flux) {
-// 	flux.Create(func(ctx context.Context, sink flux.Sink) {
-// 		source := newCustomerSource(ctx, s.codec)
-// 		source.subscribe(ctx, requests)
-
-// 		customer, err := source.Receive()
-// 		if err != nil {
-// 			sink.Error(err)
-// 			return
-// 		}
-
-// 		typedSink := newCustomerSink(s.codec, sink)
-// 		s.handlerRC(ctx, customer, source, typedSink)
-// 	})
-
-// 	return nil
-// }

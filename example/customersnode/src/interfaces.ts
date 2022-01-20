@@ -64,7 +64,7 @@ export interface Outbound {
   customerCreated(customer: Customer): Promise<void>;
   // Get customers from the database
   getCustomers(): IPublisher<Customer>;
-  // Get customers from the database
+  // Transform customers
   transformCustomers(
     prefix: string,
     source: Source<Customer>
