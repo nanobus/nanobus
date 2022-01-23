@@ -59,13 +59,13 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 	}
 
 	stream, err = s.outbound.TransformCustomers(ctx, "TEST_", func(sub CustomerSubscriber) {
-		sub.OnNext(&Customer{
+		sub.Next(&Customer{
 			ID:        1234,
 			FirstName: "John",
 			LastName:  "Doe",
 			Email:     "john.doe@email.com",
 		})
-		sub.OnComplete()
+		sub.Complete()
 	})
 	if err != nil {
 		return nil, err

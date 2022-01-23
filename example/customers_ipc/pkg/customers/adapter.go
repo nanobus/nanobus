@@ -303,19 +303,7 @@ func (p *OutboundImpl) TransformCustomers(ctx context.Context, prefix string, so
 
 	in := flux.Create(func(ctx context.Context, emitter flux.Sink) {
 		emitter.Next(request)
-
-		source(CustomerSubscriber{
-			OnComplete: func() { emitter.Complete() },
-			OnError:    func(err error) { emitter.Error(err) },
-			OnNext: func(item *Customer) {
-				data, err := p.a.codec.Encode(item)
-				if err != nil {
-					emitter.Error(err)
-					return
-				}
-				emitter.Next(payload.New(data, nil))
-			},
-		})
+		source(newCustomerSubscriber(p.a.codec, emitter))
 	})
 
 	f := p.a.client.RequestChannel(in)
@@ -417,34 +405,34 @@ func (s *customerPublisher) subscribe(ctx context.Context, f flux.Flux) {
 	}).Subscribe(ctx)
 }
 
-// type customerSink struct {
-// 	codec functions.Codec
-// 	sink  flux.Sink
-// }
+type customerSubscriber struct {
+	codec functions.Codec
+	sink  flux.Sink
+}
 
-// func newCustomerSink(codec functions.Codec, sink flux.Sink) *customerSink {
-// 	return &customerSink{
-// 		codec: codec,
-// 		sink:  sink,
-// 	}
-// }
+func newCustomerSubscriber(codec functions.Codec, sink flux.Sink) *customerSubscriber {
+	return &customerSubscriber{
+		codec: codec,
+		sink:  sink,
+	}
+}
 
-// func (s *customerSink) Send(customer *Customer) {
-// 	responseBytes, err := s.codec.Encode(customer)
-// 	if err != nil {
-// 		s.sink.Error(err)
-// 		return
-// 	}
-// 	s.sink.Next(payload.New(responseBytes, nil))
-// }
+func (s *customerSubscriber) Next(customer *Customer) {
+	responseBytes, err := s.codec.Encode(customer)
+	if err != nil {
+		s.sink.Error(err)
+		return
+	}
+	s.sink.Next(payload.New(responseBytes, nil))
+}
 
-// func (s *customerSink) Complete() {
-// 	s.sink.Complete()
-// }
+func (s *customerSubscriber) Complete() {
+	s.sink.Complete()
+}
 
-// func (s *customerSink) Error(err error) {
-// 	s.sink.Error(err)
-// }
+func (s *customerSubscriber) Error(err error) {
+	s.sink.Error(err)
+}
 
 type inboundGetCustomerArgs struct {
 	ID uint64 `json:"id" msgpack:"id"`

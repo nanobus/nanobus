@@ -53,10 +53,10 @@ type CustomerPublisher interface {
 	Receive() (*Customer, error)
 }
 
-type CustomerSubscriber struct {
-	OnComplete func()
-	OnError    func(error)
-	OnNext     func(*Customer)
+type CustomerSubscriber interface {
+	Complete()
+	Error(error)
+	Next(*Customer)
 }
 
 type CustomerSource func(CustomerSubscriber)
