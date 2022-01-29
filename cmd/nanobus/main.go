@@ -47,6 +47,7 @@ import (
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
 	cloudevents_avro "github.com/nanobus/nanobus/codec/cloudevents/avro"
+	cloudevents_json "github.com/nanobus/nanobus/codec/cloudevents/json"
 	"github.com/nanobus/nanobus/codec/confluentavro"
 	codec_json "github.com/nanobus/nanobus/codec/json"
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
@@ -265,6 +266,7 @@ func main() {
 		codec_msgpack.MsgPack,
 		confluentavro.ConfluentAvro,
 		cloudevents_avro.CloudEventsAvro,
+		cloudevents_json.CloudEventsJSON,
 	)
 
 	resourceRegistry := resource.Registry{}
@@ -305,26 +307,25 @@ func main() {
 	if config.Codecs == nil {
 		config.Codecs = map[string]runtime.Component{}
 	}
-	if _, exists := config.Codecs["json"]; !exists {
-		config.Codecs["json"] = runtime.Component{
-			Type: "json",
-		}
-	}
-	if _, exists := config.Codecs["msgpack"]; !exists {
-		config.Codecs["msgpack"] = runtime.Component{
-			Type: "msgpack",
+	for name, loadable := range codecRegistry {
+		if loadable.Auto {
+			if _, exists := config.Codecs[name]; !exists {
+				config.Codecs[name] = runtime.Component{
+					Type: name,
+				}
+			}
 		}
 	}
 
 	codecs := make(codec.Codecs)
 	codecsByContentType := make(codec.Codecs)
 	for name, component := range config.Codecs {
-		loader, ok := codecRegistry[component.Type]
+		loadable, ok := codecRegistry[component.Type]
 		if !ok {
 			log.Error(nil, "could not find codec", "type", component.Type)
 			os.Exit(1)
 		}
-		c, err := loader(component.With, resolveAs)
+		c, err := loadable.Loader(component.With, resolveAs)
 		if err != nil {
 			log.Error(err, "error loading codec", "type", component.Type)
 			os.Exit(1)

@@ -10,6 +10,7 @@ var All = []actions.NamedLoader{
 	InvokeBinding,
 	SetState,
 	GetState,
+	DeleteState,
 	PublishMessage,
 	SQLExec,
 }

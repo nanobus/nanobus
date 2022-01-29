@@ -20,8 +20,8 @@ type (
 )
 
 // JSON is the NamedLoader for this codec.
-func CloudEventsAvro() (string, codec.Loader) {
-	return "cloudevents+avro", Loader
+func CloudEventsAvro() (string, bool, codec.Loader) {
+	return "cloudevents+avro", true, Loader
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {

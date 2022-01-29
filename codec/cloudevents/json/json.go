@@ -13,9 +13,9 @@ type (
 	Codec struct{}
 )
 
-// JSON is the NamedLoader for this codec.
-func JSON() (string, bool, codec.Loader) {
-	return "json", true, Loader
+// CloudEventsJSON is the NamedLoader for this codec.
+func CloudEventsJSON() (string, bool, codec.Loader) {
+	return "cloudevents+json", true, Loader
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {
@@ -28,17 +28,22 @@ func NewCodec() *Codec {
 }
 
 func (c *Codec) ContentType() string {
-	return "application/json"
+	return "application/cloudevents+json"
 }
 
 // Decode decodes JSON bytes to a value.
 func (c *Codec) Decode(msgValue []byte, args ...interface{}) (interface{}, string, error) {
-	var data interface{}
+	var data map[string]interface{}
 	if err := coalesce.JSONUnmarshal(msgValue, &data); err != nil {
 		return nil, "", err
 	}
 
-	return data, "", nil
+	var typeValue string
+	if typeField, ok := data["type"]; ok {
+		typeValue, _ = typeField.(string)
+	}
+
+	return data, typeValue, nil
 }
 
 // Encode encodes a value into JSON encoded bytes.

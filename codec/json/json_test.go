@@ -10,8 +10,9 @@ import (
 )
 
 func TestCodec(t *testing.T) {
-	name, loader := json.JSON()
+	name, auto, loader := json.JSON()
 	assert.Equal(t, "json", name)
+	assert.True(t, auto)
 	c, err := loader(nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "application/json", c.ContentType())

@@ -16,11 +16,11 @@ func TestRegistry(t *testing.T) {
 	loader := func(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {
 		return nil, nil
 	}
-	namedLoader := func() (string, codec.Loader) {
-		return "test", loader
+	namedLoader := func() (string, bool, codec.Loader) {
+		return "test", true, loader
 	}
 
 	r.Register(namedLoader)
 
-	assert.Equal(t, fmt.Sprintf("%v", codec.Loader(loader)), fmt.Sprintf("%p", r["test"]))
+	assert.Equal(t, fmt.Sprintf("%v", codec.Loader(loader)), fmt.Sprintf("%v", r["test"].Loader))
 }

@@ -10,8 +10,9 @@ import (
 )
 
 func TestCodec(t *testing.T) {
-	name, loader := msgpack.MsgPack()
+	name, auto, loader := msgpack.MsgPack()
 	assert.Equal(t, "msgpack", name)
+	assert.True(t, auto)
 	c, err := loader(nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "application/msgpack", c.ContentType())

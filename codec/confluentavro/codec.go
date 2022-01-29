@@ -21,8 +21,8 @@ type Config struct {
 }
 
 // ConfluentAvro is the NamedLoader for this codec.
-func ConfluentAvro() (string, codec.Loader) {
-	return "confluentavro", Loader
+func ConfluentAvro() (string, bool, codec.Loader) {
+	return "confluentavro", false, Loader
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {

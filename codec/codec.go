@@ -13,15 +13,22 @@ type (
 		Decode(data []byte, args ...interface{}) (interface{}, string, error)
 	}
 
-	NamedLoader func() (string, Loader)
+	NamedLoader func() (string, bool, Loader)
 	Loader      func(with interface{}, resolver resolve.ResolveAs) (Codec, error)
-	Registry    map[string]Loader
-	Codecs      map[string]Codec
+	Loadable    struct {
+		Loader Loader
+		Auto   bool
+	}
+	Registry map[string]Loadable
+	Codecs   map[string]Codec
 )
 
 func (r Registry) Register(loaders ...NamedLoader) {
 	for _, l := range loaders {
-		name, loader := l()
-		r[name] = loader
+		name, auto, loader := l()
+		r[name] = Loadable{
+			Loader: loader,
+			Auto:   auto,
+		}
 	}
 }

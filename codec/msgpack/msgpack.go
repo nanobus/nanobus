@@ -13,8 +13,8 @@ type (
 )
 
 // MsgPack is the NamedLoader for this codec.
-func MsgPack() (string, codec.Loader) {
-	return "msgpack", Loader
+func MsgPack() (string, bool, codec.Loader) {
+	return "msgpack", true, Loader
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {

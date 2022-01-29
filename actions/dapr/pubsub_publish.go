@@ -22,6 +22,8 @@ type PublishMessageConfig struct {
 	Codec string `mapstructure:"codec"`
 	// CodecArgs are the arguments for the codec, if any.
 	CodecArgs []interface{} `mapstructure:"codecArgs"`
+	// Key is the optional value to use for the message key (is supported).
+	Key *expr.ValueExpr `mapstructure:"key"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 	// Metadata is the input binding metadata
@@ -75,18 +77,33 @@ func PublishMessageAction(
 			}
 		}
 
+		var key string
+		if config.Key != nil {
+			keyInt, err := config.Key.Eval(data)
+			if err != nil {
+				return nil, err
+			}
+			key = fmt.Sprintf("%v", keyInt)
+		}
+
 		dataBytes, err := codec.Encode(input, config.CodecArgs...)
 		if err != nil {
 			return nil, err
+		}
+
+		metadata := map[string]string{
+			"rawPayload": "true",
+		}
+
+		if key != "" {
+			metadata["partitionKey"] = key
 		}
 
 		err = component.Publish(&pubsub.PublishRequest{
 			Data:       dataBytes,
 			PubsubName: config.Pubsub,
 			Topic:      config.Topic,
-			Metadata: map[string]string{
-				"rawPayload": "true",
-			},
+			Metadata:   metadata,
 		})
 
 		return nil, err

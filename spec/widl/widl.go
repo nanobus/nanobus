@@ -40,7 +40,8 @@ func Loader(with interface{}) ([]*spec.Namespace, error) {
 }
 
 type nsParser struct {
-	n *spec.Namespace
+	n       *spec.Namespace
+	aliases map[string]*ast.AliasDefinition
 }
 
 func Parse(schema []byte) (*spec.Namespace, error) {
@@ -56,7 +57,10 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 		return nil, err
 	}
 
-	p := nsParser{n: n}
+	p := nsParser{
+		n:       n,
+		aliases: make(map[string]*ast.AliasDefinition),
+	}
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
@@ -75,6 +79,9 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 		case *ast.UnionDefinition:
 			// Create a placeholder for the enum in memory
 			n.AddUnion(spec.NewUnion(d.Name.Value, stringValue(d.Description)))
+
+		case *ast.AliasDefinition:
+			p.aliases[d.Name.Value] = d
 		}
 	}
 
@@ -334,6 +341,9 @@ func (p *nsParser) convertTypeRef(t ast.Type) *spec.TypeRef {
 				Kind:  spec.KindUnion,
 				Union: u,
 			}
+		}
+		if a, ok := p.aliases[tt.Name.Value]; ok {
+			return p.convertTypeRef(a.Type)
 		}
 	case *ast.ListType:
 		return &spec.TypeRef{
