@@ -43,6 +43,7 @@ import (
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
 	"github.com/nanobus/nanobus/actions/dapr"
+	"github.com/nanobus/nanobus/actions/gorm"
 	"github.com/nanobus/nanobus/actions/postgres"
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/codec"
@@ -272,6 +273,7 @@ func main() {
 	resourceRegistry := resource.Registry{}
 	resourceRegistry.Register(
 		postgres.Connection,
+		gorm.Connection,
 	)
 
 	// Action registration
@@ -279,6 +281,7 @@ func main() {
 	actionRegistry.Register(core.All...)
 	actionRegistry.Register(dapr.All...)
 	actionRegistry.Register(postgres.All...)
+	actionRegistry.Register(gorm.All...)
 
 	// Codecs
 	jsoncodec := json_codec.New()
