@@ -14,11 +14,12 @@ import (
 )
 
 type InvokeActorConfig struct {
-	Method string
 	// Key is the expression to evaluate the key to save.
 	Type *expr.ValueExpr `mapstructure:"type"`
 	// ForEach is an option expression to evaluate a
 	ID *expr.ValueExpr `mapstructure:"id"`
+	// Method is the name of the actor method to invoke.
+	Method string `mapstructure:"method"`
 	// Data is the optional data expression to tranform the data to set.
 	Data *expr.DataExpr `mapstructure:"value"`
 	// Metadata is the optional data expression for the key's metadata.

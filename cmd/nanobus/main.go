@@ -550,17 +550,17 @@ func main() {
 				service := actorType[lastDot+1:]
 				namespace := actorType[:lastDot]
 
+				target := actorType + "/" + actorID
+
+				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+					logInbound(log, target+"/"+fn, string(jsonBytes))
+				}
+
 				data := actions.Data{
 					"claims":   claimsMap,
 					"input":    input,
 					"metadata": metadata,
 					"env":      env,
-				}
-
-				target := actorType + "/" + actorID
-
-				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					logInbound(log, target+"/"+fn, string(jsonBytes))
 				}
 
 				ctx := function.ToContext(ctx, function.Function{
