@@ -16,7 +16,7 @@ import (
 	"github.com/nanobus/nanobus/stream"
 )
 
-type FindConfig struct {
+type FindAllConfig struct {
 	// Resource is the name of the connection resource to use.
 	Resource string `mapstructure:"resource"`
 	// Namespace is the type namespace to load.
@@ -27,24 +27,15 @@ type FindConfig struct {
 	ID *expr.ValueExpr `mapstructure:"id"`
 	// Preload lists the relationship to expand/load.
 	Preload []Preload `mapstructure:"preload"`
-	// NotFoundError is the error to return if the key is not found.
-	NotFoundError string `mapstructure:"notFoundError"`
-}
-
-type Preload struct {
-	Field   string    `mapstructure:"field"`
-	Preload []Preload `mapstructure:"preload"`
 }
 
 // Load is the NamedLoader for the invoke action.
-func Find() (string, actions.Loader) {
-	return "@gorm/find", FindLoader
+func FindAll() (string, actions.Loader) {
+	return "@gorm/find_all", FindAllLoader
 }
 
-func FindLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	c := FindConfig{
-		NotFoundError: "not_found",
-	}
+func FindAllLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	c := FindAllConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -75,11 +66,11 @@ func FindLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, e
 		return nil, fmt.Errorf("type %q is not found", c.Type)
 	}
 
-	return FindAction(&c, t, ns, pool), nil
+	return FindAllAction(&c, t, ns, pool), nil
 }
 
-func FindAction(
-	config *FindConfig,
+func FindAllAction(
+	config *FindAllConfig,
 	t *spec.Type,
 	ns *spec.Namespace,
 	db *gorm.DB) actions.Action {

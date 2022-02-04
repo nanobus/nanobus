@@ -7,7 +7,7 @@ require (
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
 	github.com/antonmedv/expr v1.9.0
 	github.com/cenkalti/backoff/v4 v4.1.2
-	github.com/dapr/components-contrib v1.5.1
+	github.com/dapr/components-contrib v1.6.0-rc.2
 	github.com/dapr/dapr v1.5.1
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.87.0
@@ -32,7 +32,7 @@ require (
 	github.com/sony/gobreaker v0.5.0
 	github.com/spf13/cast v1.4.1
 	github.com/stretchr/testify v1.7.0
-	github.com/valyala/fasthttp v1.31.0
+	github.com/valyala/fasthttp v1.31.1-0.20211216042702-258a4c17b4f4
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/wapc/wapc-go v0.3.1
 	github.com/wapc/widl-go v0.0.0-20211107144116-b062dc36e83f
@@ -42,10 +42,12 @@ require (
 	go.uber.org/zap v1.19.1
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gorm.io/driver/postgres v1.2.3
+	gorm.io/gorm v1.22.5
 )
 
 require (
-	contrib.go.opencensus.io/exporter/prometheus v0.2.0 // indirect
+	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1 // indirect
 	github.com/AdhityaRamadhanus/fasthttpcors v0.0.0-20170121111917-d4c07198763a // indirect
 	github.com/DataDog/zstd v1.4.6-0.20210211175136-c6db21d202f4 // indirect
@@ -56,15 +58,13 @@ require (
 	github.com/Shopify/sarama v1.23.1 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/Workiva/go-datastructures v1.0.52 // indirect
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/alibaba/sentinel-golang v1.0.3 // indirect
 	github.com/andybalholm/brotli v1.0.2 // indirect
 	github.com/antlr/antlr4 v0.0.0-20200503195918-621b933c7a7f // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/go-twitter v0.0.0-20190719072343-39e5462e111f // indirect
@@ -81,6 +81,8 @@ require (
 	github.com/fasthttp/router v1.3.8 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-kit/log v0.1.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.5 // indirect
@@ -92,7 +94,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grandcat/zeroconf v0.0.0-20190424104450-85eadb44205c // indirect
@@ -117,6 +119,8 @@ require (
 	github.com/jackc/pgtype v1.9.1 // indirect
 	github.com/jackc/puddle v1.2.0 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.4 // indirect
 	github.com/jjeffcaii/reactor-go v0.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
@@ -139,11 +143,11 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
-	github.com/prometheus/client_golang v1.9.0 // indirect
+	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.15.0 // indirect
-	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/prometheus/statsd_exporter v0.15.0 // indirect
+	github.com/prometheus/common v0.32.1 // indirect
+	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/prometheus/statsd_exporter v0.22.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
 	github.com/savsgio/gotils v0.0.0-20210217112953-d4a072536008 // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
@@ -159,22 +163,21 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.0.0-20180916065949-5c77d914dd0b // indirect
-	go.opencensus.io v0.22.5 // indirect
+	go.opencensus.io v0.23.0 // indirect
 	go.opentelemetry.io/otel v0.19.0 // indirect
 	go.opentelemetry.io/otel/metric v0.19.0 // indirect
 	go.opentelemetry.io/otel/trace v0.19.0 // indirect
-	go.uber.org/atomic v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
-	golang.org/x/oauth2 v0.0.0-20210220000619-9bb904979d93 // indirect
+	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
-	google.golang.org/appengine v1.6.6 // indirect
+	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect

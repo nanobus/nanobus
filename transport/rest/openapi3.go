@@ -132,7 +132,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 				}
 
 				if oper.Returns != nil {
-					traverseType(foundTypes, oper.Returns.Type)
+					traverseTypeRef(foundTypes, oper.Returns)
 				}
 
 				if oper.Parameters != nil {
@@ -308,6 +308,22 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 	return params, requestBody
 }
 
+func traverseTypeRef(foundTypes map[string]struct{}, t *spec.TypeRef) {
+	switch t.Kind {
+	case spec.KindType:
+		if !t.IsPrimitive() {
+			traverseType(foundTypes, t.Type)
+		}
+	case spec.KindMap:
+		traverseTypeRef(foundTypes, t.MapKeyType)
+		traverseTypeRef(foundTypes, t.MapValueType)
+	case spec.KindList:
+		traverseTypeRef(foundTypes, t.ListType)
+	case spec.KindOptional:
+		traverseTypeRef(foundTypes, t.OptionalType)
+	}
+}
+
 func traverseType(foundTypes map[string]struct{}, t *spec.Type) {
 	if t == nil {
 		return
@@ -316,7 +332,7 @@ func traverseType(foundTypes map[string]struct{}, t *spec.Type) {
 		foundTypes[t.Name] = struct{}{}
 	}
 	for _, f := range t.Fields {
-		traverseType(foundTypes, f.Type.Type)
+		traverseTypeRef(foundTypes, f.Type)
 	}
 }
 

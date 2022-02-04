@@ -6,4 +6,5 @@ import (
 
 var All = []actions.NamedLoader{
 	Find,
+	FindAll,
 }
