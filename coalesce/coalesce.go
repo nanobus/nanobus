@@ -38,6 +38,10 @@ func Integers(v interface{}) interface{} {
 		for k, v := range t {
 			t[k] = Integers(v)
 		}
+	case []interface{}:
+		for i, v := range t {
+			t[i] = Integers(v)
+		}
 	}
 
 	return v

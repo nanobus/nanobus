@@ -290,6 +290,9 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 			return err
 		})
 		if err != nil {
+			if errors.Is(err, actions.ErrStop) {
+				return nil, nil
+			}
 			return nil, err
 		}
 		if s.config.Returns != "" {

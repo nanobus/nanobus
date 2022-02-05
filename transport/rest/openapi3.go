@@ -58,7 +58,7 @@ func swaggerSpecHandler(b []byte) http.HandlerFunc {
 }
 
 func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
-	spec := openapi3.T{
+	apispec := openapi3.T{
 		OpenAPI: "3.0.0",
 		Servers: openapi3.Servers{
 			&openapi3.Server{
@@ -80,7 +80,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			if err := json.Unmarshal(infoMapJSON, &info); err != nil {
 				return nil, err
 			}
-			spec.Info = &info
+			apispec.Info = &info
 		}
 
 		nsPath := getAnotationString(ns, "path")
@@ -97,7 +97,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			servicePath := getAnotationString(service, "path")
 
 			// Add tag
-			spec.Tags = append(spec.Tags, &openapi3.Tag{
+			apispec.Tags = append(apispec.Tags, &openapi3.Tag{
 				Name:        service.Name,
 				Description: service.Description,
 			})
@@ -106,10 +106,10 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 				operPath := getAnotationString(oper, "path")
 				p := path.Clean(path.Join(nsPath, servicePath, operPath))
 
-				if spec.Paths == nil {
-					spec.Paths = make(openapi3.Paths)
+				if apispec.Paths == nil {
+					apispec.Paths = make(openapi3.Paths)
 				}
-				sp, existingPathItem := spec.Paths[p]
+				sp, existingPathItem := apispec.Paths[p]
 				if !existingPathItem {
 					sp = &openapi3.PathItem{}
 				}
@@ -140,18 +140,30 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 				}
 
 				if !existingPathItem {
-					spec.Paths[p] = sp
+					apispec.Paths[p] = sp
 				}
 
 				var responses openapi3.Responses
-				if oper.Returns != nil && oper.Returns.Type != nil {
-					responses = openapi3.NewResponses()
-					defaultResponse := responses.Default()
-					defaultResponse.Value.
-						WithDescription("Success").
-						WithJSONSchemaRef(
-							openapi3.NewSchemaRef(
-								"#/components/schemas/"+oper.Returns.Type.Name, nil))
+				if oper.Returns != nil {
+					switch oper.Returns.Kind {
+					case spec.KindType:
+						responses = openapi3.NewResponses()
+						defaultResponse := responses.Default()
+						defaultResponse.Value.
+							WithDescription("Success").
+							WithJSONSchemaRef(
+								openapi3.NewSchemaRef(
+									"#/components/schemas/"+oper.Returns.Type.Name, nil))
+					case spec.KindList:
+						responses = openapi3.NewResponses()
+						defaultResponse := responses.Default()
+						ary := openapi3.NewArraySchema()
+						ary.Items = openapi3.NewSchemaRef(
+							"#/components/schemas/"+oper.Returns.ListType.Type.Name, nil)
+						defaultResponse.Value.
+							WithDescription("Success").
+							WithJSONSchemaRef(ary.NewRef())
+					}
 				}
 
 				params, rb := parameters(p, service, oper)
@@ -170,7 +182,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 		}
 
 		if len(ns.Types) > 0 {
-			spec.Components.Schemas = openapi3.Schemas{}
+			apispec.Components.Schemas = openapi3.Schemas{}
 		}
 
 		sortedTypeNames := make([]string, 0, len(foundTypes))
@@ -184,7 +196,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			if t == nil {
 				continue
 			}
-			spec.Components.Schemas[t.Name] = &openapi3.SchemaRef{
+			apispec.Components.Schemas[t.Name] = &openapi3.SchemaRef{
 				Value: &openapi3.Schema{
 					Properties: properties(t),
 				},
@@ -194,7 +206,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 		// TODO: Enums, Unions
 	}
 
-	specBytes, err := spec.MarshalJSON()
+	specBytes, err := apispec.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}

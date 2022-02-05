@@ -34,10 +34,11 @@ type Rest struct {
 }
 
 type queryParam struct {
-	name    string
-	arg     string
-	isArray bool
-	typeRef *spec.TypeRef
+	name     string
+	arg      string
+	isArray  bool
+	required bool
+	typeRef  *spec.TypeRef
 }
 
 type optionsHolder struct {
@@ -175,19 +176,42 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 						if _, ok := pathParams[param.Name]; ok {
 							continue
 						} else if _, ok := param.Annotation("query"); ok {
-							if param.Type.IsPrimitive() {
+							t := param.Type
+							required := true
+							isArray := false
+							if t.OptionalType != nil {
+								required = false
+								t = t.OptionalType
+							}
+							if t.ListType != nil {
+								t = t.ListType
+								isArray = true
+							}
+							if t.IsPrimitive() {
 								queryParams[param.Name] = queryParam{
-									name:    param.Name,
-									isArray: false, // TODO
-									typeRef: param.Type,
+									name:     param.Name,
+									required: required,
+									isArray:  isArray,
+									typeRef:  t,
 								}
-							} else if param.Type.Type != nil {
+							} else if t.Type != nil {
 								for _, f := range param.Type.Type.Fields {
+									t := param.Type
+									required := true
+									isArray := false
+									if t.OptionalType != nil {
+										t = t.OptionalType
+									}
+									if t.ListType != nil {
+										t = t.ListType
+										isArray = true
+									}
 									queryParams[f.Name] = queryParam{
-										name:    f.Name,
-										arg:     param.Name,
-										isArray: false, // TODO
-										typeRef: f.Type,
+										name:     f.Name,
+										arg:      param.Name,
+										required: required,
+										isArray:  isArray,
+										typeRef:  t,
 									}
 								}
 							}
@@ -316,12 +340,29 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 
 		if len(queryParams) > 0 {
 			queryValues, _ := url.ParseQuery(r.URL.RawQuery)
-			for name, values := range queryValues {
-				if q, ok := queryParams[name]; ok {
-					converted, _, err := q.typeRef.Coalesce(values[0], false)
-					if err != nil {
-						t.handleError(err, codec, r, w, http.StatusBadRequest)
-						return
+			for name, q := range queryParams {
+				if values, ok := queryValues[name]; ok {
+					var converted interface{}
+					if q.isArray {
+						items := make([]interface{}, 0, 100)
+						for _, value := range values {
+							parts := strings.Split(value, ",")
+							for _, v := range parts {
+								converted, _, err = q.typeRef.Coalesce(v, false)
+								if err != nil {
+									t.handleError(err, codec, r, w, http.StatusBadRequest)
+									return
+								}
+								items = append(items, converted)
+							}
+						}
+						converted = items
+					} else {
+						converted, _, err = q.typeRef.Coalesce(values[0], false)
+						if err != nil {
+							t.handleError(err, codec, r, w, http.StatusBadRequest)
+							return
+						}
 					}
 					wrapper := input
 					if q.arg != "" {
@@ -336,6 +377,8 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 						}
 					}
 					wrapper[name] = converted
+				} else if q.isArray && q.required {
+					input[name] = []interface{}{}
 				}
 			}
 		}

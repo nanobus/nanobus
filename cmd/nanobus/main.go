@@ -696,12 +696,13 @@ func main() {
 				"claims":   claimsMap,
 				"input":    input,
 				"metadata": metadata,
-				"env":      env,
 			}
 
 			if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
 				logInbound(log, target, string(jsonBytes))
 			}
+
+			data["env"] = env
 
 			ctx := function.ToContext(ctx, function.Function{
 				Namespace: ns,
@@ -743,24 +744,22 @@ func main() {
 				log.Error(err, "error decoding event payload")
 				return nil, err
 			}
-			input := map[string]interface{}{
-				"data": decoded,
-				"type": typeName,
-			}
 
 			data := actions.Data{
-				"input":    input,
+				"input":    decoded,
+				"type":     typeName,
 				"metadata": msg.Metadata,
-				"env":      env,
 			}
 
 			if target == "" {
 				target = typeName
 			}
 
-			// if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
-			// 	log.Println("==>", target, string(jsonBytes)+"\n")
-			// }
+			if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
+				logInbound(log, target, string(jsonBytes))
+			}
+
+			data["env"] = env
 
 			result, err := rt.processor.Event(ctx, target, data)
 			if err != nil {
@@ -911,20 +910,22 @@ func main() {
 				log.Error(err, "error decoding event payload")
 				return err
 			}
-			input := map[string]interface{}{
-				"data": decoded,
-				"type": typeName,
-			}
 
 			data := actions.Data{
-				"input":    input,
+				"input":    decoded,
+				"type":     typeName,
 				"metadata": msg.Metadata,
-				"env":      env,
 			}
 
 			if target == "" {
 				target = typeName
 			}
+
+			if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
+				logInbound(log, target, string(jsonBytes))
+			}
+
+			data["env"] = env
 
 			_, err = rt.processor.Event(ctx, target, data)
 			if err != nil {
@@ -1249,12 +1250,13 @@ func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := actions.Data{
 		"input": input,
-		"env":   rt.env,
 	}
 
 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
 		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
 	}
+
+	data["env"] = rt.env
 
 	output, err := rt.processor.Provider(r.Context(), namespace, service, function, data)
 	if err != nil {
@@ -1474,14 +1476,14 @@ func coalesceOutput(namespaces spec.Namespaces, namespace, service, function str
 }
 
 func logInbound(log logr.Logger, target string, data string) {
-	l := log.V(10)
+	l := log //.V(10)
 	if l.Enabled() {
 		l.Info("==> " + target + " " + data)
 	}
 }
 
 func logOutbound(log logr.Logger, target string, data string) {
-	l := log.V(10)
+	l := log //.V(10)
 	if l.Enabled() {
 		l.Info("<== " + target + " " + data)
 	}

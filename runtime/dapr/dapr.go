@@ -25,6 +25,8 @@ import (
 
 type Runtime struct {
 	mode                     string
+	daprHTTPPort             string
+	daprAPIListenAddresses   string
 	daprInternalGRPCPort     string
 	profilePort              string
 	componentsPath           string
@@ -57,7 +59,8 @@ func New() *Runtime {
 func (r *Runtime) AttachFlags() {
 	// Dapr flags
 	flag.StringVar(&r.mode, "mode", string(modes.StandaloneMode), "Runtime mode for Dapr")
-	//daprHTTPPort := flag.String("dapr-http-port", fmt.Sprintf("%v", DefaultDaprHTTPPort), "HTTP port for Dapr API to listen on")
+	flag.StringVar(&r.daprHTTPPort, "dapr-http-port", fmt.Sprintf("%v", runtime.DefaultDaprHTTPPort), "HTTP port for Dapr API to listen on")
+	flag.StringVar(&r.daprAPIListenAddresses, "dapr-listen-addresses", "127.0.0.1", "One or more addresses for the Dapr API to listen on, CSV limited")
 	//daprAPIGRPCPort := flag.String("dapr-grpc-port", fmt.Sprintf("%v", DefaultDaprAPIGRPCPort), "gRPC port for the Dapr API to listen on")
 	flag.StringVar(&r.daprInternalGRPCPort, "dapr-internal-grpc-port", "", "gRPC port for the Dapr Internal API to listen on")
 	//appPort := flag.String("app-port", "", "The port the application is listening on")
@@ -154,9 +157,16 @@ func (r *Runtime) Initialize() error {
 		concurrency = r.appMaxConcurrency
 	}
 
+	daprAPIHTTPPort, _ := strconv.Atoi(r.daprHTTPPort)
+	daprAPIListenAddressList := strings.Split(r.daprAPIListenAddresses, ",")
+	if len(daprAPIListenAddressList) == 0 && daprAPIHTTPPort != 0 {
+		daprAPIListenAddressList = []string{"127.0.0.1"}
+		//[]string{runtime.DefaultAPIListenAddress}
+	}
+
 	runtimeConfig := runtime.NewRuntimeConfig(r.appID, placementAddresses, r.controlPlaneAddress,
 		r.allowedOrigins, r.config, r.componentsPath,
-		string(runtime.EmbeddedProtocol), r.mode, 0, daprInternalGRPC, 0, []string{}, nil, 0,
+		string(runtime.EmbeddedProtocol), r.mode, daprAPIHTTPPort, daprInternalGRPC, 0, daprAPIListenAddressList, nil, 0,
 		profPort, r.enableProfiling,
 		concurrency, r.enableMTLS, r.sentryAddress, r.appSSL, maxRequestBodySize, "", 4, false,
 		5*time.Second)
@@ -174,7 +184,7 @@ func (r *Runtime) Initialize() error {
 		//env.HostAddress:     host,
 		env.DaprPort: strconv.Itoa(daprInternalGRPC),
 		// env.DaprGRPCPort:    *daprAPIGRPCPort,
-		// env.DaprHTTPPort:    *daprHTTPPort,
+		env.DaprHTTPPort:    r.daprHTTPPort,
 		env.DaprMetricsPort: r.metricsExporter.Options().Port, // TODO - consider adding to runtime config
 		env.DaprProfilePort: r.profilePort,
 	}

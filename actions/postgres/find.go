@@ -7,37 +7,31 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
-	"github.com/nanobus/nanobus/errorz"
-	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/resource"
 	"github.com/nanobus/nanobus/spec"
 )
 
-type LoadConfig struct {
+type FindConfig struct {
 	// Resource is the name of the connection resource to use.
 	Resource string `mapstructure:"resource"`
 	// Namespace is the type namespace to load.
 	Namespace string `mapstructure:"namespace"`
 	// Type is the type name to load.
 	Type string `mapstructure:"type"`
-	// ID is the entity identifier expression.
-	ID *expr.ValueExpr `mapstructure:"id"`
 	// Preload lists the relationship to expand/load.
 	Preload []Preload `mapstructure:"preload"`
-	// NotFoundError is the error to return if the key is not found.
-	NotFoundError string `mapstructure:"notFoundError"`
+	// Where list the parts of the where clause.
+	Where []Where `mapstructure:"where"`
 }
 
-// Load is the NamedLoader for the invoke action.
-func Load() (string, actions.Loader) {
-	return "@postgres/load", LoadLoader
+// Find is the NamedLoader for the invoke action.
+func Find() (string, actions.Loader) {
+	return "@postgres/find", FindLoader
 }
 
-func LoadLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	c := LoadConfig{
-		NotFoundError: "not_found",
-	}
+func FindLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	c := FindConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -68,32 +62,20 @@ func LoadLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, e
 		return nil, fmt.Errorf("type %q is not found", c.Type)
 	}
 
-	return LoadAction(&c, t, ns, pool), nil
+	return FindAction(&c, t, ns, pool), nil
 }
 
-func LoadAction(
-	config *LoadConfig,
+func FindAction(
+	config *FindConfig,
 	t *spec.Type,
 	ns *spec.Namespace,
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		idValue, err := config.ID.Eval(data)
-		if err != nil {
-			return nil, err
-		}
-
 		var result interface{}
-		err = pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) (err error) {
-			result, err = getOne(ctx, conn, t, idValue, config.Preload)
+		err := pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) (err error) {
+			result, err = getMany(ctx, conn, t, data, config.Where, config.Preload)
 			return err
 		})
-
-		if result == nil {
-			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
-				"resource": config,
-				"key":      idValue,
-			})
-		}
 
 		return result, err
 	}
