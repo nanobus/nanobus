@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgtype"
@@ -74,7 +75,7 @@ func getOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue inter
 	return nil, nil
 }
 
-func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[string]interface{}, where []Where, toPreload []Preload) ([]map[string]interface{}, error) {
+func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[string]interface{}, where []Where, toPreload []Preload, offset, limit int64) ([]map[string]interface{}, error) {
 	sql := generateTableSQL(t)
 	var args []interface{}
 	if len(where) > 0 {
@@ -100,6 +101,12 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 			sql += query
 			args = append(args, val)
 		}
+	}
+	if offset > 0 {
+		sql += " OFFSET " + strconv.FormatInt(offset, 10)
+	}
+	if limit > 0 {
+		sql += " LIMIT " + strconv.FormatInt(limit, 10)
 	}
 	fmt.Println(sql)
 	rows, err := conn.Query(ctx, sql, args...)
@@ -156,6 +163,47 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 	return results, nil
 }
 
+func getCount(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[string]interface{}, where []Where) (int64, error) {
+	sql := generateCountSQL(t)
+	var args []interface{}
+	if len(where) > 0 {
+		dollarIndex := 1
+		for i, part := range where {
+			val, err := part.Value.Eval(input)
+			if err != nil {
+				return 0, err
+			}
+			if isNil(val) {
+				continue
+			}
+			if i > 0 {
+				sql += " AND "
+			} else {
+				sql += " WHERE "
+			}
+			query := part.Query
+			for strings.Contains(query, "?") {
+				query = strings.Replace(query, "?", fmt.Sprintf("$%d", dollarIndex), 1)
+				dollarIndex++
+			}
+			sql += query
+			args = append(args, val)
+		}
+	}
+	fmt.Println(sql)
+	rows, err := conn.Query(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var count int64
+	if rows.Next() {
+		err = rows.Scan(&count)
+	}
+	return count, err
+}
+
 func keyColumn(t *spec.Type) string {
 	for _, f := range t.Fields {
 		if _, ok := f.Annotation("key"); ok {
@@ -183,6 +231,16 @@ func generateTableSQL(t *spec.Type) string {
 		buf.WriteString(column)
 	}
 	buf.WriteString(" FROM ")
+	table := annotationValue(t, "entity", "table", t.Name)
+	buf.WriteString(table)
+
+	return buf.String()
+}
+
+func generateCountSQL(t *spec.Type) string {
+	var buf strings.Builder
+
+	buf.WriteString("SELECT count(1) FROM ")
 	table := annotationValue(t, "entity", "table", t.Name)
 	buf.WriteString(table)
 

@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/spf13/cast"
+
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/resource"
 	"github.com/nanobus/nanobus/spec"
@@ -23,6 +26,22 @@ type FindConfig struct {
 	Preload []Preload `mapstructure:"preload"`
 	// Where list the parts of the where clause.
 	Where []Where `mapstructure:"where"`
+	// Pagination is the optional fields to wrap the results with.
+	Pagination *Pagination `mapstructure:"pagination"`
+	// Offset is the query offset.
+	Offset *expr.ValueExpr `mapstructure:"offset"`
+	// Limit is the query limit.
+	Limit *expr.ValueExpr `mapstructure:"limit"`
+}
+
+type Pagination struct {
+	PageIndex string `mapstructure:"pageIndex"`
+	PageCount string `mapstructure:"pageCount"`
+	Offset    string `mapstructure:"offset"`
+	Limit     string `mapstructure:"limit"`
+	Count     string `mapstructure:"count"`
+	Total     string `mapstructure:"total"`
+	Items     string `mapstructure:"items"`
 }
 
 // Find is the NamedLoader for the invoke action.
@@ -71,12 +90,75 @@ func FindAction(
 	ns *spec.Namespace,
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		var result interface{}
+		var results []map[string]interface{}
+		var total int64
+		offset := int64(0)
+		limit := int64(1000)
+
+		if config.Offset != nil {
+			v, err := config.Offset.Eval(data)
+			if err != nil {
+				return nil, err
+			}
+			offset, err = cast.ToInt64E(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if config.Limit != nil {
+			v, err := config.Limit.Eval(data)
+			if err != nil {
+				return nil, err
+			}
+			limit, err = cast.ToInt64E(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		err := pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) (err error) {
-			result, err = getMany(ctx, conn, t, data, config.Where, config.Preload)
+			if config.Pagination != nil {
+				total, err = getCount(ctx, conn, t, data, config.Where)
+				if err != nil {
+					return err
+				}
+			}
+			results, err = getMany(ctx, conn, t, data, config.Where, config.Preload, offset, limit)
 			return err
 		})
+		if err != nil {
+			return nil, err
+		}
 
-		return result, err
+		if config.Pagination != nil {
+			p := config.Pagination
+			count := int64(len(results))
+			wrapper := map[string]interface{}{
+				p.Items: results,
+			}
+			if p.Total != "" {
+				wrapper[p.Total] = total
+			}
+			if p.Count != "" {
+				wrapper[p.Count] = count
+			}
+			if p.PageCount != "" {
+				wrapper[p.PageCount] = (count + limit - 1) / limit
+			}
+			if p.PageIndex != "" {
+				wrapper[p.PageIndex] = offset / limit
+			}
+			if p.Offset != "" {
+				wrapper[p.Offset] = offset
+			}
+			if p.Limit != "" {
+				wrapper[p.Limit] = config.Limit
+			}
+
+			return wrapper, nil
+		}
+
+		return results, nil
 	}
 }

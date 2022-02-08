@@ -34,11 +34,12 @@ type Rest struct {
 }
 
 type queryParam struct {
-	name     string
-	arg      string
-	isArray  bool
-	required bool
-	typeRef  *spec.TypeRef
+	name         string
+	arg          string
+	isArray      bool
+	required     bool
+	typeRef      *spec.TypeRef
+	defaultValue interface{}
 }
 
 type optionsHolder struct {
@@ -189,10 +190,11 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 							}
 							if t.IsPrimitive() {
 								queryParams[param.Name] = queryParam{
-									name:     param.Name,
-									required: required,
-									isArray:  isArray,
-									typeRef:  t,
+									name:         param.Name,
+									required:     required,
+									isArray:      isArray,
+									typeRef:      t,
+									defaultValue: param.DefaultValue,
 								}
 							} else if t.Type != nil {
 								for _, f := range param.Type.Type.Fields {
@@ -206,12 +208,14 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 										t = t.ListType
 										isArray = true
 									}
+
 									queryParams[f.Name] = queryParam{
-										name:     f.Name,
-										arg:      param.Name,
-										required: required,
-										isArray:  isArray,
-										typeRef:  t,
+										name:         f.Name,
+										arg:          param.Name,
+										required:     required,
+										isArray:      isArray,
+										typeRef:      t,
+										defaultValue: f.DefaultValue,
 									}
 								}
 							}
@@ -226,19 +230,20 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 						for _, param := range operation.Parameters.Fields {
 							if param.Type.IsPrimitive() {
 								queryParams[param.Name] = queryParam{
-									name:    param.Name,
-									isArray: false, // TODO
-									typeRef: param.Type,
+									name:         param.Name,
+									isArray:      false, // TODO
+									typeRef:      param.Type,
+									defaultValue: param.DefaultValue,
 								}
 							} else {
 								for _, f := range param.Type.Type.Fields {
 									queryParams[f.Name] = queryParam{
-										name:    f.Name,
-										isArray: false, // TODO
-										typeRef: f.Type,
+										name:         f.Name,
+										isArray:      false, // TODO
+										typeRef:      f.Type,
+										defaultValue: f.DefaultValue,
 									}
 								}
-
 							}
 						}
 					} else {
@@ -379,6 +384,8 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 					wrapper[name] = converted
 				} else if q.isArray && q.required {
 					input[name] = []interface{}{}
+				} else if q.defaultValue != nil {
+					input[name] = q.defaultValue
 				}
 			}
 		}

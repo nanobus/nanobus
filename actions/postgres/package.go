@@ -8,5 +8,6 @@ var All = []actions.NamedLoader{
 	Load,
 	Find,
 	Query,
+	Exec,
 	Test,
 }

@@ -91,7 +91,7 @@ func NewProcessor(log logr.Logger, configuration *Configuration, registry action
 
 	p.resolver = func(name string) (interface{}, bool) {
 		if name == "system:processor" {
-			return p, true
+			return &p, true
 		}
 		return resolver(name)
 	}
