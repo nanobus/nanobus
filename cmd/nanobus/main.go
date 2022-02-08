@@ -644,13 +644,24 @@ func main() {
 				actorType := parts[1]
 				actorID := parts[2]
 				callback := parts[4] // "timer" or "remind"
-				function := parts[5] // timer or reminder name
+				name := parts[5]     // timer or reminder name
+
+				type InvokeHandlerRequest struct {
+					Name string `msgpack:"name" json:"name"`
+					Data []byte `msgpack:"data" json:"data"`
+				}
+
+				request := InvokeHandlerRequest{
+					Name: name,
+					Data: payload,
+				}
+				fmt.Println("request", request)
 
 				if err = invoker.Invoke(ctx, functions.Receiver{
 					Namespace: actorType,
-					Operation: callback + "." + function,
+					Operation: callback,
 					EntityID:  actorID,
-				}, input); err != nil {
+				}, &request); err != nil {
 					return nil, "", translateError(err)
 				}
 

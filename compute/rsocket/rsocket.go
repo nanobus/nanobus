@@ -8,14 +8,17 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/nanobus/go-functions"
-	"github.com/nanobus/go-functions/metadata"
+	"github.com/dapr/dapr/pkg/actors"
 	"github.com/rsocket/rsocket-go"
 	"github.com/rsocket/rsocket-go/payload"
 	"github.com/rsocket/rsocket-go/rx/flux"
 	"github.com/rsocket/rsocket-go/rx/mono"
 
+	"github.com/nanobus/go-functions"
+	"github.com/nanobus/go-functions/metadata"
+	"github.com/nanobus/nanobus/actions/dapr"
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
@@ -49,14 +52,16 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 	var msgpackcodec functions.Codec
 	var busInvoker compute.BusInvoker
 	var stateInvoker compute.StateInvoker
+	var daprComponents *dapr.DaprComponents
 	if err := resolve.Resolve(resolver,
 		"codec:msgpack", &msgpackcodec,
 		"bus:invoker", &busInvoker,
-		"state:invoker", &stateInvoker); err != nil {
+		"state:invoker", &stateInvoker,
+		"dapr:components", &daprComponents); err != nil {
 		return nil, err
 	}
 
-	socket := newSocket(c.BasePath, msgpackcodec, busInvoker, stateInvoker)
+	socket := newSocket(c.BasePath, msgpackcodec, busInvoker, stateInvoker, daprComponents)
 	ctx, cancel := context.WithCancel(context.Background())
 	tp := rsocket.TCPServer().SetHostAndPort(c.Host, c.Port).Build()
 	start := rsocket.Receive().
@@ -106,21 +111,24 @@ type Socket struct {
 	socket   rsocket.CloseableRSocket
 	close    chan struct{}
 
-	busInvoker   compute.BusInvoker
-	stateInvoker compute.StateInvoker
+	busInvoker     compute.BusInvoker
+	stateInvoker   compute.StateInvoker
+	daprComponents *dapr.DaprComponents
 }
 
 func newSocket(basePath string,
 	codec functions.Codec,
 	busInvoker compute.BusInvoker,
-	stateInvoker compute.StateInvoker) *Socket {
+	stateInvoker compute.StateInvoker,
+	daprComponents *dapr.DaprComponents) *Socket {
 	return &Socket{
-		ctx:          context.Background(),
-		basePath:     basePath,
-		codec:        codec,
-		close:        make(chan struct{}, 10),
-		busInvoker:   busInvoker,
-		stateInvoker: stateInvoker,
+		ctx:            context.Background(),
+		basePath:       basePath,
+		codec:          codec,
+		close:          make(chan struct{}, 10),
+		busInvoker:     busInvoker,
+		stateInvoker:   stateInvoker,
+		daprComponents: daprComponents,
 	}
 }
 
@@ -179,6 +187,108 @@ func (s *Socket) responder() rsocket.RSocket {
 						return
 					}
 					sink.Success(payload.New(output, nil))
+					return
+				}
+				if p.namespace == "nanobus" && p.service == "actors" {
+					switch p.function {
+					case "registerReminder":
+						type RegisterReminderRequest struct {
+							ActorType string        `msgpack:"actorType" json:"actorType"`
+							ActorID   string        `msgpack:"actorID" json:"actorID"`
+							Name      string        `msgpack:"name" json:"name"`
+							Data      []byte        `msgpack:"data" json:"data"`
+							Due       time.Duration `msgpack:"due" json:"due"`
+							Period    time.Duration `msgpack:"period" json:"period"`
+							TTL       time.Duration `msgpack:"ttl" json:"ttl"`
+						}
+
+						var request RegisterReminderRequest
+						if err = s.codec.Decode(data, &request); err != nil {
+							fmt.Println(err)
+							sink.Error(err)
+							return
+						}
+						err = s.daprComponents.Actors.CreateReminder(ctx, &actors.CreateReminderRequest{
+							ActorType: request.ActorType,
+							ActorID:   request.ActorID,
+							Name:      request.Name,
+							Data:      request.Data,
+							DueTime:   request.Due.String(),
+							Period:    request.Period.String(),
+							TTL:       request.TTL.String(),
+						})
+					case "unregisterReminder":
+						type UnregisterReminderRequest struct {
+							ActorType string `msgpack:"actorType" json:"actorType"`
+							ActorID   string `msgpack:"actorID" json:"actorID"`
+							Name      string `msgpack:"name" json:"name"`
+						}
+
+						var request UnregisterReminderRequest
+						if err = s.codec.Decode(data, &request); err != nil {
+							fmt.Println(err)
+							sink.Error(err)
+							return
+						}
+						err = s.daprComponents.Actors.DeleteReminder(ctx, &actors.DeleteReminderRequest{
+							ActorType: request.ActorType,
+							ActorID:   request.ActorID,
+							Name:      request.Name,
+						})
+					case "registerTimer":
+						type RegisterTimerRequest struct {
+							ActorType string        `msgpack:"actorType" json:"actorType"`
+							ActorID   string        `msgpack:"actorID" json:"actorID"`
+							Name      string        `msgpack:"name" json:"name"`
+							Callback  string        `msgpack:"callback" json:"callback"`
+							Data      []byte        `msgpack:"data" json:"data"`
+							Due       time.Duration `msgpack:"due" json:"due"`
+							Period    time.Duration `msgpack:"period" json:"period"`
+							TTL       time.Duration `msgpack:"ttl" json:"ttl"`
+						}
+
+						var request RegisterTimerRequest
+						if err = s.codec.Decode(data, &request); err != nil {
+							fmt.Println(err)
+							sink.Error(err)
+							return
+						}
+						err = s.daprComponents.Actors.CreateTimer(ctx, &actors.CreateTimerRequest{
+							ActorType: request.ActorType,
+							ActorID:   request.ActorID,
+							Name:      request.Name,
+							Callback:  request.Callback,
+							Data:      request.Data,
+							DueTime:   request.Due.String(),
+							Period:    request.Period.String(),
+							TTL:       request.TTL.String(),
+						})
+					case "unregisterTimer":
+						type UnregisterTimerRequest struct {
+							ActorType string `msgpack:"actorType" json:"actorType"`
+							ActorID   string `msgpack:"actorID" json:"actorID"`
+							Name      string `msgpack:"name" json:"name"`
+						}
+
+						var request UnregisterTimerRequest
+						if err = s.codec.Decode(data, &request); err != nil {
+							fmt.Println(err)
+							sink.Error(err)
+							return
+						}
+						err = s.daprComponents.Actors.DeleteTimer(ctx, &actors.DeleteTimerRequest{
+							ActorType: request.ActorType,
+							ActorID:   request.ActorID,
+							Name:      request.Name,
+						})
+					}
+					if err != nil {
+						fmt.Println(err)
+						sink.Error(err)
+						return
+					}
+
+					sink.Success(payload.New(nil, nil))
 					return
 				}
 
