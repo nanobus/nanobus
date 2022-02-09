@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/dapr/dapr/pkg/actors"
+	"github.com/go-logr/logr"
 	"github.com/rsocket/rsocket-go"
 	"github.com/rsocket/rsocket-go/payload"
 	"github.com/rsocket/rsocket-go/rx/flux"
@@ -40,10 +42,14 @@ func RSocket() (string, compute.Loader) {
 }
 
 func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
+	port, err := strconv.Atoi(defaultStringValue(os.Getenv("RSOCKET_PORT"), "7878"))
+	if err != nil {
+		return nil, err
+	}
 	c := RSocketConfig{
-		BasePath: "/",
-		Host:     "127.0.0.1",
-		Port:     7878,
+		BasePath: defaultStringValue(os.Getenv("RSOCKET_BASEPATH"), "/"),
+		Host:     defaultStringValue(os.Getenv("RSOCKET_HOST"), "127.0.0.1"),
+		Port:     port,
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -53,11 +59,13 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 	var busInvoker compute.BusInvoker
 	var stateInvoker compute.StateInvoker
 	var daprComponents *dapr.DaprComponents
+	var log logr.Logger
 	if err := resolve.Resolve(resolver,
 		"codec:msgpack", &msgpackcodec,
 		"bus:invoker", &busInvoker,
 		"state:invoker", &stateInvoker,
-		"dapr:components", &daprComponents); err != nil {
+		"dapr:components", &daprComponents,
+		"system:logger", &log); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +74,7 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 	tp := rsocket.TCPServer().SetHostAndPort(c.Host, c.Port).Build()
 	start := rsocket.Receive().
 		OnStart(func() {
-			log.Println("server start success!")
+			log.Info("RSocket server started", "host", c.Host, "port", c.Port)
 		}).
 		Acceptor(func(ctx context.Context, setup payload.SetupPayload, sendingSocket rsocket.CloseableRSocket) (rsocket.RSocket, error) {
 			socket.setSendingSocket(ctx, sendingSocket)
@@ -761,4 +769,11 @@ func (s *CodecStream) SendError(err error) error {
 		":status":      []string{"500"},        //strconv.Itoa(e.Status)
 		"content-type": []string{"text/plain"}, //s.codec.ContentType()
 	}, []byte(msg))
+}
+
+func defaultStringValue(val string, defaultValue string) string {
+	if val == "" {
+		return defaultValue
+	}
+	return val
 }
