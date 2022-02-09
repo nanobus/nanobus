@@ -59,7 +59,7 @@ func New() *Runtime {
 func (r *Runtime) AttachFlags() {
 	// Dapr flags
 	flag.StringVar(&r.mode, "mode", string(modes.StandaloneMode), "Runtime mode for Dapr")
-	flag.StringVar(&r.daprHTTPPort, "dapr-http-port", fmt.Sprintf("%v", runtime.DefaultDaprHTTPPort), "HTTP port for Dapr API to listen on")
+	flag.StringVar(&r.daprHTTPPort, "dapr-http-port", "0", "HTTP port for Dapr API to listen on")
 	flag.StringVar(&r.daprAPIListenAddresses, "dapr-listen-addresses", "127.0.0.1", "One or more addresses for the Dapr API to listen on, CSV limited")
 	//daprAPIGRPCPort := flag.String("dapr-grpc-port", fmt.Sprintf("%v", DefaultDaprAPIGRPCPort), "gRPC port for the Dapr API to listen on")
 	flag.StringVar(&r.daprInternalGRPCPort, "dapr-internal-grpc-port", "", "gRPC port for the Dapr Internal API to listen on")

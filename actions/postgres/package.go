@@ -7,6 +7,7 @@ import (
 var All = []actions.NamedLoader{
 	Load,
 	Find,
+	FindOne,
 	Query,
 	Exec,
 	Test,

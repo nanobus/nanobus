@@ -146,18 +146,23 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 					continue
 				}
 
-				method := ""
+				methods := []string{}
 				if _, ok := operation.Annotation("GET"); ok {
-					method = "GET"
-				} else if _, ok := operation.Annotation("POST"); ok {
-					method = "POST"
-				} else if _, ok := operation.Annotation("PUT"); ok {
-					method = "PUT"
-				} else if _, ok := operation.Annotation("PATCH"); ok {
-					method = "PATCH"
-				} else if _, ok := operation.Annotation("DELETE"); ok {
-					method = "DELETE"
-				} else {
+					methods = append(methods, "GET")
+				}
+				if _, ok := operation.Annotation("POST"); ok {
+					methods = append(methods, "POST")
+				}
+				if _, ok := operation.Annotation("PUT"); ok {
+					methods = append(methods, "PUT")
+				}
+				if _, ok := operation.Annotation("PATCH"); ok {
+					methods = append(methods, "PATCH")
+				}
+				if _, ok := operation.Annotation("DELETE"); ok {
+					methods = append(methods, "DELETE")
+				}
+				if len(methods) == 0 {
 					continue
 				}
 
@@ -251,10 +256,10 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 					}
 				}
 
-				log.Info("Registering REST handler", "method", method, "path", path)
+				log.Info("Registering REST handler", "methods", methods, "path", path)
 				r.HandleFunc(path, rest.handler(
 					namespace.Name, service.Name, operation.Name, isActor,
-					hasBody, bodyParamName, queryParams)).Methods(method)
+					hasBody, bodyParamName, queryParams)).Methods(methods...)
 			}
 		}
 	}

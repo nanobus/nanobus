@@ -33,7 +33,7 @@ func annotationValue(a spec.Annotator, annotation, argument, defaultValue string
 	return defaultValue
 }
 
-func getOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue interface{}, toPreload []Preload) (interface{}, error) {
+func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue interface{}, toPreload []Preload) (map[string]interface{}, error) {
 	idColumn := keyColumn(t)
 	sql := generateTableSQL(t) + " WHERE " + idColumn + "=$1"
 	fmt.Println(sql, idValue)
@@ -61,7 +61,73 @@ func getOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue inter
 				return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 			}
 
-			res, err := getOne(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+			res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+			if err != nil {
+				return nil, err
+			}
+
+			record[preload.Field] = res
+		}
+
+		return record, nil
+	}
+
+	return nil, nil
+}
+
+func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[string]interface{}, where []Where, toPreload []Preload) (map[string]interface{}, error) {
+	sql := generateTableSQL(t)
+	args := []interface{}{}
+	if len(where) > 0 {
+		dollarIndex := 1
+		for i, part := range where {
+			val, err := part.Value.Eval(input)
+			if err != nil {
+				return nil, err
+			}
+			if isNil(val) {
+				continue
+			}
+			if i > 0 {
+				sql += " AND "
+			} else {
+				sql += " WHERE "
+			}
+			query := part.Query
+			for strings.Contains(query, "?") {
+				query = strings.Replace(query, "?", fmt.Sprintf("$%d", dollarIndex), 1)
+				dollarIndex++
+			}
+			sql += query
+			args = append(args, val)
+		}
+	}
+	fmt.Println(sql, args)
+	rows, err := conn.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	if rows.Next() {
+		record := make(map[string]interface{})
+		values, err := rows.Values()
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		for i, v := range values {
+			record[t.Fields[i].Name] = v
+		}
+
+		rows.Close()
+
+		for _, preload := range toPreload {
+			ex, ok := t.Field(preload.Field)
+			if !ok {
+				return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
+			}
+
+			res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
 			if err != nil {
 				return nil, err
 			}
@@ -150,7 +216,7 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 					return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 				}
 
-				res, err := getOne(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+				res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
 				if err != nil {
 					return nil, err
 				}
@@ -232,7 +298,9 @@ func generateTableSQL(t *spec.Type) string {
 	}
 	buf.WriteString(" FROM ")
 	table := annotationValue(t, "entity", "table", t.Name)
+	buf.WriteByte('"')
 	buf.WriteString(table)
+	buf.WriteByte('"')
 
 	return buf.String()
 }
@@ -242,7 +310,9 @@ func generateCountSQL(t *spec.Type) string {
 
 	buf.WriteString("SELECT count(1) FROM ")
 	table := annotationValue(t, "entity", "table", t.Name)
+	buf.WriteByte('"')
 	buf.WriteString(table)
+	buf.WriteByte('"')
 
 	return buf.String()
 }

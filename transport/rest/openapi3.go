@@ -402,6 +402,15 @@ func typeFormat(t *spec.TypeRef) *openapi3.Schema {
 			WithAdditionalProperties(typeFormat(t.MapValueType))
 	case spec.KindOptional:
 		return typeFormat(t.OptionalType)
+	case spec.KindEnum:
+		values := make([]interface{}, len(t.Enum.Values))
+		for i, v := range t.Enum.Values {
+			values[i] = v.StringValue
+		}
+		return &openapi3.Schema{
+			Type: "string",
+			Enum: values,
+		}
 	}
 
 	panic("unreachable")
