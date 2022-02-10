@@ -64,9 +64,22 @@ func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue int
 				return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 			}
 
-			res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
-			if err != nil {
-				return nil, err
+			var res interface{}
+			if _, ok := ex.Annotation("hasOne"); ok {
+				res, err = findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+				if err != nil {
+					return nil, err
+				}
+			} else if hasMany, ok := ex.Annotation("hasMany"); ok {
+				if key, ok := hasMany.Argument("key"); ok {
+					keyName := keyField(t)
+					res, err = join(ctx, conn, ex.Type.ListType.Type,
+						key.ValueString()+" = $1", []interface{}{record[keyName]},
+						preload.Preload)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
 
 			record[preload.Field] = res
@@ -131,9 +144,22 @@ func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 				return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 			}
 
-			res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
-			if err != nil {
-				return nil, err
+			var res interface{}
+			if _, ok := ex.Annotation("hasOne"); ok {
+				res, err = findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+				if err != nil {
+					return nil, err
+				}
+			} else if hasMany, ok := ex.Annotation("hasMany"); ok {
+				if key, ok := hasMany.Argument("key"); ok {
+					keyName := keyField(t)
+					res, err = join(ctx, conn, ex.Type.ListType.Type,
+						key.ValueString()+" = $1", []interface{}{record[keyName]},
+						preload.Preload)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
 
 			record[preload.Field] = res
@@ -143,6 +169,71 @@ func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 	}
 
 	return nil, nil
+}
+
+func join(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, where string, args []interface{}, toPreload []Preload) ([]map[string]interface{}, error) {
+	sql := generateTableSQL(t)
+	if len(where) > 0 {
+		sql += " WHERE "
+		sql += where
+	}
+	fmt.Println(sql, args)
+	rows, err := conn.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0, 1000)
+
+	for rows.Next() {
+		record := make(map[string]interface{})
+		values, err := rows.Values()
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		for i, v := range values {
+			v = normalizeValue(v)
+			record[t.Fields[i].Name] = v
+		}
+
+		results = append(results, record)
+	}
+
+	rows.Close()
+
+	if len(toPreload) > 0 {
+		for _, record := range results {
+			for _, preload := range toPreload {
+				ex, ok := t.Field(preload.Field)
+				if !ok {
+					return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
+				}
+
+				var res interface{}
+				if _, ok := ex.Annotation("hasOne"); ok {
+					res, err = findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+					if err != nil {
+						return nil, err
+					}
+				} else if hasMany, ok := ex.Annotation("hasMany"); ok {
+					if key, ok := hasMany.Argument("key"); ok {
+						keyName := keyField(t)
+						res, err = join(ctx, conn, ex.Type.ListType.Type,
+							key.ValueString()+" = $1", []interface{}{record[keyName]},
+							preload.Preload)
+						if err != nil {
+							return nil, err
+						}
+					}
+				}
+
+				record[preload.Field] = res
+			}
+		}
+	}
+
+	return results, nil
 }
 
 func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[string]interface{}, where []Where, toPreload []Preload, offset, limit int64) ([]map[string]interface{}, error) {
@@ -211,9 +302,22 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 					return nil, fmt.Errorf("%s is not a field of %s", preload.Field, t.Name)
 				}
 
-				res, err := findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
-				if err != nil {
-					return nil, err
+				var res interface{}
+				if _, ok := ex.Annotation("hasOne"); ok {
+					res, err = findById(ctx, conn, ex.Type.Type, record[preload.Field], preload.Preload)
+					if err != nil {
+						return nil, err
+					}
+				} else if hasMany, ok := ex.Annotation("hasMany"); ok {
+					if key, ok := hasMany.Argument("key"); ok {
+						keyName := keyField(t)
+						res, err = join(ctx, conn, ex.Type.ListType.Type,
+							key.ValueString()+" = $1", []interface{}{record[keyName]},
+							preload.Preload)
+						if err != nil {
+							return nil, err
+						}
+					}
 				}
 
 				record[preload.Field] = res
@@ -265,6 +369,15 @@ func getCount(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[s
 	return count, err
 }
 
+func keyField(t *spec.Type) string {
+	for _, f := range t.Fields {
+		if _, ok := f.Annotation("key"); ok {
+			return f.Name
+		}
+	}
+	return ""
+}
+
 func keyColumn(t *spec.Type) string {
 	if _, ok := t.Annotation("primaryKey"); ok {
 		return annotationValue(t, "primaryKey", "name", "")
@@ -285,9 +398,14 @@ func generateTableSQL(t *spec.Type) string {
 		column := annotationValue(f, "column", "name", "")
 		if column == "" {
 			column = annotationValue(f, "hasOne", "foreignKey", "")
-			if column == "" {
-				continue
+		}
+		if column == "" {
+			if _, ok := f.Annotation("hasMany"); ok {
+				column = "1" // Temp solution
 			}
+		}
+		if column == "" {
+			continue
 		}
 		if i > 0 {
 			buf.WriteString(", ")
