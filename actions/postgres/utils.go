@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
+
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/spec"
 )
@@ -50,6 +52,7 @@ func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue int
 			return nil, err
 		}
 		for i, v := range values {
+			v = normalizeValue(v)
 			record[t.Fields[i].Name] = v
 		}
 
@@ -116,6 +119,7 @@ func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 			return nil, err
 		}
 		for i, v := range values {
+			v = normalizeValue(v)
 			record[t.Fields[i].Name] = v
 		}
 
@@ -182,7 +186,7 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 
 	results := make([]map[string]interface{}, 0, 1000)
 
-	if rows.Next() {
+	for rows.Next() {
 		record := make(map[string]interface{})
 		values, err := rows.Values()
 		if err != nil {
@@ -190,16 +194,7 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 			return nil, err
 		}
 		for i, v := range values {
-			switch vv := v.(type) {
-			case big.Float:
-				v, _ = vv.Float64()
-			case big.Int:
-				v = vv.Int64()
-			case pgtype.Numeric:
-				var f float64
-				vv.AssignTo(&f)
-				v = f
-			}
+			v = normalizeValue(v)
 			record[t.Fields[i].Name] = v
 		}
 
@@ -271,6 +266,9 @@ func getCount(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[s
 }
 
 func keyColumn(t *spec.Type) string {
+	if _, ok := t.Annotation("primaryKey"); ok {
+		return annotationValue(t, "primaryKey", "name", "")
+	}
 	for _, f := range t.Fields {
 		if _, ok := f.Annotation("key"); ok {
 			return annotationValue(t, "column", "name", f.Name)
@@ -321,4 +319,22 @@ func isNil(val interface{}) bool {
 	return val == nil ||
 		(reflect.ValueOf(val).Kind() == reflect.Ptr &&
 			reflect.ValueOf(val).IsNil())
+}
+
+func normalizeValue(v interface{}) interface{} {
+	switch vv := v.(type) {
+	case big.Float:
+		v, _ = vv.Float64()
+	case big.Int:
+		v = vv.Int64()
+	case pgtype.Numeric:
+		var f float64
+		vv.AssignTo(&f)
+		v = f
+	case pgtype.UUID:
+		v = uuid.UUID(vv.Bytes).String()
+	case [16]uint8: // UUID
+		v = uuid.UUID(vv).String()
+	}
+	return v
 }

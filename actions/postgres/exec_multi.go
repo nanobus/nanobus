@@ -15,7 +15,7 @@ import (
 	"github.com/nanobus/nanobus/resource"
 )
 
-type MultiExecConfig struct {
+type ExecMultiConfig struct {
 	// Resource is the name of the connection resource to use.
 	Resource string `mapstructure:"resource"`
 	// Statements are the statements to execute within a single transaction.
@@ -31,13 +31,13 @@ type Statement struct {
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }
 
-// MultiExec is the NamedLoader for the invoke action.
-func MultiExec() (string, actions.Loader) {
-	return "@postgres/multi_exec", MultiExecLoader
+// ExecMulti is the NamedLoader for the invoke action.
+func ExecMulti() (string, actions.Loader) {
+	return "@postgres/exec_multi", ExecMultiLoader
 }
 
-func MultiExecLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	c := MultiExecConfig{}
+func ExecMultiLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	c := ExecMultiConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -57,11 +57,11 @@ func MultiExecLoader(with interface{}, resolver resolve.ResolveAs) (actions.Acti
 		return nil, fmt.Errorf("resource %q is not a *pgxpool.Pool", c.Resource)
 	}
 
-	return MultiExecAction(&c, pool), nil
+	return ExecMultiAction(&c, pool), nil
 }
 
-func MultiExecAction(
-	config *MultiExecConfig,
+func ExecMultiAction(
+	config *ExecMultiConfig,
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		err := pool.BeginFunc(ctx, func(tx pgx.Tx) error {
