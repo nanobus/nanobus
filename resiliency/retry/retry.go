@@ -113,6 +113,9 @@ func NotifyRecover(operation backoff.Operation, b backoff.BackOff, notify backof
 
 	return backoff.RetryNotify(func() error {
 		err := operation()
+		if err != nil && strings.HasPrefix(err.Error(), "not_found") {
+			err = backoff.Permanent(err)
+		}
 
 		if err == nil && notified {
 			notified = false

@@ -3,9 +3,12 @@ package dapr
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/dapr/dapr/pkg/actors"
 	v1 "github.com/dapr/dapr/pkg/messaging/v1"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -14,14 +17,14 @@ import (
 )
 
 type InvokeActorConfig struct {
-	// Key is the expression to evaluate the key to save.
-	Type *expr.ValueExpr `mapstructure:"type"`
+	// Type is the expression to evaluate the key to save.
+	Type string `mapstructure:"type"`
 	// ForEach is an option expression to evaluate a
 	ID *expr.ValueExpr `mapstructure:"id"`
 	// Method is the name of the actor method to invoke.
 	Method string `mapstructure:"method"`
 	// Data is the optional data expression to tranform the data to set.
-	Data *expr.DataExpr `mapstructure:"value"`
+	Data *expr.DataExpr `mapstructure:"data"`
 	// Metadata is the optional data expression for the key's metadata.
 	Metadata *expr.DataExpr `mapstructure:"metadata"`
 }
@@ -43,6 +46,10 @@ func InvokeActorLoader(with interface{}, resolver resolve.ResolveAs) (actions.Ac
 		return nil, err
 	}
 
+	if dapr.Actors == nil {
+		return nil, errors.New("actor system not initialized")
+	}
+
 	return InvokeActorAction(dapr.Actors, &c), nil
 }
 
@@ -50,10 +57,17 @@ func InvokeActorAction(
 	actors actors.Actors,
 	config *InvokeActorConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		var payload interface{}
-		req := v1.NewInvokeMethodRequest(config.Method)
+		idInt, err := config.ID.Eval(data)
+		if err != nil {
+			return nil, err
+		}
+		id := fmt.Sprintf("%v", idInt)
 
-		var err error
+		var payload interface{} = data["input"]
+		req := v1.
+			NewInvokeMethodRequest(config.Method).
+			WithActor(config.Type, id)
+
 		if config.Data != nil {
 			if payload, err = config.Data.Eval(data); err != nil {
 				return nil, err
@@ -74,11 +88,11 @@ func InvokeActorAction(
 
 		if payload != nil {
 			// TODO: encoding
-			payloadBytes, err := json.Marshal(payload)
+			payloadBytes, err := msgpack.Marshal(payload)
 			if err != nil {
 				return nil, err
 			}
-			req.WithRawData(payloadBytes, "content/json")
+			req.WithRawData(payloadBytes, "application/msgpack")
 		}
 
 		response, err := actors.Call(ctx, req)

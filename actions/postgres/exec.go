@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
@@ -59,15 +60,13 @@ func ExecAction(
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var err error
-		var input interface{} = data["input"]
+		var input interface{} = map[string]interface{}(data)
 		if config.Data != nil {
 			input, err = config.Data.Eval(data)
 			if err != nil {
 				return nil, err
 			}
 		}
-
-		fmt.Println(input)
 
 		if multi, ok := input.([]interface{}); ok {
 			if err = pool.BeginFunc(ctx, func(tx pgx.Tx) error {
@@ -80,7 +79,6 @@ func ExecAction(
 								return err
 							}
 						}
-						fmt.Println(args)
 
 						tag, err := tx.Exec(ctx, config.SQL, args...)
 						if err != nil {
@@ -104,7 +102,6 @@ func ExecAction(
 					return nil, err
 				}
 			}
-			fmt.Println(args)
 
 			tag, err := pool.Exec(ctx, config.SQL, args...)
 			if err != nil {

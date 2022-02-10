@@ -225,7 +225,9 @@ func main() {
 	actorEntities := []string{}
 	for namespaceName, ns := range namespaces {
 		for _, s := range ns.Services {
-			if _, ok := s.Annotation("stateful"); ok {
+			_, hasStateful := s.Annotation("stateful")
+			_, hasActor := s.Annotation("actor")
+			if hasStateful || hasActor {
 				entityName := namespaceName + "." + s.Name
 				actorEntities = append(actorEntities, entityName)
 			}
@@ -550,10 +552,10 @@ func main() {
 				service := actorType[lastDot+1:]
 				namespace := actorType[:lastDot]
 
-				target := actorType + "/" + actorID
+				target := actorType + "/" + fn
 
 				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					logInbound(log, target+"/"+fn, string(jsonBytes))
+					logInbound(log, target, string(jsonBytes))
 				}
 
 				data := actions.Data{
@@ -564,7 +566,7 @@ func main() {
 				}
 
 				ctx := function.ToContext(ctx, function.Function{
-					Namespace: target,
+					Namespace: actorType,
 					Operation: fn,
 				})
 

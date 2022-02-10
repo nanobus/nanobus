@@ -2,6 +2,7 @@ package breaker
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/sony/gobreaker"
@@ -76,6 +77,9 @@ func (c *CircuitBreaker) Initialize() {
 		Interval:    c.Interval,
 		Timeout:     c.Timeout,
 		ReadyToTrip: tripFn,
+		IsSuccessful: func(err error) bool {
+			return err == nil || strings.HasPrefix(err.Error(), "not_found")
+		},
 	})
 }
 
