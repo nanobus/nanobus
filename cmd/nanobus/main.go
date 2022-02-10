@@ -653,17 +653,27 @@ func main() {
 					Data []byte `msgpack:"data" json:"data"`
 				}
 
+				type wrapper struct {
+					Data    []byte `json:"data"`
+					DueTime string `json:"dueTime"`
+					Period  string `json:"period"`
+				}
+
+				var w wrapper
+				if err = json.Unmarshal(payload, &w); err != nil {
+					return nil, "", translateError(err)
+				}
+
 				request := InvokeHandlerRequest{
 					Name: name,
-					Data: payload,
+					Data: w.Data,
 				}
-				fmt.Println("request", request)
-
 				if err = invoker.Invoke(ctx, functions.Receiver{
 					Namespace: actorType,
 					Operation: callback,
 					EntityID:  actorID,
 				}, &request); err != nil {
+					fmt.Println(err)
 					return nil, "", translateError(err)
 				}
 
@@ -1054,10 +1064,15 @@ func main() {
 		data := actions.Data{
 			"claims": claimsMap,
 			"input":  input,
-			"env":    env,
 		}
 
 		ns := namespace + "." + service
+
+		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+			logOutbound(rt.log, ns+"/"+fn, string(jsonBytes))
+		}
+
+		data["env"] = env
 
 		ctx = function.ToContext(ctx, function.Function{
 			Namespace: ns,
@@ -1476,11 +1491,12 @@ func coalesceOutput(namespaces spec.Namespaces, namespace, service, function str
 	var err error
 	if oper, ok := namespaces.Operation(namespace, service, function); ok {
 		if oper.Returns != nil && output != nil {
-			outputMap, ok := coalesce.ToMapSI(output, true)
-			if !ok {
-				return nil, errors.New("output is not a map")
+			output, _, err = oper.Returns.Coalesce(output, false)
+			if err != nil {
+				return nil, err
 			}
-			output, _, err = oper.Returns.Coalesce(outputMap, false)
+		} else {
+			coalesce.Integers(output)
 		}
 	} else {
 		coalesce.Integers(output)

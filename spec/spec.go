@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
@@ -513,7 +514,7 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool,
 		}
 	case KindDateTime:
 		if _, ok := value.(string); !ok {
-			err = fmt.Errorf("value must be an string")
+			err = fmt.Errorf("value must be an string, got %s", reflect.TypeOf(value))
 		}
 	case KindU64:
 		if _, ok := value.(uint64); !ok {
@@ -575,23 +576,53 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool,
 			if stringValue, ok := value.(string); ok {
 				value, err = base64.StdEncoding.DecodeString(stringValue)
 			} else {
-				err = fmt.Errorf("value must be a boolean")
+				err = fmt.Errorf("value must be a boolean, got %s", reflect.TypeOf(value))
 			}
 			changed = true
 		}
 	case KindType:
 		valueMap, ok := coalesce.ToMapSI(value, false)
 		if !ok {
-			err = fmt.Errorf("value must be a map")
+			err = fmt.Errorf("value must be a map, got %s", reflect.TypeOf(value))
 		}
 		if err == nil {
 			err = t.Type.Coalesce(valueMap, validate)
 			changed = true
 		}
 		value = valueMap
-
-		//case KindEnum:
-		//case KindUnion:
+	case KindList:
+		switch vv := value.(type) {
+		case []interface{}:
+			for i, item := range vv {
+				var itemChanged bool
+				item, itemChanged, err = t.ListType.Coalesce(item, validate)
+				if err != nil {
+					return nil, false, err
+				}
+				if itemChanged {
+					changed = true
+					vv[i] = item
+				}
+			}
+		case []map[string]interface{}:
+			for i, item := range vv {
+				var itemChanged bool
+				var val interface{}
+				val, itemChanged, err = t.ListType.Coalesce(item, validate)
+				if err != nil {
+					return nil, false, err
+				}
+				if itemChanged {
+					changed = true
+					vv[i] = val.(map[string]interface{})
+				}
+			}
+		// TODO
+		// case KindEnum:
+		// case KindUnion:
+		default:
+			err = fmt.Errorf("value must be a slice, got %s", reflect.TypeOf(value))
+		}
 	}
 
 	return value, changed, err
