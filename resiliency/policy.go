@@ -31,7 +31,17 @@ func Policy(log logr.Logger, operationName string, t time.Duration, r *retry.Con
 				ctx, cancel := context.WithTimeout(ctx, t)
 				defer cancel()
 
-				return operCopy(ctx)
+				done := make(chan error, 1)
+				go func() {
+					done <- operCopy(ctx)
+				}()
+
+				select {
+				case err := <-done:
+					return err
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			}
 		}
 
