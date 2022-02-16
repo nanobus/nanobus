@@ -16,13 +16,13 @@ import (
 
 type LoadConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource"`
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Namespace is the type namespace to load.
-	Namespace string `mapstructure:"namespace"`
+	Namespace string `mapstructure:"namespace" validate:"required"`
 	// Type is the type name to load.
-	Type string `mapstructure:"type"`
+	Type string `mapstructure:"type" validate:"required"`
 	// ID is the entity identifier expression.
-	ID *expr.ValueExpr `mapstructure:"id"`
+	ID *expr.ValueExpr `mapstructure:"id" validate:"required"`
 	// Preload lists the relationship to expand/load.
 	Preload []Preload `mapstructure:"preload"`
 	// NotFoundError is the error to return if the key is not found.

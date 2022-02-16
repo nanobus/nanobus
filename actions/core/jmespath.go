@@ -14,7 +14,7 @@ import (
 
 type JMESPathConfig struct {
 	// Path is the predicate expression for filtering.
-	Path string `mapstructure:"path"`
+	Path string `mapstructure:"path" validate:"required"`
 	// Data is the optional data expression to pass to jq.
 	Data *expr.DataExpr `mapstructure:"data"`
 	// Var, if set, is the variable that is set with the result.

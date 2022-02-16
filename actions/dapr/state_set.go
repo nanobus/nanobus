@@ -14,13 +14,13 @@ import (
 
 type SetStateConfig struct {
 	// Store is name of state store to invoke.
-	Store string `mapstructure:"store"`
+	Store string `mapstructure:"store" validate:"required"`
 	// Key is the expression to evaluate the key to save.
-	Key *expr.ValueExpr `mapstructure:"key"`
+	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 	// ForEach is an option expression to evaluate a
 	ForEach *expr.ValueExpr `mapstructure:"forEach"`
 	// Value is the optional data expression to tranform the data to set.
-	Value *expr.DataExpr `mapstructure:"value"`
+	Value *expr.DataExpr `mapstructure:"value" validate:"required"`
 	// Metadata is the optional data expression for the key's metadata.
 	Metadata *expr.DataExpr `mapstructure:"metadata"`
 }

@@ -18,9 +18,9 @@ import (
 
 type HTTPConfig struct {
 	// URL is HTTP URL to request.
-	URL string `mapstructure:"url"`
+	URL string `mapstructure:"url" validate:"required"`
 	// Method is the HTTP method.
-	Method string `mapstructure:"method"`
+	Method string `mapstructure:"method" validate:"required"`
 	// Body is the data to sent as the body payload.
 	Body *expr.DataExpr `mapstructure:"body"`
 	// Metadata is the input binding metadata
@@ -28,7 +28,7 @@ type HTTPConfig struct {
 	// Output is an optional transformation to be applied to the response.
 	Output *expr.DataExpr `mapstructure:"output"`
 	// Codec is the name of the codec to use for decoing.
-	Codec string `mapstructure:"codec"`
+	Codec string `mapstructure:"codec" validate:"required"`
 	// Args are the arguments to pass to the decode function.
 	CodecArgs []interface{} `mapstructure:"codecArgs"`
 }

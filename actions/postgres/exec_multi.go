@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
@@ -17,7 +16,7 @@ import (
 
 type ExecMultiConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource"`
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Statements are the statements to execute within a single transaction.
 	Statements []Statement `mapstructure:"statements"`
 }
@@ -26,7 +25,7 @@ type Statement struct {
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 	// SQL is the SQL query to execute.
-	SQL string `mapstructure:"sql"`
+	SQL string `mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }
@@ -88,15 +87,15 @@ func ExecMultiAction(
 								}
 							}
 
-							tag, err := tx.Exec(ctx, stmt.SQL, args...)
+							_, err := tx.Exec(ctx, stmt.SQL, args...)
 							if err != nil {
 								delete(single, "$root")
 								return err
 							}
-							if tag.RowsAffected() == 0 {
-								delete(single, "$root")
-								return errors.New("no rows effected")
-							}
+							// if tag.RowsAffected() == 0 {
+							// 	delete(single, "$root")
+							// 	return errors.New("no rows effected")
+							// }
 							delete(single, "$root")
 						}
 					}
@@ -113,15 +112,15 @@ func ExecMultiAction(
 						}
 					}
 
-					tag, err := tx.Exec(ctx, stmt.SQL, args...)
+					_, err := tx.Exec(ctx, stmt.SQL, args...)
 					if err != nil {
 						delete(single, "$root")
 						return err
 					}
-					if tag.RowsAffected() == 0 {
-						delete(single, "$root")
-						return errors.New("no rows effected")
-					}
+					// if tag.RowsAffected() == 0 {
+					// 	delete(single, "$root")
+					// 	return errors.New("no rows effected")
+					// }
 					delete(single, "$root")
 				}
 			}

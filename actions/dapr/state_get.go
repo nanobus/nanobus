@@ -16,9 +16,9 @@ import (
 
 type GetStateConfig struct {
 	// Name is name of binding to invoke.
-	Store string `mapstructure:"store"`
+	Store string `mapstructure:"store" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke.
-	Key *expr.ValueExpr `mapstructure:"key"`
+	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 	// NotFoundError is the error to return if the key is not found.
 	NotFoundError string `mapstructure:"notFoundError"`
 	// Var, if set, is the variable that is set with the result.

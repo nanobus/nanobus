@@ -13,7 +13,7 @@ import (
 )
 
 type LogConfig struct {
-	Format string `mapstructure:"format"`
+	Format string `mapstructure:"format" validate:"required"`
 	// Args are the evaluations to use as arguments into the string format.
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }

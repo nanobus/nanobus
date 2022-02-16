@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
@@ -17,11 +16,11 @@ import (
 
 type ExecConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource"`
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 	// SQL is the SQL query to execute.
-	SQL string `mapstructure:"sql"`
+	SQL string `mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }
@@ -80,13 +79,13 @@ func ExecAction(
 							}
 						}
 
-						tag, err := tx.Exec(ctx, config.SQL, args...)
+						_, err := tx.Exec(ctx, config.SQL, args...)
 						if err != nil {
 							return err
 						}
-						if tag.RowsAffected() == 0 {
-							return errors.New("no rows effected")
-						}
+						// if tag.RowsAffected() == 0 {
+						// 	return errors.New("no rows effected")
+						// }
 					}
 				}
 
@@ -103,13 +102,13 @@ func ExecAction(
 				}
 			}
 
-			tag, err := pool.Exec(ctx, config.SQL, args...)
+			_, err := pool.Exec(ctx, config.SQL, args...)
 			if err != nil {
 				return nil, err
 			}
-			if tag.RowsAffected() == 0 {
-				return nil, errors.New("no rows effected")
-			}
+			// if tag.RowsAffected() == 0 {
+			// 	return nil, errors.New("no rows effected")
+			// }
 		}
 
 		return nil, nil

@@ -18,9 +18,9 @@ import (
 
 type PublishMessageConfig struct {
 	// Pubsub is name of pubsub to publish to.
-	Pubsub string `mapstructure:"pubsub"`
+	Pubsub string `mapstructure:"pubsub" validate:"required"`
 	// Topic is the name of the topic to publish to.
-	Topic string `mapstructure:"topic"`
+	Topic string `mapstructure:"topic" validate:"required"`
 	// Format is the format to write the data in.
 	Format string `mapstructure:"format"`
 	// Data is the input bindings sent

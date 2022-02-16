@@ -6,8 +6,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 )
+
+// Use a single instance of Validate, it caches struct info.
+var validate = validator.New()
 
 var (
 	typeDuration      = reflect.TypeOf(time.Duration(5))             // nolint: gochecknoglobals
@@ -40,7 +44,11 @@ func Decode(input interface{}, output interface{}) error {
 		return err
 	}
 
-	return decoder.Decode(input)
+	if err = decoder.Decode(input); err != nil {
+		return err
+	}
+
+	return validate.Struct(output)
 }
 
 func decodeString(

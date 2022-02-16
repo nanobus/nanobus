@@ -15,9 +15,9 @@ import (
 
 type InvokeConfig struct {
 	// Name is name of SQL binding to invoke.
-	AppID  string `mapstructure:"appId"`
-	Method string `mapstructure:"method"`
-	Verb   string `mapstructure:"verb"`
+	AppID  string `mapstructure:"appId" validate:"required"`
+	Method string `mapstructure:"method" validate:"required"`
+	Verb   string `mapstructure:"verb" validate:"required"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 }

@@ -37,7 +37,7 @@ func annotationValue(a spec.Annotator, annotation, argument, defaultValue string
 
 func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue interface{}, toPreload []Preload) (map[string]interface{}, error) {
 	idColumn := keyColumn(t)
-	sql := generateTableSQL(t) + " WHERE " + idColumn + "=$1"
+	sql := generateTableSQL(t) + " WHERE " + idColumn + " = $1"
 	fmt.Println(sql, idValue)
 	rows, err := conn.Query(ctx, sql, idValue)
 	if err != nil {

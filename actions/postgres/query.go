@@ -17,9 +17,9 @@ import (
 
 type QueryConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource"`
+	Resource string `mapstructure:"resource" validate:"required"`
 	// SQL is the SQL query to execute.
-	SQL string `mapstructure:"sql"`
+	SQL string `mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
 	Args []*expr.ValueExpr `mapstructure:"args"`
 }

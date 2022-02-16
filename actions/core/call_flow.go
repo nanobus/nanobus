@@ -10,7 +10,7 @@ import (
 
 type CallFlowConfig struct {
 	// Name is the name of the flow to call.
-	Name string `mapstructure:"name"`
+	Name string `mapstructure:"name" validate:"required"`
 }
 
 // Route is the NamedLoader for the filter action.

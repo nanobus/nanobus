@@ -15,9 +15,9 @@ import (
 
 type InvokeBindingConfig struct {
 	// Name is name of binding to invoke.
-	Name string `mapstructure:"name"`
+	Name string `mapstructure:"name" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke
-	Operation string `mapstructure:"operation"`
+	Operation string `mapstructure:"operation" validate:"required"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 	// Metadata is the input binding metadata

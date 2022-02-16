@@ -15,11 +15,11 @@ import (
 
 type PublishMessageConfig struct {
 	// Pubsub is name of pubsub to publish to.
-	Pubsub string `mapstructure:"pubsub"`
+	Pubsub string `mapstructure:"pubsub" validate:"required"`
 	// Topic is the name of the topic to publish to.
-	Topic string `mapstructure:"topic"`
+	Topic string `mapstructure:"topic" validate:"required"`
 	// Codec is the configured codec to use for encoding the message.
-	Codec string `mapstructure:"codec"`
+	Codec string `mapstructure:"codec" validate:"required"`
 	// CodecArgs are the arguments for the codec, if any.
 	CodecArgs []interface{} `mapstructure:"codecArgs"`
 	// Key is the optional value to use for the message key (is supported).

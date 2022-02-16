@@ -14,7 +14,7 @@ import (
 
 type JQConfig struct {
 	// Query is the predicate expression for filtering.
-	Query string `mapstructure:"query"`
+	Query string `mapstructure:"query" validate:"required"`
 	// Data is the optional data expression to pass to jq.
 	Data *expr.DataExpr `mapstructure:"data"`
 	// Single, if true, returns the first result.

@@ -12,7 +12,7 @@ import (
 
 type FilterConfig struct {
 	// Condition is the predicate expression for filtering.
-	Condition *expr.ValueExpr `mapstructure:"condition"`
+	Condition *expr.ValueExpr `mapstructure:"condition" validate:"required"`
 }
 
 // Filter is the NamedLoader for the filter action.

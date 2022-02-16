@@ -15,7 +15,7 @@ type DecodeConfig struct {
 	TypeField string `mapstructure:"typeField"`
 	DataField string `mapstructure:"dataField"`
 	// Codec is the name of the codec to use for decoing.
-	Codec string `mapstructure:"codec"`
+	Codec string `mapstructure:"codec" validate:"required"`
 	// Args are the arguments to pass to the decode function.
 	CodecArgs []interface{} `mapstructure:"codecArgs"`
 }

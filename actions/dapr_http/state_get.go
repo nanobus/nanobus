@@ -15,9 +15,9 @@ import (
 
 type GetStateConfig struct {
 	// Name is name of binding to invoke.
-	Store string `mapstructure:"store"`
+	Store string `mapstructure:"store" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke
-	Key *expr.ValueExpr `mapstructure:"key"`
+	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 }
 
 // GetState is the NamedLoader for the Dapr get state operation

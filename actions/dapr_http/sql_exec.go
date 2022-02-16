@@ -19,9 +19,9 @@ import (
 
 type SQLExecConfig struct {
 	// Name is name of SQL binding to invoke.
-	Name string `mapstructure:"name"`
+	Name string `mapstructure:"name" validate:"required"`
 	// SQL
-	SQL string `mapstructure:"sql"`
+	SQL string `mapstructure:"sql" validate:"required"`
 	// Data is the input bindings sent
 	Data *expr.DataExpr `mapstructure:"data"`
 }
