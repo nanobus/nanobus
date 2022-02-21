@@ -1,4 +1,4 @@
-spec: spec.widl
+spec: spec.apex
 generates:
   adapter.py:
     module: '@nanobus/codegen/python'

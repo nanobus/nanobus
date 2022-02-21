@@ -1,4 +1,4 @@
-spec: spec.widl
+spec: spec.apex
 config:
   module: github.com/nanobus/nanobus/example/welcome
   package: welcome

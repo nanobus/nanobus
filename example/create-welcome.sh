@@ -1,4 +1,4 @@
-wapc new @nanobus/codegen/go welcome \
+nanogen new go welcome \
     description="Dapr Welcome App" \
     version=1.0.0 \
     module="github.com/nanobus/nanobus/example/welcome" \
@@ -6,7 +6,7 @@ wapc new @nanobus/codegen/go welcome \
 
 cd welcome
 
-cat > schema.widl <<EOF
+cat > schema.apex <<EOF
 namespace "welcome.v1"
 
 role Inbound {

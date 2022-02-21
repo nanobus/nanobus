@@ -20,5 +20,5 @@ COPY --from=build-env /go/bin/customers /app/customers
 COPY components /components
 COPY common.yaml /app/common.yaml
 COPY bus.yaml /app/bus.yaml
-COPY spec.widl /app/spec.widl
+COPY spec.apex /app/spec.apex
 CMD ["--components-path", "/components", "--app-id", "customers", "--metrics-port", "19091", "--placement-host-address", "host.docker.internal:50005", "--http-listen-addr", ":18081", "--rest-listen-addr", ":8091", "--bus-listen-addr", "127.0.0.1:32321", "--app-port", "9000", "--", "/app/customers"]

@@ -25,8 +25,8 @@ namespace "customers.v1"
     url: "http://mycompany.io/docs"
   )
 
-#import * from "@widl/restapi"
-#import * from "@widl/grpc"
+#import * from "@nanobus/restapi"
+#import * from "@nanobus/grpc"
 
 """
 Operations that can be performed on a customer.

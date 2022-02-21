@@ -65,7 +65,7 @@ import (
 	dapr_runtime "github.com/nanobus/nanobus/runtime/dapr"
 	"github.com/nanobus/nanobus/security/claims"
 	"github.com/nanobus/nanobus/spec"
-	spec_widl "github.com/nanobus/nanobus/spec/widl"
+	spec_apex "github.com/nanobus/nanobus/spec/apex"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/filter/jwt"
@@ -202,7 +202,7 @@ func main() {
 	// Spec registration
 	specRegistry := spec.Registry{}
 	specRegistry.Register(
-		spec_widl.WIDL,
+		spec_apex.Apex,
 	)
 
 	namespaces := make(spec.Namespaces)

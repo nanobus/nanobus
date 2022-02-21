@@ -1,4 +1,4 @@
-spec: spec.widl
+spec: spec.apex
 generates:
   src/adapter.ts:
     module: '@nanobus/codegen/typescript'

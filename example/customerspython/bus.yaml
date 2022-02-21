@@ -1,7 +1,7 @@
 specs:
-  - type: widl
+  - type: apex
     with:
-      filename: spec.widl
+      filename: spec.apex
 
 compute:
   type: mux

@@ -1,4 +1,4 @@
-package widl_test
+package apex_test
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nanobus/nanobus/spec/widl"
+	"github.com/nanobus/nanobus/spec/apex"
 )
 
 func TestParse(t *testing.T) {
@@ -18,10 +18,10 @@ func TestParse(t *testing.T) {
 		t.FailNow()
 	}
 
-	name, loader := widl.WIDL()
-	assert.Equal(t, "widl", name)
+	name, loader := apex.Apex()
+	assert.Equal(t, "apex", name)
 	namespaces, err := loader(map[string]interface{}{
-		"filename": "testdata/spec.widl",
+		"filename": "testdata/spec.apex",
 	})
 	require.NoError(t, err)
 	require.Len(t, namespaces, 1)

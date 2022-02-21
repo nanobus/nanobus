@@ -1,6 +1,6 @@
 #!/bin/sh
 
-wapc new @nanobus/codegen/go customers \
+nanogen new go customers \
     description="Customers App" \
     version=1.0.0 \
     module="github.com/nanobus/nanobus/example/customers" \
@@ -8,7 +8,7 @@ wapc new @nanobus/codegen/go customers \
 
 cd customers
 
-cat > schema.widl <<EOF
+cat > schema.apex <<EOF
 namespace "customers.v1"
   @path("/v1")
   @info(
@@ -35,8 +35,8 @@ namespace "customers.v1"
     url: "http://mycompany.io/docs"
   )
 
-import * from "@widl/restapi"
-import * from "@widl/grpc"
+import * from "@nanobus/restapi"
+import * from "@nanobus/grpc"
 
 """
 Operations that can be performed on a customer.
@@ -133,9 +133,9 @@ EOF
 
 cat > bus.yaml <<EOF
 specs:
-  - type: widl
+  - type: apex
     with:
-      filename: schema.widl
+      filename: schema.apex
 
 compute:
   # type: wapc

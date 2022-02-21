@@ -1,4 +1,4 @@
-spec: spec.widl
+spec: spec.apex
 generates:
   assembly/adapter.ts:
     module: '@nanobus/codegen/assemblyscript'

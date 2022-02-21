@@ -1,10 +1,10 @@
-package widl
+package apex
 
 import (
 	"os"
 
-	"github.com/wapc/widl-go/ast"
-	"github.com/wapc/widl-go/parser"
+	"github.com/apexlang/apex-go/ast"
+	"github.com/apexlang/apex-go/parser"
 
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/spec"
@@ -15,9 +15,9 @@ type Config struct {
 	Filename string `mapstructure:"filename"` // TODO: Load from external location
 }
 
-// WIDL is the NamedLoader for the WIDL spec.
-func WIDL() (string, spec.Loader) {
-	return "widl", Loader
+// Apex is the NamedLoader for the Apex spec.
+func Apex() (string, spec.Loader) {
+	return "apex", Loader
 }
 
 func Loader(with interface{}) ([]*spec.Namespace, error) {
@@ -26,12 +26,12 @@ func Loader(with interface{}) ([]*spec.Namespace, error) {
 		return nil, err
 	}
 
-	widlBytes, err := os.ReadFile(c.Filename)
+	specBytes, err := os.ReadFile(c.Filename)
 	if err != nil {
 		return nil, err
 	}
 
-	ns, err := Parse(widlBytes)
+	ns, err := Parse(specBytes)
 	if err != nil {
 		return nil, err
 	}

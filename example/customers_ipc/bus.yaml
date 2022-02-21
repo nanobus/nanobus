@@ -2,9 +2,9 @@ import:
   - common.yaml
 
 specs:
-  - type: widl
+  - type: apex
     with:
-      filename: spec.widl
+      filename: spec.apex
 
 compute:
   type: rsocket
@@ -14,6 +14,10 @@ resources:
     type: postgres
     with:
       url: postgres://postgres:postgres@host.docker.internal:5432/nanobus
+  gdb:
+    type: gorm:postgres
+    with:
+      dsn: host=host.docker.internal user=postgres password=postgres dbname=nanobus port=5432 sslmode=disable
 
 errors:
   customer_not_found:
@@ -108,11 +112,21 @@ providers:
     getCustomers:
       name: Query the database for customers
       steps:
+        # - name: Query customers
+        #   uses: '@postgres/query'
+        #   with:
+        #     resource: db
+        #     sql: SELECT id, first_name, last_name, email FROM customers
+
         - name: Query customers
-          uses: '@postgres/query'
+          uses: '@gorm/find'
           with:
-            resource: db
-            sql: SELECT id, first_name, last_name, email FROM customers
+            resource: gdb
+            namespace: customers.v1
+            type: Customer
+            preload:
+              - field: address
+            notFoundError: customer_not_found
 
     transformCustomers:
       name: Query the database for customers

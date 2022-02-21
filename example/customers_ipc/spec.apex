@@ -101,6 +101,8 @@ role Outbound @provider {
   customerCreated{customer: Customer}
   #"Get customers from the database"
   #getCustomers(): stream Customer
+  #"Transforms a stream of customers by adding a prefix to all string attributes"
+  #transformCustomers(prefix: string, stream: Customer): stream Customer
 }
 
 """
