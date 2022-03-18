@@ -405,14 +405,18 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			return
 		}
 
-		w.Header().Set("Content-Type", codec.ContentType())
-		responseBytes, err := codec.Encode(response)
-		if err != nil {
-			t.handleError(err, codec, r, w, http.StatusInternalServerError)
-			return
-		}
+		if response != nil {
+			w.Header().Set("Content-Type", codec.ContentType())
+			responseBytes, err := codec.Encode(response)
+			if err != nil {
+				t.handleError(err, codec, r, w, http.StatusInternalServerError)
+				return
+			}
 
-		w.Write(responseBytes)
+			w.Write(responseBytes)
+		} else {
+			w.WriteHeader(http.StatusNoContent)
+		}
 	}
 }
 
