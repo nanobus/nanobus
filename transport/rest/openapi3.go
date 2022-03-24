@@ -127,6 +127,8 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 					operPtr = &sp.Post
 				} else if _, ok := oper.Annotation("PUT"); ok {
 					operPtr = &sp.Put
+				} else if _, ok := oper.Annotation("DELETE"); ok {
+					operPtr = &sp.Delete
 				} else {
 					continue
 				}

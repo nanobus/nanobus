@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"reflect"
 	"strconv"
 	"strings"
 	"syscall"
@@ -206,6 +207,14 @@ func main() {
 	)
 
 	namespaces := make(spec.Namespaces)
+	if len(config.Specs) == 0 {
+		config.Specs = append(config.Specs, runtime.Component{
+			Type: "apex",
+			With: map[string]interface{}{
+				"filename": "spec.apex",
+			},
+		})
+	}
 	for _, spec := range config.Specs {
 		loader, ok := specRegistry[spec.Type]
 		if !ok {
@@ -437,7 +446,7 @@ func main() {
 	os.Setenv("APP_URL", appURL)
 	// Internal invoker
 	if config.Compute.Type == "" {
-		config.Compute.Type = "mux"
+		config.Compute.Type = "rsocket"
 	}
 	computeLoader, ok := computeRegistry[config.Compute.Type]
 	if !ok {
@@ -588,55 +597,58 @@ func main() {
 				}
 
 				mutation := statefulResponse.Mutation
-				operations := make([]actors.TransactionalOperation, len(mutation.Set)+len(mutation.Remove))
-				if len(statefulResponse.Mutation.Set) > 0 {
-					i := 0
-					for key, value := range statefulResponse.Mutation.Set {
-						if len(value.Data) == 0 && value.DataBase64 != "" {
-							if value.Data, err = base64.StdEncoding.DecodeString(value.DataBase64); err != nil {
+				numOperations := len(mutation.Set) + len(mutation.Remove)
+				if numOperations > 0 {
+					operations := make([]actors.TransactionalOperation, numOperations)
+					if len(mutation.Set) > 0 {
+						i := 0
+						for key, value := range mutation.Set {
+							if len(value.Data) == 0 && value.DataBase64 != "" {
+								if value.Data, err = base64.StdEncoding.DecodeString(value.DataBase64); err != nil {
+									return nil, "", err
+								}
+								value.DataBase64 = ""
+							}
+							valueBytes, err := msgpackcodec.Encode(&value)
+							if err != nil {
 								return nil, "", err
 							}
-							value.DataBase64 = ""
+							operations[i] = actors.TransactionalOperation{
+								Operation: actors.Upsert,
+								Request: actors.TransactionalUpsert{
+									Key:   key,
+									Value: valueBytes,
+								},
+							}
+							i++
 						}
-						valueBytes, err := msgpackcodec.Encode(&value)
-						if err != nil {
-							return nil, "", err
-						}
-						operations[i] = actors.TransactionalOperation{
-							Operation: actors.Upsert,
-							Request: actors.TransactionalUpsert{
-								Key:   key,
-								Value: valueBytes,
-							},
-						}
-						i++
 					}
-				}
 
-				if len(statefulResponse.Mutation.Remove) > 0 {
-					i := len(mutation.Set)
-					for _, key := range statefulResponse.Mutation.Remove {
-						operations[i] = actors.TransactionalOperation{
-							Operation: actors.Delete,
-							Request: actors.TransactionalDelete{
-								Key: key,
-							},
+					if len(mutation.Remove) > 0 {
+						i := len(mutation.Set)
+						for _, key := range statefulResponse.Mutation.Remove {
+							operations[i] = actors.TransactionalOperation{
+								Operation: actors.Delete,
+								Request: actors.TransactionalDelete{
+									Key: key,
+								},
+							}
+							i++
 						}
-						i++
 					}
-				}
 
-				if err = daprComponents.Actors.TransactionalStateOperation(ctx, &actors.TransactionalRequest{
-					Operations: operations,
-					ActorType:  actorType,
-					ActorID:    actorID,
-				}); err != nil {
-					return nil, "", fmt.Errorf("could not update state for actor %s/%s: %w", actorType, actorID, err)
+					if err = daprComponents.Actors.TransactionalStateOperation(ctx, &actors.TransactionalRequest{
+						Operations: operations,
+						ActorType:  actorType,
+						ActorID:    actorID,
+					}); err != nil {
+						return nil, "", fmt.Errorf("could not update state for actor %s/%s: %w", actorType, actorID, err)
+					}
 				}
 
 				var respData []byte
-				if statefulResponse.Result != nil {
-					if respData, err = msgpack.Marshal(&statefulResponse.Result); err != nil {
+				if !isNil(statefulResponse.Result) {
+					if respData, err = msgpack.Marshal(statefulResponse.Result); err != nil {
 						return nil, "", err
 					}
 				}
@@ -856,7 +868,7 @@ func main() {
 			return
 		}
 
-		if returnBase64 {
+		if returnBase64 && resp.Data != nil {
 			var rawItem stateful.RawItem
 			// Dapr stores actor state in JSON
 			if err := json.Unmarshal(resp.Data, &rawItem); err != nil {
@@ -1110,11 +1122,13 @@ func main() {
 				if err != nil {
 					return nil, err
 				}
-				_, respBytes := res.RawData()
+				_, respBytes := res.RawData() // TODO: Use content type returned.
 
 				var response interface{}
-				if err = msgpack.Unmarshal(respBytes, &response); err != nil {
-					return nil, err
+				if len(respBytes) > 0 {
+					if err = msgpack.Unmarshal(respBytes, &response); err != nil {
+						return nil, err
+					}
 				}
 
 				return response, nil
@@ -1516,4 +1530,10 @@ func logOutbound(log logr.Logger, target string, data string) {
 	if l.Enabled() {
 		l.Info("<== " + target + " " + data)
 	}
+}
+
+func isNil(val interface{}) bool {
+	return val == nil ||
+		(reflect.ValueOf(val).Kind() == reflect.Ptr &&
+			reflect.ValueOf(val).IsNil())
 }

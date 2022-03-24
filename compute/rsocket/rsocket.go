@@ -189,11 +189,6 @@ func (s *Socket) responder() rsocket.RSocket {
 						return
 					}
 
-					if err != nil {
-						fmt.Println(err)
-						sink.Error(err)
-						return
-					}
 					sink.Success(payload.New(output, nil))
 					return
 				}

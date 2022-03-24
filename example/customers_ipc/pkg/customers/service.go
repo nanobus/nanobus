@@ -6,21 +6,27 @@ import (
 	"fmt"
 	"io"
 	"log"
+
+	"github.com/go-logr/logr"
+
+	"github.com/nanobus/adapter-go/stateful"
 )
 
 type Service struct {
+	log      logr.Logger
 	outbound Outbound
 }
 
 var _ = (Inbound)((*Service)(nil))
 
-func NewService(outbound Outbound) *Service {
+func NewService(log logr.Logger, outbound Outbound) *Service {
 	return &Service{
+		log:      log,
 		outbound: outbound,
 	}
 }
 
-func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (*Customer, error) {
+func (s *Service) CreateCustomer(ctx context.Context, customer *Customer) (*Customer, error) {
 	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
 		log.Printf("RECEIVED: %s\n", string(jsonBytes))
 	}
@@ -31,7 +37,7 @@ func (s *Service) CreateCustomer(ctx context.Context, customer Customer) (*Custo
 	}
 	//err = s.outbound.CustomerCreated(ctx, customer)
 
-	return &customer, err
+	return customer, err
 }
 
 func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error) {
@@ -90,7 +96,7 @@ func (s *Service) GetCustomer(ctx context.Context, id uint64) (*Customer, error)
 	return s.outbound.FetchCustomer(ctx, id)
 }
 
-func (s *Service) ListCustomers(ctx context.Context, query CustomerQuery) (*CustomerPage, error) {
+func (s *Service) ListCustomers(ctx context.Context, query *CustomerQuery) (*CustomerPage, error) {
 	if jsonBytes, err := json.MarshalIndent(&query, "", "  "); err == nil {
 		log.Printf("RECEIVED: %s\n", string(jsonBytes))
 	}
@@ -104,23 +110,23 @@ func (s *Service) ListCustomers(ctx context.Context, query CustomerQuery) (*Cust
 
 type CustomerActorImpl struct{}
 
-func NewCustomerActorImpl() *CustomerActorImpl {
+func NewCustomerActor() *CustomerActorImpl {
 	return &CustomerActorImpl{}
 }
 
-func (c *CustomerActorImpl) Activate(ctx Context) error {
+func (c *CustomerActorImpl) Activate(ctx stateful.Context) error {
 	log.Printf("Activated %s", ctx.Self())
 
 	return nil
 }
 
-func (c *CustomerActorImpl) Deactivate(ctx Context) error {
+func (c *CustomerActorImpl) Deactivate(ctx stateful.Context) error {
 	log.Printf("Deactivated %s", ctx.Self())
 
 	return nil
 }
 
-func (c *CustomerActorImpl) CreateCustomer(ctx Context, customer Customer) (*Customer, error) {
+func (c *CustomerActorImpl) CreateCustomer(ctx stateful.Context, customer *Customer) (*Customer, error) {
 	if jsonBytes, err := json.MarshalIndent(&customer, "", "  "); err == nil {
 		log.Printf("ACTOR RECEIVED: %s\n", string(jsonBytes))
 	}
@@ -129,10 +135,10 @@ func (c *CustomerActorImpl) CreateCustomer(ctx Context, customer Customer) (*Cus
 
 	ctx.Set("customer", &customer)
 
-	return &customer, nil
+	return customer, nil
 }
 
-func (c *CustomerActorImpl) GetCustomer(ctx Context) (*Customer, error) {
+func (c *CustomerActorImpl) GetCustomer(ctx stateful.Context) (*Customer, error) {
 	log.Printf("RECEIVED\n")
 
 	var customer Customer

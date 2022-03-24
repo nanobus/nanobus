@@ -224,7 +224,7 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 									}
 								}
 							}
-						} else {
+						} else if _, ok := param.Annotation("body"); ok {
 							bodyParamName = param.Name
 							hasBody = true
 						}
@@ -324,7 +324,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		}
 
 		var input map[string]interface{}
-		if hasBody && len(requestBytes) > 0 {
+		if len(requestBytes) > 0 {
 			if bodyParamName == "" {
 				if err := codec.Decode(requestBytes, &input); err != nil {
 					t.handleError(err, codec, r, w, http.StatusInternalServerError)

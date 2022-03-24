@@ -20,7 +20,7 @@ type SetStateConfig struct {
 	// ForEach is an option expression to evaluate a
 	ForEach *expr.ValueExpr `mapstructure:"forEach"`
 	// Value is the optional data expression to tranform the data to set.
-	Value *expr.DataExpr `mapstructure:"value" validate:"required"`
+	Value *expr.DataExpr `mapstructure:"value"`
 	// Metadata is the optional data expression for the key's metadata.
 	Metadata *expr.DataExpr `mapstructure:"metadata"`
 }
