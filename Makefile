@@ -15,6 +15,7 @@ BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
 GO_BUILDER_VERSION=latest
+GOPATH = $(shell go env GOPATH)
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -79,8 +80,8 @@ build-linux-amd64:
 		-v $(GOPATH)/src:/go/src \
 		-v $(GOPATH)/pkg:/go/pkg \
 		-w /go/src/github.com/nanobus/nanobus \
-		-e CGO_ENABLED=1 \
-		golang:1.17.5 \
+		-e CGO_ENABLED=0 \
+		golang:1.17.8 \
 		go build -o dist/nanobus-linux_linux_amd64/nanobus $(MAIN)
 
 docker: release-dry-run

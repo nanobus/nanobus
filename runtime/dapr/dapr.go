@@ -17,6 +17,7 @@ import (
 	"github.com/dapr/dapr/pkg/metrics"
 	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/operator/client"
+	"github.com/dapr/dapr/pkg/resiliency"
 	"github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/dapr/pkg/runtime/security"
 	"github.com/dapr/dapr/pkg/version"
@@ -169,7 +170,7 @@ func (r *Runtime) Initialize() error {
 		string(runtime.EmbeddedProtocol), r.mode, daprAPIHTTPPort, daprInternalGRPC, 0, daprAPIListenAddressList, nil, 0,
 		profPort, r.enableProfiling,
 		concurrency, r.enableMTLS, r.sentryAddress, r.appSSL, maxRequestBodySize, "", 4, false,
-		5*time.Second)
+		5*time.Second, "")
 
 	// // set environment variables
 	// // TODO - consider adding host address to runtime config and/or caching result in utils package
@@ -205,6 +206,7 @@ func (r *Runtime) Initialize() error {
 
 	var accessControlList *global_config.AccessControlList
 	var namespace string
+	var podName string
 
 	if r.config != "" {
 		switch modes.DaprMode(r.mode) {
@@ -215,7 +217,8 @@ func (r *Runtime) Initialize() error {
 			}
 			defer conn.Close()
 			namespace = os.Getenv("NAMESPACE")
-			globalConfig, configErr = global_config.LoadKubernetesConfiguration(r.config, namespace, client)
+			podName = os.Getenv("POD_NAME")
+			globalConfig, configErr = global_config.LoadKubernetesConfiguration(r.config, namespace, podName, client)
 		case modes.StandaloneMode:
 			globalConfig, _, configErr = global_config.LoadStandaloneConfiguration(r.config)
 		}
@@ -237,7 +240,8 @@ func (r *Runtime) Initialize() error {
 	if err != nil {
 		return err
 	}
-	r.runtime, err = runtime.NewDaprRuntime(runtimeConfig, globalConfig, accessControlList), nil
+	resiliencyProvider := resiliency.NoOp{}
+	r.runtime, err = runtime.NewDaprRuntime(runtimeConfig, globalConfig, accessControlList, &resiliencyProvider), nil
 	return err
 }
 
