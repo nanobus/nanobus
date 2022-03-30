@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +22,8 @@ func TestCircuitBreaker(t *testing.T) {
 		Trip:    &trip,
 		Timeout: 10 * time.Millisecond,
 	}
-	cb.Initialize()
+	log := logr.Discard()
+	cb.Initialize(log)
 	for i := 0; i < 3; i++ {
 		cb.Execute(func() error {
 			return errors.New("test")

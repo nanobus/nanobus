@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/sony/gobreaker"
 
 	"github.com/nanobus/nanobus/expr"
@@ -46,7 +47,7 @@ func IsErrorPermanent(err error) bool {
 
 // Initialize creates the underlying circuit breaker using the
 // configuration fields.
-func (c *CircuitBreaker) Initialize() {
+func (c *CircuitBreaker) Initialize(log logr.Logger) {
 	var tripFn func(counts gobreaker.Counts) bool
 
 	if c.Trip != nil {
@@ -79,6 +80,9 @@ func (c *CircuitBreaker) Initialize() {
 		ReadyToTrip: tripFn,
 		IsSuccessful: func(err error) bool {
 			return err == nil || strings.HasPrefix(err.Error(), "not_found")
+		},
+		OnStateChange: func(name string, from, to gobreaker.State) {
+			log.Info("Circuit breaker state changed", "name", name, "from", from, "to", to)
 		},
 	})
 }

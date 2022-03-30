@@ -76,7 +76,7 @@ func NewProcessor(log logr.Logger, configuration *Configuration, registry action
 		if err := config.Decode(circuitBreaker, &cb); err != nil {
 			return nil, err
 		}
-		cb.Initialize()
+		cb.Initialize(log)
 		circuitBreakers[name] = &cb
 	}
 
