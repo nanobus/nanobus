@@ -45,7 +45,6 @@ events:
         uses: route
         with:
           routes:
-            #- when: input.type == 'customer.created'
             - when: input.type == 'io.nanobus.examples.customers.Customer'
               then:
                 - name: Send to route

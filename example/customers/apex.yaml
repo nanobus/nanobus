@@ -4,6 +4,7 @@ config:
   package: customers
 generates:
   cmd/main.go:
+    ifNotExists: true
     module: '@nanobus/codegen/go'
     visitorClass: EntryPointVisitor
   pkg/customers/adapter.go:

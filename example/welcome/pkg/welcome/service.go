@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"log"
 	"sync/atomic"
+
+	"github.com/go-logr/logr"
 )
 
 type Service struct {
-	Outbound
+	log            logr.Logger
+	outbound       Outbound
 	receiveCounter uint64
 }
 
-func NewService(outbound Outbound) *Service {
+func NewService(log logr.Logger, outbound Outbound) *Service {
 	return &Service{
-		Outbound: outbound,
+		log:      log,
+		outbound: outbound,
 	}
 }
 
-func (s *Service) GreetCustomer(ctx context.Context, customer Customer) error {
+func (s *Service) GreetCustomer(ctx context.Context, customer *Customer) error {
 	counter := atomic.AddUint64(&s.receiveCounter, 1)
 	if counter%2 == 0 {
 		log.Printf("RETURNING SIMULATED ERROR")
@@ -33,5 +37,5 @@ func (s *Service) GreetCustomer(ctx context.Context, customer Customer) error {
 
 	message := fmt.Sprintf("Hello, %s %s", customer.FirstName, customer.LastName)
 
-	return s.SendEmail(ctx, customer.Email, message)
+	return s.outbound.SendEmail(ctx, customer.Email, message)
 }

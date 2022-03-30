@@ -1,29 +1,45 @@
 package main
 
 import (
-	"github.com/nanobus/go-functions/codecs/json"
-	"github.com/nanobus/go-functions/stateful"
+	"context"
+
+	"github.com/go-logr/zapr"
+	"github.com/mattn/go-colorable"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	"github.com/nanobus/adapter-go/codec/json"
+	"github.com/nanobus/adapter-go/stateful"
+
 	"github.com/nanobus/nanobus/example/customers/pkg/customers"
 )
 
 func main() {
+	ctx := context.Background()
+	// Initialize logger
+	zapConfig := zap.NewDevelopmentEncoderConfig()
+	zapConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLog := zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zapConfig),
+		zapcore.AddSync(colorable.NewColorableStdout()),
+		zapcore.DebugLevel,
+	))
+	log := zapr.NewLogger(zapLog)
+
+	codec := json.New()
 	cache, err := stateful.NewLRUCache(200)
 	if err != nil {
 		panic(err)
 	}
-	codec := json.New()
-	storage := customers.NewStorage(codec)
-	manager := stateful.NewManager(cache, storage, codec)
-	adapter := customers.NewAdapter(manager)
-	outbound := adapter.NewOutbound()
-	service := customers.NewService(outbound)
+	app := customers.NewApp(ctx, codec, cache)
+	outbound := app.NewOutbound()
+	service := customers.NewService(log, outbound)
+	customerActor := customers.NewCustomerActor()
 
-	adapter.RegisterInbound(customers.Inbound{
-		CreateCustomer: service.CreateCustomer,
-		GetCustomer:    service.GetCustomer,
-		ListCustomers:  service.ListCustomers,
-	})
-	adapter.RegisterCustomerActor(customers.NewCustomerActorImpl())
+	app.RegisterInbound(service)
+	app.RegisterCustomerActor(customerActor)
 
-	adapter.Run()
+	if err := app.Start(); err != nil {
+		log.Error(err, "Exit with error")
+	}
 }

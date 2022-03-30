@@ -8,3 +8,5 @@ spec:
   metadata:
   - name: url
     value: "user=postgres password=postgres host=localhost port=5432 dbname=nanobus sslmode=disable"
+scopes:
+  - customers
