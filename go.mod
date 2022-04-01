@@ -8,7 +8,7 @@ require (
 	github.com/antonmedv/expr v1.9.0
 	github.com/apexlang/apex-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.2
-	github.com/dapr/components-contrib v1.7.0-rc.1
+	github.com/dapr/components-contrib v1.7.0-rc.2.0.20220401152043-195901f1b397
 	github.com/dapr/dapr v1.6.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.87.0

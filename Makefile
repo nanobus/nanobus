@@ -23,9 +23,13 @@ deps:
 	go get -u golang.org/x/tools/cmd/goimports
 
 build:
-	go build -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
+	CGO_ENABLED=1 go build -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build $(BINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
+
+install:
+	CGO_ENABLED=1 go install ./cmd/...
+	@echo "Go install $(BINARY) done. Make sure $(shell go env GOPATH)/bin is in your path."
 
 clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
