@@ -13,6 +13,6 @@
     "@wapc/as-msgpack": "^0.1.13"
   },
   "devDependencies": {
-    "assemblyscript": "^0.20.3"
+    "assemblyscript": "^0.19.23"
   }
 }
