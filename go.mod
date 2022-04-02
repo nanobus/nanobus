@@ -8,7 +8,7 @@ require (
 	github.com/antonmedv/expr v1.9.0
 	github.com/apexlang/apex-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.2
-	github.com/dapr/components-contrib v1.7.0-rc.2.0.20220401152043-195901f1b397
+	github.com/dapr/components-contrib v1.7.0-rc.3
 	github.com/dapr/dapr v1.6.0
 	github.com/dapr/kit v0.0.2-0.20210614175626-b9074b64d233
 	github.com/getkin/kin-openapi v0.87.0
@@ -38,7 +38,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.31.1-0.20211216042702-258a4c17b4f4
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	github.com/wapc/wapc-go v0.4.0
+	github.com/wapc/wapc-go v0.4.1
+	github.com/wasmerio/wasmer-go v1.0.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.nanomsg.org/mangos/v3 v3.3.0
 	go.uber.org/multierr v1.7.0
@@ -66,7 +67,6 @@ require (
 	github.com/antlr/antlr4 v0.0.0-20200503195918-621b933c7a7f // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bytecodealliance/wasmtime-go v0.35.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-oidc v2.1.0+incompatible // indirect
@@ -166,8 +166,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/tetratelabs/wazero v0.0.0-20220401224236-2664b1eb62a2 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
+	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect

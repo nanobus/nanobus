@@ -11,7 +11,7 @@ import (
 	"github.com/nanobus/go-functions"
 	wapc_mux "github.com/nanobus/go-functions/transports/wapc"
 	wapc "github.com/wapc/wapc-go"
-	"github.com/wapc/wapc-go/engines/wasmtime"
+	"github.com/wapc/wapc-go/engines/wazero"
 
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
@@ -53,7 +53,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 		return nil, err
 	}
 
-	engine := wasmtime.Engine()
+	engine := wazero.Engine()
 
 	module, err := engine.New(wasmBytes, func(ctx context.Context, binding, namespace, operation string, payload []byte) ([]byte, error) {
 		lastDot := strings.LastIndexByte(namespace, '.')
