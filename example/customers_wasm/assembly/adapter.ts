@@ -1,9 +1,10 @@
 import { hostCall, register } from "@wapc/as-guest";
 import { Decoder, Writer, Encoder, Sizer } from "@wapc/as-msgpack";
 import {
-  Inbound,
+  Service,
   CustomerActor,
-  Outbound,
+  Repository,
+  Publisher,
   Customer,
   CustomerQuery,
   CustomerPage,
@@ -12,51 +13,51 @@ import {
   Value,
 } from "./interfaces";
 
-export function registerInbound(handler: Inbound): void {
-  InboundHandler = handler;
+export function registerService(handler: Service): void {
+  ServiceHandler = handler;
   register(
-    "customers.v1.Inbound/createCustomer",
-    Inbound_createCustomerWrapper
+    "customers.v1.Service/createCustomer",
+    Service_createCustomerWrapper
   );
-  register("customers.v1.Inbound/getCustomer", Inbound_getCustomerWrapper);
-  register("customers.v1.Inbound/listCustomers", Inbound_listCustomersWrapper);
+  register("customers.v1.Service/getCustomer", Service_getCustomerWrapper);
+  register("customers.v1.Service/listCustomers", Service_listCustomersWrapper);
 }
 
-var InboundHandler: Inbound;
+var ServiceHandler: Service;
 
-function Inbound_createCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
+function Service_createCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
   const decoder = new Decoder(payload);
   const request = CustomerCodec.decode(decoder);
-  const response = InboundHandler.createCustomer(request);
+  const response = ServiceHandler.createCustomer(request);
   return CustomerCodec.toBuffer(response);
 }
 
-function Inbound_getCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
+function Service_getCustomerWrapper(payload: ArrayBuffer): ArrayBuffer {
   const decoder = new Decoder(payload);
-  const inputArgs = InboundGetCustomerArgsCodec.decode(decoder);
-  const response = InboundHandler.getCustomer(inputArgs.id);
+  const inputArgs = ServiceGetCustomerArgsCodec.decode(decoder);
+  const response = ServiceHandler.getCustomer(inputArgs.id);
   return CustomerCodec.toBuffer(response);
 }
 
-function Inbound_listCustomersWrapper(payload: ArrayBuffer): ArrayBuffer {
+function Service_listCustomersWrapper(payload: ArrayBuffer): ArrayBuffer {
   const decoder = new Decoder(payload);
   const request = CustomerQueryCodec.decode(decoder);
-  const response = InboundHandler.listCustomers(request);
+  const response = ServiceHandler.listCustomers(request);
   return CustomerPageCodec.toBuffer(response);
 }
 
-class InboundGetCustomerArgs {
+class ServiceGetCustomerArgs {
   id: u64 = 0;
 }
 
-class InboundGetCustomerArgsCodec {
-  static decodeNullable(decoder: Decoder): InboundGetCustomerArgs | null {
+class ServiceGetCustomerArgsCodec {
+  static decodeNullable(decoder: Decoder): ServiceGetCustomerArgs | null {
     if (decoder.isNextNil()) return null;
-    return InboundGetCustomerArgsCodec.decode(decoder);
+    return ServiceGetCustomerArgsCodec.decode(decoder);
   }
 
-  static decode(decoder: Decoder): InboundGetCustomerArgs {
-    const that = new InboundGetCustomerArgs();
+  static decode(decoder: Decoder): ServiceGetCustomerArgs {
+    const that = new ServiceGetCustomerArgs();
     var numFields = decoder.readMapSize();
 
     while (numFields > 0) {
@@ -73,57 +74,59 @@ class InboundGetCustomerArgsCodec {
   }
 }
 
-export class OutboundImpl implements Outbound {
+export class RepositoryImpl implements Repository {
   saveCustomer(customer: Customer): void {
     hostCall(
       "",
-      "customers.v1.Outbound",
+      "customers.v1.Repository",
       "saveCustomer",
       CustomerCodec.toBuffer(customer)
     );
   }
 
   fetchCustomer(id: u64): Customer {
-    const inputArgs = new OutboundFetchCustomerArgs();
+    const inputArgs = new RepositoryFetchCustomerArgs();
     inputArgs.id = id;
     const payload = hostCall(
       "",
-      "customers.v1.Outbound",
+      "customers.v1.Repository",
       "fetchCustomer",
-      OutboundFetchCustomerArgsCodec.toBuffer(inputArgs)
+      RepositoryFetchCustomerArgsCodec.toBuffer(inputArgs)
     );
     const decoder = new Decoder(payload);
     return CustomerCodec.decode(decoder);
   }
-
-  customerCreated(customer: Customer): void {
-    hostCall(
-      "",
-      "customers.v1.Outbound",
-      "customerCreated",
-      CustomerCodec.toBuffer(customer)
-    );
-  }
 }
 
-class OutboundFetchCustomerArgs {
+class RepositoryFetchCustomerArgs {
   id: u64 = 0;
 }
 
-class OutboundFetchCustomerArgsCodec {
-  static encode(encoder: Writer, that: OutboundFetchCustomerArgs): void {
+class RepositoryFetchCustomerArgsCodec {
+  static encode(encoder: Writer, that: RepositoryFetchCustomerArgs): void {
     encoder.writeMapSize(1);
     encoder.writeString("id");
     encoder.writeUInt64(that.id);
   }
 
-  static toBuffer(that: OutboundFetchCustomerArgs): ArrayBuffer {
+  static toBuffer(that: RepositoryFetchCustomerArgs): ArrayBuffer {
     let sizer = new Sizer();
-    OutboundFetchCustomerArgsCodec.encode(sizer, that);
+    RepositoryFetchCustomerArgsCodec.encode(sizer, that);
     let buffer = new ArrayBuffer(sizer.length);
     let encoder = new Encoder(buffer);
-    OutboundFetchCustomerArgsCodec.encode(encoder, that);
+    RepositoryFetchCustomerArgsCodec.encode(encoder, that);
     return buffer;
+  }
+}
+
+export class PublisherImpl implements Publisher {
+  customerCreated(customer: Customer): void {
+    hostCall(
+      "",
+      "customers.v1.Publisher",
+      "customerCreated",
+      CustomerCodec.toBuffer(customer)
+    );
   }
 }
 

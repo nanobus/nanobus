@@ -1,37 +1,37 @@
-import { consoleLog } from "@wapc/as-guest";
+import { consoleLog as log } from "@wapc/as-guest";
 import {
-  Inbound,
-  CustomerActor,
-  Outbound,
+  Service,
   Customer,
   CustomerQuery,
   CustomerPage,
-  Address,
-  Error,
+  Repository,
+  Publisher,
 } from "./interfaces";
 
-export class InboundImpl implements Inbound {
-  private outbound: Outbound;
+export class ServiceImpl implements Service {
+  private repository: Repository;
+  private publisher: Publisher;
 
-  constructor(outbound: Outbound) {
-    this.outbound = outbound;
+  constructor(repository: Repository, publisher: Publisher) {
+    this.repository = repository;
+    this.publisher = publisher;
   }
 
   createCustomer(customer: Customer): Customer {
-    consoleLog("createCustomer called");
-    this.outbound.saveCustomer(customer);
-    this.outbound.customerCreated(customer);
+    log("createCustomer called");
+    this.repository.saveCustomer(customer);
+    this.publisher.customerCreated(customer);
 
     return customer;
   }
 
   getCustomer(id: u64): Customer {
-    consoleLog("getCustomer called");
-    return this.outbound.fetchCustomer(id);
+    log("getCustomer called");
+    return this.repository.fetchCustomer(id);
   }
 
   listCustomers(query: CustomerQuery): CustomerPage {
-    consoleLog("listCustomers called");
+    log("listCustomers called");
     return CustomerPage.newBuilder()
       .withOffset(query.offset)
       .withLimit(query.limit)

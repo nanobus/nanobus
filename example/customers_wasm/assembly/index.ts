@@ -1,9 +1,10 @@
-import { registerInbound, OutboundImpl } from "./adapter";
-import { InboundImpl } from "./service";
+import { registerService, RepositoryImpl, PublisherImpl } from "./adapter";
+import { ServiceImpl } from "./service";
 
 export function wapc_init(): void {
-  const outbound = new OutboundImpl();
-  registerInbound(new InboundImpl(outbound));
+  const repository = new RepositoryImpl();
+  const publisher = new PublisherImpl();
+  registerService(new ServiceImpl(repository, publisher));
 }
 
 // Boilerplate code for waPC.  Do not remove.

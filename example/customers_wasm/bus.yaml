@@ -93,7 +93,7 @@ services:
             value: input
 
 providers:
-  'customers.v1.Outbound':
+  'customers.v1.Repository':
     saveCustomer:
       name: Saves the customer to the database
       steps:
@@ -123,6 +123,7 @@ providers:
             key: input.id
             notFoundError: customer_not_found
 
+  'customers.v1.Publisher':
     customerCreated:
       name: Send a message to the customer
       steps:

@@ -1,5 +1,5 @@
 // Operations that can be performed on a customer.
-export interface Inbound {
+export interface Service {
   // Creates a new customer.
   createCustomer(customer: Customer): Customer;
   // Retrieve a customer by id.
@@ -16,9 +16,12 @@ export interface CustomerActor {
   getCustomer(): Customer;
 }
 
-export interface Outbound {
+export interface Repository {
   saveCustomer(customer: Customer): void;
   fetchCustomer(id: u64): Customer;
+}
+
+export interface Publisher {
   customerCreated(customer: Customer): void;
 }
 

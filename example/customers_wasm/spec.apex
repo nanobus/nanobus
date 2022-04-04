@@ -31,7 +31,7 @@ namespace "customers.v1"
 """
 Operations that can be performed on a customer.
 """
-role Inbound @service @uses([Outbound]) @path("/customers") {
+role Service @service @uses([Repository, Publisher]) @path("/customers") {
   """
   Creates a new customer.
   """
@@ -90,9 +90,12 @@ role CustomerActor @stateful @path("/actor/{id}") {
   getCustomer(): Customer @GET
 }
 
-role Outbound @provider {
+role Repository @provider {
   saveCustomer{customer: Customer}: void
   fetchCustomer(id: u64): Customer
+}
+
+role Publisher @provider {
   customerCreated{customer: Customer}: void
 }
 
