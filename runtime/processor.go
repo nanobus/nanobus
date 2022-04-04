@@ -51,6 +51,7 @@ type step struct {
 	timeout        time.Duration
 	retry          *retry.Config
 	circuitBreaker *breaker.CircuitBreaker
+	onError        Runnable
 }
 
 func NewProcessor(log logr.Logger, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
@@ -219,6 +220,7 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 }
 
 func (p *Processor) loadStep(s *Step) (*step, error) {
+	var err error
 	var action actions.Action
 	if s.Call != "" {
 		action = func(ctx context.Context, data actions.Data) (output interface{}, err error) {
@@ -230,7 +232,6 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 			return nil, fmt.Errorf("unregistered action %q", s.Uses)
 		}
 
-		var err error
 		action, err = loader(s.With, p.resolveAs)
 		if err != nil {
 			return nil, err
@@ -267,6 +268,13 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 			timeout = to
 		}
 	}
+	var onError Runnable
+	if s.OnError != nil {
+		onError, err = p.LoadPipeline(s.OnError)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &step{
 		config:         s,
@@ -274,6 +282,7 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 		timeout:        timeout,
 		retry:          retry,
 		circuitBreaker: circuitBreaker,
+		onError:        onError,
 	}, nil
 }
 
@@ -290,10 +299,22 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 			return err
 		})
 		if err != nil {
+			var pe *backoff.PermanentError
+			if errors.As(err, &pe) {
+				err = pe.Err
+			}
 			if errors.Is(err, actions.ErrStop) {
 				return nil, nil
 			}
 			return nil, err
+		}
+		if err != nil && s.onError != nil {
+			if output, err = s.onError(ctx, data); err != nil {
+				if errors.Is(err, actions.ErrStop) {
+					return nil, nil
+				}
+				return nil, err
+			}
 		}
 		if s.config.Returns != "" {
 			data[s.config.Returns] = output

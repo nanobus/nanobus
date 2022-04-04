@@ -47,19 +47,20 @@ type FunctionPipelines map[string]Pipeline
 
 type Pipeline struct {
 	Name  string `json:"name" yaml:"name"`
-	Call  string `json:"call" yaml:"call" mapstructure:"call"`
-	Steps []Step `json:"steps" yaml:"steps"`
+	Call  string `json:"call,omitempty" yaml:"call,omitempty" mapstructure:"call"`
+	Steps []Step `json:"steps,omitempty" yaml:"steps,omitempty"`
 }
 
 type Step struct {
 	Name           string      `json:"name" yaml:"name" mapstructure:"name"`
-	Call           string      `json:"call" yaml:"call" mapstructure:"call"`
-	Uses           string      `json:"uses" yaml:"uses" mapstructure:"uses"`
-	With           interface{} `json:"with" yaml:"with" mapstructure:"with"`
-	Returns        string      `json:"returns" yaml:"returns" mapstructure:"returns"`
-	Timeout        string      `json:"timeout" yaml:"timeout" mapstructure:"timeout"`
-	Retry          string      `json:"retry" yaml:"retry" mapstructure:"retry"`
-	CircuitBreaker string      `json:"circuitBreaker" yaml:"circuitBreaker" mapstructure:"circuitBreaker"`
+	Call           string      `json:"call,omitempty" yaml:"call,omitempty" mapstructure:"call"`
+	Uses           string      `json:"uses,omitempty" yaml:"uses,omitempty" mapstructure:"uses"`
+	With           interface{} `json:"with,omitempty" yaml:"with,omitempty" mapstructure:"with"`
+	Returns        string      `json:"returns,omitempty" yaml:"returns,omitempty" mapstructure:"returns"`
+	Timeout        string      `json:"timeout,omitempty" yaml:"timeout,omitempty" mapstructure:"timeout"`
+	Retry          string      `json:"retry,omitempty" yaml:"retry,omitempty" mapstructure:"retry"`
+	CircuitBreaker string      `json:"circuitBreaker,omitempty" yaml:"circuitBreaker,omitempty" mapstructure:"circuitBreaker"`
+	OnError        *Pipeline   `json:"onError,omitempty" yaml:"onError,omitempty" mapstructure:"onError"`
 }
 
 func LoadYAML(in io.Reader) (*Configuration, error) {
