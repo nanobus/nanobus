@@ -236,7 +236,8 @@ func main() {
 		for _, s := range ns.Services {
 			_, hasStateful := s.Annotation("stateful")
 			_, hasActor := s.Annotation("actor")
-			if hasStateful || hasActor {
+			_, hasWorkflow := s.Annotation("workflow")
+			if hasStateful || hasActor || hasWorkflow {
 				entityName := namespaceName + "." + s.Name
 				actorEntities = append(actorEntities, entityName)
 			}
@@ -1081,7 +1082,7 @@ func main() {
 		ns := namespace + "." + service
 
 		if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-			logOutbound(rt.log, ns+"/"+fn, string(jsonBytes))
+			logInbound(rt.log, ns+"/"+fn, string(jsonBytes))
 		}
 
 		data["env"] = env
@@ -1099,10 +1100,6 @@ func main() {
 		if !ok {
 			// No pipeline exits for the operation so invoke directly.
 			if id == "" {
-				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					logInbound(log, namespace+"."+service+"/"+fn, string(jsonBytes))
-				}
-
 				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
 					Namespace: ns,
 					Operation: fn,

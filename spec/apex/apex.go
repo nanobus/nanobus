@@ -21,7 +21,9 @@ func Apex() (string, spec.Loader) {
 }
 
 func Loader(with interface{}) ([]*spec.Namespace, error) {
-	c := Config{}
+	c := Config{
+		Filename: "spec.apex",
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}

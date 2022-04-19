@@ -108,9 +108,9 @@ func main() {
 		}
 	}
 	// replace the hard-coded JSON file with a generic file
-	idxFile, err := os.ReadFile(filepath.Join("embed", "index.html"))
+	idxFile, err := os.ReadFile(filepath.Join("embed", "swagger-initializer.js"))
 	if err != nil {
-		log.Fatalf("error opening index.html for templating :%v", err)
+		log.Fatalf("error opening swagger-initializer.js for templating :%v", err)
 	}
 	newidx := strings.Replace(
 		string(idxFile),
@@ -118,13 +118,13 @@ func main() {
 		`url: "./swagger_spec"`,
 		-1,
 	)
-	newidxFile, err := os.Create(filepath.Join("embed", "index.html"))
+	newidxFile, err := os.Create(filepath.Join("embed", "swagger-initializer.js"))
 	if err != nil {
-		log.Fatalf("error re-creating index.html file: %v", err)
+		log.Fatalf("error re-creating swagger-initializer.js file: %v", err)
 	}
 	defer newidxFile.Close()
 	if _, err := newidxFile.WriteString(newidx); err != nil {
-		log.Fatalf("unable to write to index.html: %v", err)
+		log.Fatalf("unable to write to swagger-initializer.js: %v", err)
 	}
 	newcv, err := os.Create("current_version.txt")
 	if err != nil {

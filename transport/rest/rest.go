@@ -120,8 +120,9 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 			_, isService := service.Annotation("service")
 			_, isActor := service.Annotation("actor")
 			_, isStateful := service.Annotation("stateful")
+			_, isWorkflow := service.Annotation("workflow")
+			isActor = isActor || isStateful || isWorkflow
 
-			isActor = isActor || isStateful
 			if !(isService || isActor) {
 				continue
 			}

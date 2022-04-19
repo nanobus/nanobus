@@ -88,8 +88,9 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			_, isService := service.Annotation("service")
 			_, isActor := service.Annotation("actor")
 			_, isStateful := service.Annotation("stateful")
+			_, isWorkflow := service.Annotation("workflow")
 
-			isActor = isActor || isStateful
+			isActor = isActor || isStateful || isWorkflow
 			if !(isService || isActor) {
 				continue
 			}
@@ -200,7 +201,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			}
 			apispec.Components.Schemas[t.Name] = &openapi3.SchemaRef{
 				Value: &openapi3.Schema{
-					Properties: properties(t),
+					Properties: properties(t.Fields),
 				},
 			}
 		}
@@ -220,10 +221,10 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 	return specBytesIndented, nil
 }
 
-func properties(t *spec.Type) map[string]*openapi3.SchemaRef {
-	props := make(map[string]*openapi3.SchemaRef, len(t.Fields))
+func properties(fields []*spec.Field) map[string]*openapi3.SchemaRef {
+	props := make(map[string]*openapi3.SchemaRef, len(fields))
 
-	for _, f := range t.Fields {
+	for _, f := range fields {
 		if f.Type.Kind == spec.KindType {
 			props[f.Name] = &openapi3.SchemaRef{
 				Ref: "#/components/schemas/" + f.Type.Type.Name,
@@ -251,8 +252,9 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 
 	_, isActor := service.Annotation("actor")
 	_, isStateful := service.Annotation("stateful")
+	_, isWorkflow := service.Annotation("workflow")
 
-	isActor = isActor || isStateful
+	isActor = isActor || isStateful || isWorkflow
 
 	if isActor {
 		params = append(params, &openapi3.ParameterRef{
@@ -263,7 +265,9 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 	}
 
 	if !oper.Unary {
+		bodyParams := []*spec.Field{}
 		for _, param := range oper.Parameters.Fields {
+			// Look for path parameters by name.
 			if _, ok := pathParams[param.Name]; ok {
 				params = append(params, &openapi3.ParameterRef{
 					Value: openapi3.NewPathParameter(param.Name).
@@ -271,6 +275,7 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 						WithSchema(fieldToValue(param)),
 				})
 			} else if _, ok := param.Annotation("query"); ok {
+				// Handle query parameters
 				if param.Type.IsPrimitive() {
 					params = append(params, &openapi3.ParameterRef{
 						Value: openapi3.NewQueryParameter(param.Name).
@@ -286,13 +291,19 @@ func parameters(path string, service *spec.Service, oper *spec.Operation) (opena
 						})
 					}
 				}
-			} else if param.Type != nil && param.Type.Type != nil {
-				requestBody = &openapi3.RequestBodyRef{
-					Value: openapi3.NewRequestBody().
-						WithRequired(true).
-						WithDescription(param.Type.Type.Description).
-						WithJSONSchemaRef(openapi3.NewSchemaRef(param.Type.Type.Name, nil)),
-				}
+			} else {
+				bodyParams = append(bodyParams, param)
+			}
+		}
+		if len(bodyParams) > 0 {
+			body := openapi3.NewRequestBody().WithSchema(
+				&openapi3.Schema{
+					Properties: properties(bodyParams),
+				},
+				[]string{"application/json"},
+			)
+			requestBody = &openapi3.RequestBodyRef{
+				Value: body,
 			}
 		}
 	} else {
