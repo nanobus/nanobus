@@ -166,6 +166,13 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 						defaultResponse.Value.
 							WithDescription("Success").
 							WithJSONSchemaRef(ary.NewRef())
+					default:
+						primitive := typeFormat(oper.Returns)
+						if primitive != nil {
+							responses = openapi3.NewResponses()
+							defaultResponse := responses.Default()
+							defaultResponse.Value.WithJSONSchema(primitive)
+						}
 					}
 				}
 
@@ -426,7 +433,7 @@ func typeFormat(t *spec.TypeRef) *openapi3.Schema {
 		}
 	}
 
-	panic("unreachable")
+	return nil
 }
 
 func getAnotationString(a spec.Annotator, name string) string {
