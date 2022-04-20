@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"path"
@@ -20,7 +21,14 @@ func RegisterPostmanRoutes(r *mux.Router, namespaces spec.Namespaces) error {
 		return err
 	}
 	r.HandleFunc("/postman/collection", func(w http.ResponseWriter, req *http.Request) {
-		w.Write(specData)
+		var v string
+		if req.TLS != nil {
+			v = "https://" + req.Host
+		} else {
+			v = "http://" + req.Host
+		}
+		replaced := bytes.Replace(specData, []byte("[REPLACE_HOST]"), []byte(v), 1)
+		w.Write(replaced)
 	})
 
 	return nil
@@ -32,6 +40,13 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 			Schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		},
 		Items: []*postman.Items{},
+		Variables: []*postman.Variable{
+			{
+				Key:   "baseRestURI",
+				Value: "[REPLACE_HOST]",
+				Type:  "string",
+			},
+		},
 	}
 
 	for _, ns := range namespaces {
@@ -112,7 +127,7 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 				if len(oper.Parameters.Fields) > 0 {
 					operItem.Request.Body = &postman.Body{
 						Mode: "raw",
-						Raw:  exampleOperationRequestBody(p, service, oper),
+						Raw:  exampleOperationRequestBody(p, service, oper, 4),
 						Options: &postman.BodyOptions{
 							Raw: postman.BodyOptionsRaw{
 								Language: "json",
@@ -131,7 +146,7 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 	return json.MarshalIndent(c, "", "  ")
 }
 
-func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.Operation) string {
+func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.Operation, indent int) string {
 	pathParams := map[string]struct{}{}
 	for _, match := range rePathParams.FindAllString(path, -1) {
 		match = strings.TrimPrefix(match, "{")
@@ -152,7 +167,7 @@ func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.
 		examplePayload[f.Name] = exampleValue(f.Annotated, f.Type)
 	}
 
-	exampleBytes, err := json.MarshalIndent(examplePayload, "", "    ")
+	exampleBytes, err := json.MarshalIndent(examplePayload, "", strings.Repeat(" ", indent))
 	if err != nil {
 		return `{}`
 	}

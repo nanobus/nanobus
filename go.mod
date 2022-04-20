@@ -40,7 +40,6 @@ require (
 	github.com/valyala/fasthttp v1.31.1-0.20211216042702-258a4c17b4f4
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/wapc/wapc-go v0.4.1
-	github.com/wasmerio/wasmer-go v1.0.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.nanomsg.org/mangos/v3 v3.3.0
 	go.uber.org/multierr v1.7.0

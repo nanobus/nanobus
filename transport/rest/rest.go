@@ -102,6 +102,11 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 		return nil, err
 	}
 
+	log.Info("VS Code REST Client", "url", fmt.Sprintf("http://%s/rest-client/service.http", docsHost))
+	if err := RegisterRESTClientRoutes(r, namespaces); err != nil {
+		return nil, err
+	}
+
 	rest := Rest{
 		log:           log,
 		address:       address,
