@@ -32,6 +32,7 @@ require (
 	github.com/nanobus/go-functions v0.0.0-20210930143304-4e5a7c52d459
 	github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
 	github.com/oklog/run v1.1.0
+	github.com/rbretecher/go-postman-collection v0.8.0
 	github.com/rsocket/rsocket-go v0.8.6
 	github.com/sony/gobreaker v0.5.0
 	github.com/spf13/cast v1.4.1

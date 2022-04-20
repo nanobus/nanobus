@@ -88,12 +88,17 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 	r.Use(handlers.ProxyHeaders)
 	r.Use(mux.CORSMethodMiddleware(r))
 
-	swaggerHost := address
-	if strings.HasPrefix(swaggerHost, ":") {
-		swaggerHost = "localhost" + swaggerHost
+	docsHost := address
+	if strings.HasPrefix(docsHost, ":") {
+		docsHost = "localhost" + docsHost
 	}
-	log.Info("Registering Swagger UI", "url", fmt.Sprintf("http://%s/swagger/", swaggerHost))
+	log.Info("Registering Swagger UI", "url", fmt.Sprintf("http://%s/swagger/", docsHost))
 	if err := RegisterSwaggerRoutes(r, namespaces); err != nil {
+		return nil, err
+	}
+
+	log.Info("Postman collection", "url", fmt.Sprintf("http://%s/postman/collection", docsHost))
+	if err := RegisterPostmanRoutes(r, namespaces); err != nil {
 		return nil, err
 	}
 
