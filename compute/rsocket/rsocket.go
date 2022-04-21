@@ -25,6 +25,7 @@ import (
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/stream"
+	"github.com/nanobus/nanobus/structerror"
 )
 
 var ErrInvalidURISyntax = errors.New("invalid invocation URI syntax")
@@ -448,6 +449,9 @@ func (s *Socket) Invoke(ctx context.Context, receiver functions.Receiver, data [
 	}
 	resp, err := socket.RequestResponse(payload.New(data, mdBytes)).Block(ctx)
 	if err != nil {
+		if appErr, ok := err.(rsocket.Error); ok {
+			return nil, structerror.Parse(string(appErr.ErrorData()))
+		}
 		return nil, err
 	}
 
@@ -480,6 +484,9 @@ func (s *Socket) InvokeStream(ctx context.Context, receiver functions.Receiver) 
 		c <- payload.Clone(input)
 		return nil
 	}).DoOnError(func(err error) {
+		if appErr, ok := err.(rsocket.Error); ok {
+			err = structerror.Parse(string(appErr.ErrorData()))
+		}
 		e <- err
 	}).DoOnComplete(func() {
 		close(c)

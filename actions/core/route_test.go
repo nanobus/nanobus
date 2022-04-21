@@ -37,6 +37,14 @@ func (m *mockProcessor) Flow(ctx context.Context, name string, data actions.Data
 	return data, nil
 }
 
+func (m *mockProcessor) Provider(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error) {
+	return data, nil
+}
+
+func (m *mockProcessor) Event(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+	return data, nil
+}
+
 type mockRunnable struct {
 	m       *mockProcessor
 	summary string

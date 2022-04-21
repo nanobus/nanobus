@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/dapr/components-contrib/state"
 
 	"github.com/nanobus/nanobus/actions"
@@ -14,7 +15,11 @@ import (
 
 type SetStateConfig struct {
 	// Store is name of state store to invoke.
-	Store string `mapstructure:"store" validate:"required"`
+	Store string         `mapstructure:"store" validate:"required"`
+	Items []SetStateItem `mapstructure:"items" validate:"required"`
+}
+
+type SetStateItem struct {
 	// Key is the expression to evaluate the key to save.
 	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 	// ForEach is an option expression to evaluate a
@@ -61,35 +66,39 @@ func SetStateAction(
 	store state.Store,
 	config *SetStateConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		var items []interface{}
-		if config.ForEach != nil {
-			itemsInt, err := config.ForEach.Eval(data)
-			if err != nil {
-				return nil, fmt.Errorf("could not evaluate data: %w", err)
-			}
-			var ok bool
-			if items, ok = itemsInt.([]interface{}); ok {
-				return nil, fmt.Errorf("forEach expression %q did not return a slice of items", config.ForEach.Expr())
-			}
-		}
+		_r := [25]state.SetRequest{}
+		r := _r[0:0]
 
-		var r []state.SetRequest
-		if items == nil {
-			it, err := createSetItem(data, nil, config)
-			if err != nil {
-				return nil, err
+		for i := range config.Items {
+			configItems := &config.Items[i]
+			var items []interface{}
+			if configItems.ForEach != nil {
+				itemsInt, err := configItems.ForEach.Eval(data)
+				if err != nil {
+					return nil, backoff.Permanent(fmt.Errorf("could not evaluate data: %w", err))
+				}
+				var ok bool
+				if items, ok = itemsInt.([]interface{}); ok {
+					return nil, backoff.Permanent(fmt.Errorf("forEach expression %q did not return a slice of items", configItems.ForEach.Expr()))
+				}
 			}
 
-			r = []state.SetRequest{it}
-		} else {
-			r = make([]state.SetRequest, len(items))
-			for i, item := range items {
-				it, err := createSetItem(data, item, config)
+			if items == nil {
+				it, err := createSetItem(data, nil, configItems)
 				if err != nil {
 					return nil, err
 				}
 
-				r[i] = it
+				r = append(r, it)
+			} else {
+				for _, item := range items {
+					it, err := createSetItem(data, item, configItems)
+					if err != nil {
+						return nil, err
+					}
+
+					r = append(r, it)
+				}
 			}
 		}
 
@@ -102,7 +111,7 @@ func SetStateAction(
 func createSetItem(
 	data actions.Data,
 	item interface{},
-	config *SetStateConfig) (it state.SetRequest, err error) {
+	config *SetStateItem) (it state.SetRequest, err error) {
 	variables := make(map[string]interface{}, len(data)+1)
 	for k, v := range data {
 		variables[k] = v
@@ -114,18 +123,18 @@ func createSetItem(
 	}
 	keyInt, err := config.Key.Eval(variables)
 	if err != nil {
-		return it, fmt.Errorf("could not evaluate key: %w", err)
+		return it, backoff.Permanent(fmt.Errorf("could not evaluate key: %w", err))
 	}
 	it.Key = fmt.Sprintf("%v", keyInt)
 
 	if config.Value != nil {
 		if it.Value, err = config.Value.Eval(variables); err != nil {
-			return it, fmt.Errorf("could not evaluate value: %w", err)
+			return it, backoff.Permanent(fmt.Errorf("could not evaluate value: %w", err))
 		}
 	}
 	if config.Metadata != nil {
 		if it.Metadata, err = config.Metadata.EvalMap(variables); err != nil {
-			return it, fmt.Errorf("could not evaluate metadata: %w", err)
+			return it, backoff.Permanent(fmt.Errorf("could not evaluate metadata: %w", err))
 		}
 	}
 
