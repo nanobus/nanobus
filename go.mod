@@ -22,6 +22,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/hamba/avro v1.6.3
+	github.com/iancoleman/strcase v0.2.0
 	github.com/itchyny/gojq v0.12.6
 	github.com/jackc/pgtype v1.10.0
 	github.com/jackc/pgx/v4 v4.15.0

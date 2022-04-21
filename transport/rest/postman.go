@@ -125,9 +125,10 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 				}
 
 				if len(oper.Parameters.Fields) > 0 {
+					_, raw := exampleOperationRequestBody(p, service, oper, 4)
 					operItem.Request.Body = &postman.Body{
 						Mode: "raw",
-						Raw:  exampleOperationRequestBody(p, service, oper, 4),
+						Raw:  raw,
 						Options: &postman.BodyOptions{
 							Raw: postman.BodyOptionsRaw{
 								Language: "json",
@@ -146,17 +147,19 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 	return json.MarshalIndent(c, "", "  ")
 }
 
-func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.Operation, indent int) string {
-	pathParams := map[string]struct{}{}
+func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.Operation, indent int) ([]string, string) {
+	pathParams := []string{}
+	pathParamMap := map[string]struct{}{}
 	for _, match := range rePathParams.FindAllString(path, -1) {
 		match = strings.TrimPrefix(match, "{")
 		match = strings.TrimSuffix(match, "}")
-		pathParams[match] = struct{}{}
+		pathParamMap[match] = struct{}{}
+		pathParams = append(pathParams, match)
 	}
 
 	bodyParams := []*spec.Field{}
 	for _, param := range oper.Parameters.Fields {
-		_, isPath := pathParams[param.Name]
+		_, isPath := pathParamMap[param.Name]
 		_, isQuery := param.Annotation("query")
 		if !isPath && !isQuery {
 			bodyParams = append(bodyParams, param)
@@ -167,12 +170,16 @@ func exampleOperationRequestBody(path string, service *spec.Service, oper *spec.
 		examplePayload[f.Name] = exampleValue(f.Annotated, f.Type)
 	}
 
-	exampleBytes, err := json.MarshalIndent(examplePayload, "", strings.Repeat(" ", indent))
-	if err != nil {
-		return `{}`
+	if len(examplePayload) == 0 {
+		return pathParams, ""
 	}
 
-	return string(exampleBytes)
+	exampleBytes, err := json.MarshalIndent(examplePayload, "", strings.Repeat(" ", indent))
+	if err != nil {
+		return pathParams, ""
+	}
+
+	return pathParams, string(exampleBytes)
 }
 
 func exampleValue(a spec.Annotated, t *spec.TypeRef) interface{} {

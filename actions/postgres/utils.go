@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 
@@ -38,7 +39,6 @@ func annotationValue(a spec.Annotator, annotation, argument, defaultValue string
 func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue interface{}, toPreload []Preload) (map[string]interface{}, error) {
 	idColumn := keyColumn(t)
 	sql := generateTableSQL(t) + " WHERE " + idColumn + " = $1"
-	fmt.Println(sql, idValue)
 	rows, err := conn.Query(ctx, sql, idValue)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 			args = append(args, val)
 		}
 	}
-	fmt.Println(sql, args)
+
 	rows, err := conn.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func join(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, where string, a
 		sql += " WHERE "
 		sql += where
 	}
-	fmt.Println(sql, args)
+
 	rows, err := conn.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -269,7 +269,7 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 	if limit > 0 {
 		sql += " LIMIT " + strconv.FormatInt(limit, 10)
 	}
-	fmt.Println(sql)
+
 	rows, err := conn.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -355,7 +355,7 @@ func getCount(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[s
 			args = append(args, val)
 		}
 	}
-	fmt.Println(sql)
+
 	rows, err := conn.Query(ctx, sql, args...)
 	if err != nil {
 		return 0, err
@@ -405,7 +405,7 @@ func generateTableSQL(t *spec.Type) string {
 			}
 		}
 		if column == "" {
-			continue
+			column = strcase.ToSnake(f.Name)
 		}
 		if i > 0 {
 			buf.WriteString(", ")

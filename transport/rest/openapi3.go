@@ -208,7 +208,8 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 			}
 			apispec.Components.Schemas[t.Name] = &openapi3.SchemaRef{
 				Value: &openapi3.Schema{
-					Properties: properties(t.Fields),
+					Description: t.Description,
+					Properties:  properties(t.Fields),
 				},
 			}
 		}

@@ -78,14 +78,34 @@ func SpecToRESTClient(namespaces spec.Namespaces) ([]byte, error) {
 
 				sb.WriteString("### " + service.Name + " - " + oper.Name + "\n")
 				sb.WriteString("\n")
-				sb.WriteString(method + " {{host}}" + p + " HTTP/1.1\n")
-				sb.WriteString("Accept: {{accept}}\n")
-				// TODO: query parameters
 
-				if len(oper.Parameters.Fields) > 0 {
+				pathParams, raw := exampleOperationRequestBody(p, service, oper, 2)
+				if len(pathParams) > 0 {
+					for _, param := range pathParams {
+						sb.WriteString("@")
+						sb.WriteString(param)
+						sb.WriteString(" = string\n")
+					}
+					sb.WriteString("\n")
+				}
+
+				parts := strings.Split(p, "/")
+				for i, part := range parts {
+					if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") &&
+						!strings.HasPrefix(part, "{{") && !strings.HasSuffix(part, "}}") {
+						parts[i] = "{" + part + "}"
+					}
+				}
+				p = strings.Join(parts, "/")
+
+				sb.WriteString(method + " {{host}}" + p + " HTTP/1.1\n")
+				// TODO: query parameters
+				sb.WriteString("Accept: {{accept}}\n")
+
+				if len(raw) > 0 {
 					sb.WriteString("Content-Type: {{contentType}}\n")
 					sb.WriteString("\n")
-					sb.WriteString(exampleOperationRequestBody(p, service, oper, 2))
+					sb.WriteString(raw)
 					sb.WriteString("\n")
 				}
 
