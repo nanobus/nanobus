@@ -287,9 +287,10 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 }
 
 func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, error) {
-	var output interface{}
+	var runOutput interface{}
 	var err error
 	for _, s := range r.steps {
+		var output interface{}
 		rp := resiliency.Policy(r.log, s.config.Name, s.timeout, s.retry, s.circuitBreaker)
 		err = rp(ctx, func(ctx context.Context) error {
 			output, err = s.action(ctx, data)
@@ -316,10 +317,15 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 				return nil, err
 			}
 		}
+
 		if s.config.Returns != "" {
 			data[s.config.Returns] = output
 		}
+
+		if output != nil {
+			runOutput = output
+		}
 	}
 
-	return output, nil
+	return runOutput, nil
 }
