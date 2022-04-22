@@ -22,7 +22,7 @@ type LoadConfig struct {
 	// Type is the type name to load.
 	Type string `mapstructure:"type" validate:"required"`
 	// ID is the entity identifier expression.
-	ID *expr.ValueExpr `mapstructure:"id" validate:"required"`
+	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 	// Preload lists the relationship to expand/load.
 	Preload []Preload `mapstructure:"preload"`
 	// NotFoundError is the error to return if the key is not found.
@@ -77,21 +77,21 @@ func LoadAction(
 	ns *spec.Namespace,
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		idValue, err := config.ID.Eval(data)
+		keyValue, err := config.Key.Eval(data)
 		if err != nil {
 			return nil, err
 		}
 
 		var result map[string]interface{}
 		err = pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) (err error) {
-			result, err = findById(ctx, conn, t, idValue, config.Preload)
+			result, err = findById(ctx, conn, t, keyValue, config.Preload)
 			return err
 		})
 
 		if result == nil && config.NotFoundError != "" {
 			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
 				"resource": config.Resource,
-				"key":      idValue,
+				"key":      keyValue,
 			})
 		}
 
