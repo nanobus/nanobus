@@ -19,6 +19,7 @@ import (
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
+	"github.com/nanobus/nanobus/transport/httpresponse"
 )
 
 type Rest struct {
@@ -320,6 +321,9 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 			return
 		}
 
+		resp := httpresponse.New()
+		ctx = httpresponse.NewContext(ctx, resp)
+
 		for _, filter := range t.filters {
 			var err error
 			if ctx, err = filter(ctx, r.Header); err != nil {
@@ -417,7 +421,14 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 		}
 
 		if response != nil {
-			w.Header().Set("Content-Type", codec.ContentType())
+			header := w.Header()
+			header.Set("Content-Type", codec.ContentType())
+			for k, vals := range resp.Header {
+				for _, v := range vals {
+					header.Add(k, v)
+				}
+			}
+			w.WriteHeader(resp.Status)
 			responseBytes, err := codec.Encode(response)
 			if err != nil {
 				t.handleError(err, codec, r, w, http.StatusInternalServerError)

@@ -15,6 +15,7 @@ var All = []actions.NamedLoader{
 	Decode,
 	Filter,
 	HTTP,
+	HTTPResponse,
 	Invoke,
 	JMESPath,
 	JQ,
