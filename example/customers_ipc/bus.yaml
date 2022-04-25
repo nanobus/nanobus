@@ -173,7 +173,7 @@ providers:
             #     "data": input
             #   }
 
-flows:
+pipelines:
   saveCustomer:
     name: Saves the customer to the database
     steps:

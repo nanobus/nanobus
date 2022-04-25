@@ -47,7 +47,7 @@ type Processor struct {
 	services        Namespaces
 	providers       Namespaces
 	events          Functions
-	flows           Functions
+	pipelines       Functions
 }
 
 type Namespaces map[string]Functions
@@ -160,17 +160,17 @@ func (p *Processor) Event(ctx context.Context, name string, data actions.Data) (
 	return pl(ctx, data)
 }
 
-func (p *Processor) Flow(ctx context.Context, name string, data actions.Data) (interface{}, error) {
-	pl, ok := p.flows[name]
+func (p *Processor) Pipeline(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+	pl, ok := p.pipelines[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown flow name %q", name)
+		return nil, fmt.Errorf("unknown pipeline name %q", name)
 	}
 
 	return pl(ctx, data)
 }
 
 func (p *Processor) Initialize() (err error) {
-	if p.flows, err = p.loadFunctionPipelines(p.config.Flows); err != nil {
+	if p.pipelines, err = p.loadFunctionPipelines(p.config.Pipelines); err != nil {
 		return err
 	}
 	if p.services, err = p.loadServices(p.config.Services); err != nil {
@@ -212,7 +212,7 @@ func (p *Processor) loadFunctionPipelines(fpl FunctionPipelines) (Functions, err
 func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 	if pl.Call != "" {
 		return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
-			return p.Flow(ctx, pl.Call, data)
+			return p.Pipeline(ctx, pl.Call, data)
 		}, nil
 	}
 
@@ -240,7 +240,7 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 	var action actions.Action
 	if s.Call != "" {
 		action = func(ctx context.Context, data actions.Data) (output interface{}, err error) {
-			return p.Flow(ctx, s.Call, data)
+			return p.Pipeline(ctx, s.Call, data)
 		}
 	} else {
 		loader, ok := p.registry[s.Uses]

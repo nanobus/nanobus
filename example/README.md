@@ -2,7 +2,7 @@
 
 ## How I want to build applications
 
-- Simple function-based programming model
+- Simple interface-based programming model
 - Data structures are strongly typed without serialization concerns
 - Limited boilerplate / lightweight (or no) SDK
 - Abstraction layers: Business logic and Integration
@@ -14,14 +14,15 @@ Opinionated yet flexible!
 
 ## The Demo (two ideas that can work in tandem)
 
-1) Function-based programming model
+1) Interface-based programming model
     - Dapr as the infrastructure and building blocks
     - IDL and code generation to create "the glue"
 
-2) Flow-based computing model for Dapr
+2) Universal request and event pipelines
     - Address cross-cutting concerns
-    - Annotation or Configuration driven
+    - Annotation or configuration driven
     - Acts as the integration layer for common use cases
+    - Interact with Dapr building blocks
 
 
 ## Goal: Codify best practices into a sidecar so you can focus on business logic

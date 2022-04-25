@@ -24,18 +24,18 @@ import (
 	"github.com/nanobus/nanobus/resolve"
 )
 
-type CallFlowConfig struct {
-	// Name is the name of the flow to call.
+type CallPipelineConfig struct {
+	// Name is the name of the pipeline to call.
 	Name string `mapstructure:"name" validate:"required"`
 }
 
 // Route is the NamedLoader for the filter action.
-func CallFlow() (string, actions.Loader) {
-	return "call_flow", CallFlowLoader
+func CallPipeline() (string, actions.Loader) {
+	return "call_pipeline", CallPipelineLoader
 }
 
-func CallFlowLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c CallFlowConfig
+func CallPipelineLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	var c CallPipelineConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -46,12 +46,12 @@ func CallFlowLoader(with interface{}, resolver resolve.ResolveAs) (actions.Actio
 		return nil, err
 	}
 
-	return CallFlowAction(&c, processor), nil
+	return CallPipelineAction(&c, processor), nil
 }
 
-func CallFlowAction(
-	config *CallFlowConfig, processor Processor) actions.Action {
+func CallPipelineAction(
+	config *CallPipelineConfig, processor Processor) actions.Action {
 	return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
-		return processor.Flow(ctx, config.Name, data)
+		return processor.Pipeline(ctx, config.Name, data)
 	}
 }

@@ -52,7 +52,7 @@ type RouteCondition struct {
 	When *expr.ValueExpr `mapstructure:"when"`
 	// Then is the steps to process.
 	Then []runtime.Step `mapstructure:"then"`
-	// Call is the name of the flow to call.
+	// Call is the name of the pipeline to call.
 	Call string `mapstructure:"call"`
 
 	runnable runtime.Runnable
@@ -79,7 +79,7 @@ func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, 
 		r := &c.Routes[i]
 		if r.Call != "" {
 			r.runnable = func(ctx context.Context, data actions.Data) (interface{}, error) {
-				return processor.Flow(ctx, r.Call, data)
+				return processor.Pipeline(ctx, r.Call, data)
 			}
 			continue
 		}

@@ -26,7 +26,7 @@ import (
 var All = []actions.NamedLoader{
 	Assign,
 	Authorize,
-	CallFlow,
+	CallPipeline,
 	CallProvider,
 	Decode,
 	Filter,
@@ -41,7 +41,7 @@ var All = []actions.NamedLoader{
 
 type Processor interface {
 	LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error)
-	Flow(ctx context.Context, name string, data actions.Data) (interface{}, error)
+	Pipeline(ctx context.Context, name string, data actions.Data) (interface{}, error)
 	Provider(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error)
 	Event(ctx context.Context, name string, data actions.Data) (interface{}, error)
 }

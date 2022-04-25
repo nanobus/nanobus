@@ -38,7 +38,7 @@ type Configuration struct {
 	Services      Services                   `json:"services" yaml:"services"`
 	Providers     Services                   `json:"providers" yaml:"providers"`
 	Events        FunctionPipelines          `json:"events" yaml:"events"`
-	Flows         FunctionPipelines          `json:"flows" yaml:"flows"`
+	Pipelines     FunctionPipelines          `json:"pipelines" yaml:"pipelines"`
 	Subscriptions interface{}                `json:"subscriptions" yaml:"subscriptions"`
 	InputBindings interface{}                `json:"inputBindings" yaml:"inputBindings"`
 	Decoding      interface{}                `json:"decoding" yaml:"decoding"`
@@ -181,13 +181,13 @@ func Combine(config *Configuration, configs ...*Configuration) {
 			}
 		}
 
-		// Flows
-		if len(c.Flows) > 0 && config.Flows == nil {
-			config.Flows = make(FunctionPipelines)
+		// Pipelines
+		if len(c.Pipelines) > 0 && config.Pipelines == nil {
+			config.Pipelines = make(FunctionPipelines)
 		}
-		for k, v := range c.Flows {
-			if _, exists := config.Flows[k]; !exists {
-				config.Flows[k] = v
+		for k, v := range c.Pipelines {
+			if _, exists := config.Pipelines[k]; !exists {
+				config.Pipelines[k] = v
 			}
 		}
 

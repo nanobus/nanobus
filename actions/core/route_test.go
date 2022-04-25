@@ -49,7 +49,7 @@ func (m *mockProcessor) LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, er
 	return runnable.Run, m.err
 }
 
-func (m *mockProcessor) Flow(ctx context.Context, name string, data actions.Data) (interface{}, error) {
+func (m *mockProcessor) Pipeline(ctx context.Context, name string, data actions.Data) (interface{}, error) {
 	return data, nil
 }
 

@@ -1,6 +1,6 @@
 ![NanoBus Logo](docs/images/nanobus-logo.svg)
 
-NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable flows. The primary goal of NanoBus is to codify best practices so developers can **focus on business outcomes, not boilerplate code**.
+NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable pipelines. The primary goal of NanoBus is to codify best practices so developers can **focus on business outcomes, not boilerplate code**.
 
 ## Key Features
 
@@ -8,9 +8,9 @@ NanoBus is a lightweight microservice runtime layer that simplifies your applica
 
 In conjunction with Dapr, NanoBus allows the developer to focus on what matters most, the application's logic. All the distributed system "glue" is handled automatically.
 
-### Data-aware middleware / flows
+### Data pipelines
 
-Communicating with other services and Dapr building block is simplified in declarative, composable flows. Secure API endpoints, transform data, support multiple serialization formats, and apply resiliency policies using configuration.
+Communicating with other services and Dapr building block is simplified in declarative, composable pipelines. Secure API endpoints, transform data, support multiple serialization formats, and apply resiliency policies using configuration.
 
 ### Automatic API endpoints with documentation
 
@@ -30,7 +30,7 @@ NanoBus applications are structured with design principles that allow your appli
 
 NanoBus runs jointly with [Dapr](https://dapr.io) in a [sidecar process](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar). Conceptually, your application is plugged into the center and NanoBus handles bi-directional communication with Dapr and service/transport protocols.
 
-Dapr provides developers with powerful [building blocks](https://docs.dapr.io/developing-applications/building-blocks/) such as service invocation, state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are integrated with NanoBus flows. Flows are like middleware or data pipelines with configurable actions that perform operations like decoding, transform and routing data from the application to Dapr's components and visa-versa. No SDKs required.
+Dapr provides developers with powerful [building blocks](https://docs.dapr.io/developing-applications/building-blocks/) such as service invocation, state management, publish and subscribe, secret stores, bindings, and actors. These building blocks are integrated with NanoBus pipelines. Pipelines are like middleware with configurable actions that perform operations like decoding, transform and routing data from the application to Dapr's components and visa-versa. No SDKs required.
 
 To create services, NanoBus uses succinct yet flexible interface definitions to automatically produce API endpoints, like REST, [gRPC](https://grpc.io), and [NATS](https://nats.io). These transports are pluggable, allowing developers to expose services using multiple protocols without boilerplate code. Additionally, API documentation is auto-generated for customers.
 
@@ -94,7 +94,7 @@ In NanoBus, the developer only needs to follow these steps:
 
 1. Create a new service using the `nanogen` CLI
 2. Define the services interfaces (IDL)
-3. Create flows that tie operations to Dapr building blocks
+3. Create pipelines that tie operations to Dapr building blocks
 4. Implement the service's core logic code
 5. Run `make docker`
 6. Deploy to your favorite container orchestrator
