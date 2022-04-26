@@ -131,6 +131,7 @@ func SpecToPostmanCollection(namespaces spec.Namespaces) ([]byte, error) {
 					Name:        oper.Name,
 					Description: oper.Description,
 					Request: &postman.Request{
+						Description: oper.Description, // Allows GET operations to import correctly.
 						URL: &postman.URL{
 							Raw:  "{{baseRestURI}}" + p,
 							Host: []string{"{{baseRestURI}}"},
