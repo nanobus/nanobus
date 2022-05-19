@@ -155,6 +155,7 @@ func (p *nsParser) convertFields(fields []*ast.FieldDefinition) []*spec.Field {
 			p.convertTypeRef(field.Type),
 			dv).
 			AddAnnotations(p.convertAnnotations(field.Annotations)...)
+		o[i].InitValidations()
 	}
 
 	return o
@@ -262,6 +263,7 @@ func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) []*s
 			p.convertTypeRef(parameter.Type),
 			dv).
 			AddAnnotations(p.convertAnnotations(parameter.Annotations)...)
+		o[i].InitValidations()
 	}
 
 	return o

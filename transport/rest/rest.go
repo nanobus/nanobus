@@ -459,7 +459,10 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 }
 
 func (t *Rest) handleError(err error, codec functions.Codec, req *http.Request, w http.ResponseWriter, status int) {
-	errz := t.errorResolver(err)
+	var errz *errorz.Error
+	if !errors.As(err, &errz) {
+		errz = t.errorResolver(err)
+	}
 	errz.Path = req.RequestURI
 
 	w.Header().Add("Content-Type", codec.ContentType())

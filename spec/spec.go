@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/nanobus/nanobus/coalesce"
+	"github.com/nanobus/nanobus/errorz"
 )
 
 type (
@@ -90,6 +91,8 @@ type (
 		Annotated
 		Type         *TypeRef    `json:"type"`
 		DefaultValue interface{} `json:"defaultValue,omitempty"`
+
+		Validations []Validation `json:"-"`
 	}
 
 	Enum struct {
@@ -142,11 +145,12 @@ type (
 		MapValueType *TypeRef
 	}
 
-	Validation func(v interface{}) ([]ValidationError, error)
+	ValidationLoader func(t *TypeRef, f *Field, a *Annotation) (Validation, error)
+	Validation       func(v interface{}) ([]ValidationError, error)
 
 	ValidationError struct {
-		Fields   []string `json:"fields"`
-		Messages []string `json:"messages"`
+		Fields  []string `json:"fields"`
+		Message string   `json:"message"`
 	}
 
 	Annotator interface {
@@ -414,6 +418,20 @@ func (f *Field) AddAnnotations(annotations ...*Annotation) *Field {
 func (f *Field) AddAnnotation(a *Annotation) *Field {
 	f.Annotated.AddAnnotation(a)
 	return f
+}
+
+func (f *Field) InitValidations() error {
+	for _, a := range f.Annotations {
+		if v, ok := validators[a.Name]; ok {
+			validation, err := v(nil, f, a)
+			if err != nil {
+				return err
+			}
+			f.Validations = append(f.Validations, validation)
+		}
+	}
+
+	return nil
 }
 
 func NewEnum(name string, description string) *Enum {
@@ -700,12 +718,27 @@ func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 	}
 
 	if validate {
+		var _verrors [25]ValidationError
+		verrors := _verrors[:0]
+
 		for fieldName, f := range t.fieldsByName {
-			if f.Type.Kind != KindOptional {
-				if _, ok := v[fieldName]; !ok {
-					return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
+			value, ok := v[fieldName]
+			if f.Type.Kind != KindOptional && !ok {
+				return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
+			}
+			for _, val := range f.Validations {
+				valErrors, err := val(value)
+				if err != nil {
+					return err
+				}
+				if len(valErrors) > 0 {
+					verrors = append(verrors, valErrors...)
 				}
 			}
+		}
+
+		if len(verrors) > 0 {
+			return errorz.New(errorz.InvalidArgument, verrors[0].Message)
 		}
 	}
 

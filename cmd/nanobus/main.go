@@ -1505,6 +1505,10 @@ func coalesceInput(namespaces spec.Namespaces, namespace, service, function stri
 			}
 			input = inputMap
 			if err := oper.Parameters.Coalesce(inputMap, true); err != nil {
+				var errz *errorz.Error
+				if errors.As(err, &errz) {
+					return errz
+				}
 				return fmt.Errorf("%w: %v", transport.ErrBadInput, err)
 			}
 		}

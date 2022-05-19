@@ -191,7 +191,10 @@ func (t *HTTPRPC) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *HTTPRPC) handleError(err error, codec functions.Codec, req *http.Request, w http.ResponseWriter, status int) {
-	errz := t.errorResolver(err)
+	var errz *errorz.Error
+	if !errors.As(err, &errz) {
+		errz = t.errorResolver(err)
+	}
 	errz.Path = req.RequestURI
 
 	w.Header().Add("Content-Type", codec.ContentType())
