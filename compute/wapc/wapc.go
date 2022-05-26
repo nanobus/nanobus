@@ -71,7 +71,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 
 	engine := wazero.Engine()
 
-	module, err := engine.New(wasmBytes, func(ctx context.Context, binding, namespace, operation string, payload []byte) ([]byte, error) {
+	module, err := engine.New(context.Background(), wasmBytes, func(ctx context.Context, binding, namespace, operation string, payload []byte) ([]byte, error) {
 		lastDot := strings.LastIndexByte(namespace, '.')
 		if lastDot < 0 {
 			return nil, fmt.Errorf("invalid namespace %q", namespace)

@@ -93,7 +93,9 @@ func TestNamespace(t *testing.T) {
 		AddAnnotations(anno).
 		AddAnnotation(anno)
 
-	dog := spec.NewType("Dog", "A dog").
+	ns := spec.NewNamespace("greetings.v1")
+
+	dog := spec.NewType(ns, "Dog", "A dog").
 		AddAnnotations(anno).
 		AddAnnotation(anno). // Should not be added twice
 		AddFields(
@@ -131,7 +133,7 @@ func TestNamespace(t *testing.T) {
 		assert.Same(t, name, nameField)
 	}
 
-	cat := spec.NewType("Cat", "A cat").
+	cat := spec.NewType(ns, "Cat", "A cat").
 		AddAnnotations(anno).
 		AddAnnotation(anno). // Should not be added twice
 		AddFields(
@@ -153,7 +155,7 @@ func TestNamespace(t *testing.T) {
 		AddAnnotations(anno).
 		AddAnnotation(anno)
 
-	response := spec.NewType("Response", "Greeting response").
+	response := spec.NewType(ns, "Response", "Greeting response").
 		AddFields(
 			spec.NewField("message", "The greeting message", &spec.TypeRef{
 				Kind: spec.KindString,
@@ -162,7 +164,7 @@ func TestNamespace(t *testing.T) {
 		AddAnnotations(anno)
 
 	sayHello := spec.NewOperation("sayHello", "Say hello", true,
-		spec.NewType("sayHelloArgs", "arguments for sayHello").
+		spec.NewType(ns, "sayHelloArgs", "arguments for sayHello").
 			AddFields(
 				spec.NewField("name", "Name of the person to greet", &spec.TypeRef{
 					Kind: spec.KindString,
@@ -176,7 +178,7 @@ func TestNamespace(t *testing.T) {
 		AddAnnotation(anno)
 
 	getAnimal := spec.NewOperation("getAnimal", "Retrieve an animal", false,
-		spec.NewType("getAnimalArgs", "arguments for sayHello").
+		spec.NewType(ns, "getAnimalArgs", "arguments for sayHello").
 			AddFields(
 				spec.NewField("animalId", "ID of the animal", &spec.TypeRef{
 					Kind: spec.KindString,
@@ -205,7 +207,7 @@ func TestNamespace(t *testing.T) {
 		assert.Same(t, sayHello, oper)
 	}
 
-	ns := spec.NewNamespace("greetings.v1").
+	ns.
 		AddAnnotations(
 			spec.NewAnnotation("anno").AddArguments(
 				spec.NewArgument("arg1", "val1"),
@@ -256,14 +258,15 @@ func TestNamespace(t *testing.T) {
 }
 
 func TestCoalesce(t *testing.T) {
-	nested := spec.NewType("Nested", "").
+	ns := spec.NewNamespace("test")
+	nested := spec.NewType(ns, "Nested", "").
 		AddFields(
 			spec.NewField("stringField", "", &spec.TypeRef{
 				Kind: spec.KindString,
 			}, nil),
 		)
 
-	parent := spec.NewType("Parent", "").
+	parent := spec.NewType(ns, "Parent", "").
 		AddFields(
 			spec.NewField("boolField", "", &spec.TypeRef{
 				Kind: spec.KindBool,

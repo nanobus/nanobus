@@ -17,11 +17,16 @@ limitations under the License.
 package spec
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
+	"unicode"
 
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 
@@ -76,13 +81,15 @@ type (
 	}
 
 	Type struct {
-		Name        string `json:"name"`
-		Description string `json:"description,omitempty"`
+		Namespace   *Namespace `json:"-"`
+		Name        string     `json:"name"`
+		Description string     `json:"description,omitempty"`
 		Annotated
 		Fields       []*Field          `json:"fields"`
 		fieldsByName map[string]*Field `json:"-"`
 
-		Validations []Validation `json:"-"`
+		Validations []Validation      `json:"-"`
+		rules       map[string]string `json:"-"`
 	}
 
 	Field struct {
@@ -93,6 +100,7 @@ type (
 		DefaultValue interface{} `json:"defaultValue,omitempty"`
 
 		Validations []Validation `json:"-"`
+		//Rules       string       `json:"-"`
 	}
 
 	Enum struct {
@@ -148,9 +156,11 @@ type (
 	ValidationLoader func(t *TypeRef, f *Field, a *Annotation) (Validation, error)
 	Validation       func(v interface{}) ([]ValidationError, error)
 
-	ValidationError struct {
-		Fields  []string `json:"fields"`
-		Message string   `json:"message"`
+	ValidationErrors map[string][]ValidationError
+	ValidationError  struct {
+		Rule    string      `json:"rule"`
+		Message string      `json:"message"`
+		Value   interface{} `json:"value,omitempty"`
 	}
 
 	Annotator interface {
@@ -358,8 +368,9 @@ func (o *Operation) AddAnnotation(a *Annotation) *Operation {
 	return o
 }
 
-func NewType(name string, description string) *Type {
+func NewType(namespace *Namespace, name string, description string) *Type {
 	return &Type{
+		Namespace:    namespace,
 		Name:         name,
 		Description:  description,
 		Annotated:    newAnnotated(),
@@ -418,6 +429,30 @@ func (f *Field) AddAnnotations(annotations ...*Annotation) *Field {
 func (f *Field) AddAnnotation(a *Annotation) *Field {
 	f.Annotated.AddAnnotation(a)
 	return f
+}
+
+func (t *Type) InitValidations() (*Type, error) {
+	t.rules = make(map[string]string, len(t.Fields))
+	for _, f := range t.Fields {
+		var rules []string
+		if f.Type.Kind != KindOptional {
+			rules = append(rules, "required")
+		}
+		for _, a := range f.Annotations {
+			if v, ok := validationRules[a.Name]; ok {
+				tag, err := v(a)
+				if err != nil {
+					return t, err
+				}
+				rules = append(rules, tag)
+			}
+		}
+		if len(rules) > 0 {
+			t.rules[f.Name] = strings.Join(rules, ",")
+		}
+	}
+
+	return t, nil
 }
 
 func (f *Field) InitValidations() error {
@@ -718,31 +753,97 @@ func (t *Type) Coalesce(v map[string]interface{}, validate bool) error {
 	}
 
 	if validate {
-		var _verrors [25]ValidationError
-		verrors := _verrors[:0]
+		// var _verrors [25]ValidationError
+		// verrors := _verrors[:0]
+		myErrors := make(ValidationErrors, len(t.rules))
 
-		for fieldName, f := range t.fieldsByName {
-			value, ok := v[fieldName]
-			if f.Type.Kind != KindOptional && !ok {
-				return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
-			}
-			for _, val := range f.Validations {
-				valErrors, err := val(value)
-				if err != nil {
-					return err
+		// for fieldName, f := range t.fieldsByName {
+		// 	_, ok := v[fieldName]
+		// 	if f.Type.Kind != KindOptional && !ok {
+		// 		return fmt.Errorf("missing required field %s in type %s", fieldName, t.Name)
+		// 	}
+		// 	// for _, val := range f.Validations {
+		// 	// 	valErrors, err := val(value)
+		// 	// 	if err != nil {
+		// 	// 		return err
+		// 	// 	}
+		// 	// 	if len(valErrors) > 0 {
+		// 	// 		verrors = append(verrors, valErrors...)
+		// 	// 	}
+		// 	// }
+		// }
+
+		valErrors := validateMapCtx(globalValidate, context.Background(), v, t.rules)
+		for name, errs := range valErrors {
+			if verrs, ok := errs.(validator.ValidationErrors); ok {
+				errors := make([]ValidationError, len(verrs))
+				for i, err := range verrs {
+					sfe := specFieldError{err, t, name}
+					msg := sfe.Translate(translator)
+					errors[i] = ValidationError{
+						Rule:    err.Tag(),
+						Message: msg,
+						Value:   err.Value(),
+					}
 				}
-				if len(valErrors) > 0 {
-					verrors = append(verrors, valErrors...)
-				}
+				myErrors[name] = errors
 			}
 		}
 
-		if len(verrors) > 0 {
-			return errorz.New(errorz.InvalidArgument, verrors[0].Message)
+		if len(myErrors) > 0 {
+			msg := "parameter input is invalid"
+			if unicode.IsUpper([]rune(t.Name)[0]) {
+				msg = fmt.Sprintf("input for %s is invalid", t.Name)
+			}
+			err := errorz.New(errorz.InvalidArgument, msg)
+			err.Details = myErrors
+			return err
 		}
 	}
 
 	return nil
+}
+
+func validateMapCtx(v *validator.Validate, ctx context.Context, data map[string]interface{}, rules map[string]string) map[string]error {
+	errs := make(map[string]error, len(rules))
+	for field, rule := range rules {
+		err := v.VarCtx(ctx, data[field], rule)
+		if err != nil {
+			errs[field] = err
+		}
+	}
+	return errs
+}
+
+type specFieldError struct {
+	validator.FieldError
+	t     *Type
+	field string
+}
+
+func (e specFieldError) Namespace() string {
+	return e.t.Namespace.Name
+}
+
+func (e specFieldError) StructNamespace() string {
+	return e.t.Namespace.Name
+}
+
+func (e specFieldError) Field() string {
+	return e.field
+}
+
+func (e specFieldError) StructField() string {
+	return e.field
+}
+
+func (e specFieldError) Translate(ut ut.Translator) string {
+	fn, ok := e.Validate().GetValidatorFunc(ut, e.field)
+	if !ok {
+		return e.Error()
+	}
+
+	return fn(ut, e)
 }
 
 func (t *Type) doField(tt *TypeRef, f *Field, fieldName string, v map[string]interface{}, value interface{}, validate bool) (err error) {

@@ -88,7 +88,7 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 
 		case *ast.TypeDefinition:
 			// Create a placeholder for the type in memory
-			n.AddType(spec.NewType(d.Name.Value, stringValue(d.Description)))
+			n.AddType(spec.NewType(n, d.Name.Value, stringValue(d.Description)))
 
 		case *ast.EnumDefinition:
 			// Create a placeholder for the enum in memory
@@ -107,7 +107,11 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 		switch d := def.(type) {
 		case *ast.TypeDefinition:
 			// Populate the type information
-			n.AddType(p.createType(d))
+			t, err := p.createType(d)
+			if err != nil {
+				return nil, err
+			}
+			n.AddType(t)
 		case *ast.EnumDefinition:
 			// Populate the enum information
 			n.AddEnum(p.createEnum(d))
@@ -120,7 +124,10 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
 		case *ast.RoleDefinition:
-			s := p.convertService(d)
+			s, err := p.convertService(d)
+			if err != nil {
+				return nil, err
+			}
 			n.AddService(s)
 		}
 	}
@@ -128,14 +135,15 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 	return n, nil
 }
 
-func (p *nsParser) createType(t *ast.TypeDefinition) *spec.Type {
+func (p *nsParser) createType(t *ast.TypeDefinition) (*spec.Type, error) {
 	tt, ok := p.n.Type(t.Name.Value)
 	if !ok {
-		tt = spec.NewType(t.Name.Value, stringValue(t.Description))
+		tt = spec.NewType(p.n, t.Name.Value, stringValue(t.Description))
 	}
 	return tt.
 		AddFields(p.convertFields(t.Fields)...).
-		AddAnnotations(p.convertAnnotations(t.Annotations)...)
+		AddAnnotations(p.convertAnnotations(t.Annotations)...).
+		InitValidations()
 }
 
 func (p *nsParser) convertFields(fields []*ast.FieldDefinition) []*spec.Field {
@@ -200,17 +208,21 @@ func (p *nsParser) createUnion(t *ast.UnionDefinition) *spec.Union {
 	return e.AddAnnotations(p.convertAnnotations(t.Annotations)...)
 }
 
-func (p *nsParser) convertService(role *ast.RoleDefinition) *spec.Service {
+func (p *nsParser) convertService(role *ast.RoleDefinition) (*spec.Service, error) {
+	opers, err := p.convertOperations(role.Operations)
+	if err != nil {
+		return nil, err
+	}
 	return spec.NewService(
 		role.Name.Value,
 		stringValue(role.Description)).
-		AddOperations(p.convertOperations(role.Operations)...).
-		AddAnnotations(p.convertAnnotations(role.Annotations)...)
+		AddOperations(opers...).
+		AddAnnotations(p.convertAnnotations(role.Annotations)...), nil
 }
 
-func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*spec.Operation {
+func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) ([]*spec.Operation, error) {
 	if operations == nil {
-		return nil
+		return nil, nil
 	}
 
 	o := make([]*spec.Operation, len(operations))
@@ -220,14 +232,18 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 			param := operation.Parameters[0]
 			if named, ok := param.Type.(*ast.Named); ok {
 				pt, _ := p.n.Type(named.Name.Value)
-				params = spec.NewType(pt.Name, pt.Description).
+				params = spec.NewType(p.n, pt.Name, pt.Description).
 					AddFields(pt.Fields...).
 					AddAnnotations(p.convertAnnotations(param.Annotations)...).
 					AddAnnotations(pt.Annotations...)
 				params.Validations = pt.Validations
 			}
 		} else {
-			params = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)
+			var err error
+			params, err = p.convertParameterType(operation.Name.Value+"Params", operation.Parameters)
+			if err != nil {
+				return nil, err
+			}
 		}
 		o[i] = spec.NewOperation(
 			operation.Name.Value,
@@ -238,12 +254,14 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) []*s
 			AddAnnotations(p.convertAnnotations(operation.Annotations)...)
 	}
 
-	return o
+	return o, nil
 }
 
-func (p *nsParser) convertParameterType(name string, params []*ast.ParameterDefinition) *spec.Type {
+func (p *nsParser) convertParameterType(name string, params []*ast.ParameterDefinition) (*spec.Type, error) {
 	fields := p.convertParameters(params)
-	return spec.NewType(name, "").AddFields(fields...)
+	return spec.NewType(p.n, name, "").
+		AddFields(fields...).
+		InitValidations()
 }
 
 func (p *nsParser) convertParameters(parameters []*ast.ParameterDefinition) []*spec.Field {
