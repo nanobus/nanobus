@@ -21,9 +21,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/nanobus/go-functions"
-	msgpack_codec "github.com/nanobus/go-functions/codecs/msgpack"
-	transport_mux "github.com/nanobus/go-functions/transports/mux"
+	"github.com/nanobus/nanobus/channel"
+	msgpack_codec "github.com/nanobus/nanobus/channel/codecs/msgpack"
+	transport_mux "github.com/nanobus/nanobus/channel/transports/mux"
 
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
@@ -56,10 +56,10 @@ func MuxLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, 
 
 	msgpackcodec := msgpack_codec.New()
 	m := transport_mux.New(c.BaseURL, msgpackcodec.ContentType())
-	invokeStream := func(ctx context.Context, receiver functions.Receiver) (functions.Streamer, error) {
+	invokeStream := func(ctx context.Context, receiver channel.Receiver) (channel.Streamer, error) {
 		return nil, errors.New(errorz.Unimplemented.String())
 	}
-	invoker := functions.NewInvoker(m.Invoke, invokeStream, msgpackcodec)
+	invoker := channel.NewInvoker(m.Invoke, invokeStream, msgpackcodec)
 	done := make(chan struct{}, 1)
 
 	return &compute.Compute{

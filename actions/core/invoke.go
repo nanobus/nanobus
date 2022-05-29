@@ -20,8 +20,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/nanobus/go-functions"
 	"github.com/nanobus/nanobus/actions"
+	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/function"
@@ -38,7 +38,7 @@ type InvokeConfig struct {
 }
 
 type Invoker interface {
-	InvokeWithReturn(ctx context.Context, receiver functions.Receiver, input, output interface{}) error
+	InvokeWithReturn(ctx context.Context, receiver channel.Receiver, input, output interface{}) error
 }
 
 // Invoke is the NamedLoader for the invoke action.
@@ -103,7 +103,7 @@ func InvokeAction(
 		}
 
 		var response interface{}
-		if err := invoker.InvokeWithReturn(ctx, functions.Receiver{
+		if err := invoker.InvokeWithReturn(ctx, channel.Receiver{
 			Namespace: namespace,
 			Operation: operation,
 		}, input, &response); err != nil {

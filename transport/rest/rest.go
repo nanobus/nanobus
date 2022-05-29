@@ -29,7 +29,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/nanobus/go-functions"
+	"github.com/nanobus/nanobus/channel"
 
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
@@ -44,7 +44,7 @@ type Rest struct {
 	namespaces    spec.Namespaces
 	invoker       transport.Invoker
 	errorResolver errorz.Resolver
-	codecs        map[string]functions.Codec
+	codecs        map[string]channel.Codec
 	filters       []filter.Filter
 	router        *mux.Router
 	ln            net.Listener
@@ -60,7 +60,7 @@ type queryParam struct {
 }
 
 type optionsHolder struct {
-	codecs  []functions.Codec
+	codecs  []channel.Codec
 	filters []filter.Filter
 }
 
@@ -73,7 +73,7 @@ var (
 
 type Option func(opts *optionsHolder)
 
-func WithCodecs(codecs ...functions.Codec) Option {
+func WithCodecs(codecs ...channel.Codec) Option {
 	return func(opts *optionsHolder) {
 		opts.codecs = codecs
 	}
@@ -96,7 +96,7 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 		opt(&opts)
 	}
 
-	codecMap := make(map[string]functions.Codec, len(opts.codecs))
+	codecMap := make(map[string]channel.Codec, len(opts.codecs))
 	for _, c := range opts.codecs {
 		codecMap[c.ContentType()] = c
 	}
@@ -458,7 +458,7 @@ func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	}
 }
 
-func (t *Rest) handleError(err error, codec functions.Codec, req *http.Request, w http.ResponseWriter, status int) {
+func (t *Rest) handleError(err error, codec channel.Codec, req *http.Request, w http.ResponseWriter, status int) {
 	var errz *errorz.Error
 	if !errors.As(err, &errz) {
 		errz = t.errorResolver(err)

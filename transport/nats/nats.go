@@ -24,7 +24,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/nanobus/go-functions"
+	"github.com/nanobus/nanobus/channel"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/multierr"
 
@@ -42,13 +42,13 @@ type NATS struct {
 	namespaces    spec.Namespaces
 	invoker       transport.Invoker
 	errorResolver errorz.Resolver
-	codecs        map[string]functions.Codec
+	codecs        map[string]channel.Codec
 	filters       []filter.Filter
 	subs          []*nats.Subscription
 }
 
 type optionsHolder struct {
-	codecs  []functions.Codec
+	codecs  []channel.Codec
 	filters []filter.Filter
 }
 
@@ -58,7 +58,7 @@ var (
 
 type Option func(opts *optionsHolder)
 
-func WithCodecs(codecs ...functions.Codec) Option {
+func WithCodecs(codecs ...channel.Codec) Option {
 	return func(opts *optionsHolder) {
 		opts.codecs = codecs
 	}
@@ -77,7 +77,7 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 		opt(&opts)
 	}
 
-	codecMap := make(map[string]functions.Codec, len(opts.codecs))
+	codecMap := make(map[string]channel.Codec, len(opts.codecs))
 	for _, c := range opts.codecs {
 		codecMap[c.ContentType()] = c
 	}
@@ -208,7 +208,7 @@ func (t *NATS) handler(m *nats.Msg) {
 	m.RespondMsg(&reply)
 }
 
-func (t *NATS) handleError(err error, codec functions.Codec, m *nats.Msg, status int) {
+func (t *NATS) handleError(err error, codec channel.Codec, m *nats.Msg, status int) {
 	errz := t.errorResolver(err)
 	errz.Path = m.Subject
 

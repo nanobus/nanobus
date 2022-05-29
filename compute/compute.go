@@ -19,7 +19,7 @@ package compute
 import (
 	"context"
 
-	"github.com/nanobus/go-functions"
+	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/resolve"
 )
 
@@ -31,7 +31,7 @@ type (
 	Registry     map[string]Loader
 
 	Compute struct {
-		Invoker           *functions.Invoker
+		Invoker           *channel.Invoker
 		Start             func() error
 		WaitUntilShutdown func() error
 		Close             func() error

@@ -34,9 +34,9 @@ import (
 	"github.com/rsocket/rsocket-go/rx/flux"
 	"github.com/rsocket/rsocket-go/rx/mono"
 
-	"github.com/nanobus/go-functions"
-	"github.com/nanobus/go-functions/metadata"
 	"github.com/nanobus/nanobus/actions/dapr"
+	"github.com/nanobus/nanobus/channel"
+	"github.com/nanobus/nanobus/channel/metadata"
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
@@ -72,7 +72,7 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 		return nil, err
 	}
 
-	var msgpackcodec functions.Codec
+	var msgpackcodec channel.Codec
 	var busInvoker compute.BusInvoker
 	var stateInvoker compute.StateInvoker
 	var daprComponents *dapr.DaprComponents
@@ -99,7 +99,7 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 		}).
 		Transport(tp)
 
-	invoker := functions.NewInvoker(socket.Invoke, socket.InvokeStream, msgpackcodec)
+	invoker := channel.NewInvoker(socket.Invoke, socket.InvokeStream, msgpackcodec)
 
 	return &compute.Compute{
 		Invoker: invoker,
@@ -132,7 +132,7 @@ func RSocketLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compu
 type Socket struct {
 	basePath string
 	ctx      context.Context
-	codec    functions.Codec
+	codec    channel.Codec
 	socket   rsocket.CloseableRSocket
 	close    chan struct{}
 
@@ -142,7 +142,7 @@ type Socket struct {
 }
 
 func newSocket(basePath string,
-	codec functions.Codec,
+	codec channel.Codec,
 	busInvoker compute.BusInvoker,
 	stateInvoker compute.StateInvoker,
 	daprComponents *dapr.DaprComponents) *Socket {
@@ -447,7 +447,7 @@ func (s *Socket) responder() rsocket.RSocket {
 	)
 }
 
-func (s *Socket) Invoke(ctx context.Context, receiver functions.Receiver, data []byte) ([]byte, error) {
+func (s *Socket) Invoke(ctx context.Context, receiver channel.Receiver, data []byte) ([]byte, error) {
 	socket := s.socket
 	if socket == nil {
 		return nil, ErrNotConnected
@@ -474,7 +474,7 @@ func (s *Socket) Invoke(ctx context.Context, receiver functions.Receiver, data [
 	return resp.Data(), nil
 }
 
-func (s *Socket) InvokeStream(ctx context.Context, receiver functions.Receiver) (functions.Streamer, error) {
+func (s *Socket) InvokeStream(ctx context.Context, receiver channel.Receiver) (channel.Streamer, error) {
 	path := s.basePath + receiver.Namespace + "/" + receiver.Operation
 	md := metadata.MD{
 		":path": []string{path},
@@ -636,7 +636,7 @@ type CodecStream struct {
 	c     <-chan payload.Payload
 	e     <-chan error
 	sink  flux.Sink
-	codec functions.Codec
+	codec channel.Codec
 	md    metadata.MD
 
 	sendMd metadata.MD

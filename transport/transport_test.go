@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nanobus/go-functions"
+	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
 	"github.com/nanobus/nanobus/transport"
@@ -31,7 +31,7 @@ import (
 func TestRegistry(t *testing.T) {
 	r := transport.Registry{}
 
-	loader := func(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, codecs ...functions.Codec) (transport.Transport, error) {
+	loader := func(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, codecs ...channel.Codec) (transport.Transport, error) {
 		return nil, nil
 	}
 	namedLoader := func() (string, transport.Loader) {

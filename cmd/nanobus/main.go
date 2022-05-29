@@ -44,10 +44,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mattn/go-colorable"
 	"github.com/mitchellh/mapstructure"
-	"github.com/nanobus/go-functions"
-	json_codec "github.com/nanobus/go-functions/codecs/json"
-	msgpack_codec "github.com/nanobus/go-functions/codecs/msgpack"
-	"github.com/nanobus/go-functions/stateful"
+	"github.com/nanobus/nanobus/channel"
+	json_codec "github.com/nanobus/nanobus/channel/codecs/json"
+	msgpack_codec "github.com/nanobus/nanobus/channel/codecs/msgpack"
+	"github.com/nanobus/nanobus/channel/stateful"
 	"github.com/oklog/run"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
@@ -72,7 +72,6 @@ import (
 	"github.com/nanobus/nanobus/compute"
 	compute_mux "github.com/nanobus/nanobus/compute/mux"
 	compute_rsocket "github.com/nanobus/nanobus/compute/rsocket"
-	compute_stream "github.com/nanobus/nanobus/compute/stream"
 	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
@@ -284,7 +283,6 @@ func main() {
 	computeRegistry.Register(
 		compute_mux.Mux,
 		compute_wapc.WaPC,
-		compute_stream.Stream,
 		compute_rsocket.RSocket,
 	)
 
@@ -316,7 +314,7 @@ func main() {
 	msgpackcodec := msgpack_codec.New()
 
 	// Dependencies
-	var invoker *functions.Invoker
+	var invoker *channel.Invoker
 	var busInvoker compute.BusInvoker
 	httpClient := getHTTPClient()
 	env := getEnvironment()
@@ -604,16 +602,16 @@ func main() {
 					input = output
 				}
 
-				var statefulResponse stateful.Response
-				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+				var response stateful.Response
+				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
 					Namespace: actorType,
 					Operation: fn,
 					EntityID:  actorID,
-				}, input, &statefulResponse); err != nil {
+				}, input, &response); err != nil {
 					return nil, "", translateError(err)
 				}
 
-				mutation := statefulResponse.Mutation
+				mutation := response.Mutation
 				numOperations := len(mutation.Set) + len(mutation.Remove)
 				if numOperations > 0 {
 					operations := make([]actors.TransactionalOperation, numOperations)
@@ -643,7 +641,7 @@ func main() {
 
 					if len(mutation.Remove) > 0 {
 						i := len(mutation.Set)
-						for _, key := range statefulResponse.Mutation.Remove {
+						for _, key := range response.Mutation.Remove {
 							operations[i] = actors.TransactionalOperation{
 								Operation: actors.Delete,
 								Request: actors.TransactionalDelete{
@@ -664,8 +662,8 @@ func main() {
 				}
 
 				var respData []byte
-				if !isNil(statefulResponse.Result) {
-					if respData, err = msgpack.Marshal(statefulResponse.Result); err != nil {
+				if !isNil(response.Result) {
+					if respData, err = msgpack.Marshal(response.Result); err != nil {
 						return nil, "", err
 					}
 				}
@@ -697,7 +695,7 @@ func main() {
 					Name: name,
 					Data: w.Data,
 				}
-				if err = invoker.Invoke(ctx, functions.Receiver{
+				if err = invoker.Invoke(ctx, channel.Receiver{
 					Namespace: actorType,
 					Operation: callback,
 					EntityID:  actorID,
@@ -712,7 +710,7 @@ func main() {
 				actorID := parts[2]
 
 				fmt.Println("Deactivating " + actorType + "/" + actorID)
-				if err = invoker.Invoke(ctx, functions.Receiver{
+				if err = invoker.Invoke(ctx, channel.Receiver{
 					Namespace: actorType,
 					Operation: "deactivate",
 					EntityID:  actorID,
@@ -768,7 +766,7 @@ func main() {
 
 			if !ok {
 				// No pipeline exits for the operation so invoke directly.
-				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
 					Namespace: ns,
 					Operation: fn,
 				}, input, &output); err != nil {
@@ -1116,7 +1114,7 @@ func main() {
 		if !ok {
 			// No pipeline exits for the operation so invoke directly.
 			if id == "" {
-				if err = invoker.InvokeWithReturn(ctx, functions.Receiver{
+				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
 					Namespace: ns,
 					Operation: fn,
 				}, input, &response); err != nil {

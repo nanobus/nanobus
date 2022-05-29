@@ -24,8 +24,8 @@ import (
 	go_runtime "runtime"
 	"strings"
 
-	"github.com/nanobus/go-functions"
-	wapc_mux "github.com/nanobus/go-functions/transports/wapc"
+	"github.com/nanobus/nanobus/channel"
+	wapc_mux "github.com/nanobus/nanobus/channel/transports/wapc"
 	wapc "github.com/wapc/wapc-go"
 	"github.com/wapc/wapc-go/engines/wazero"
 
@@ -50,7 +50,7 @@ func WaPC() (string, compute.Loader) {
 
 func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute, error) {
 	var busInvoker compute.BusInvoker
-	var msgpackcodec functions.Codec
+	var msgpackcodec channel.Codec
 	if err := resolve.Resolve(resolver,
 		"bus:invoker", &busInvoker,
 		"codec:msgpack", &msgpackcodec); err != nil {
@@ -102,7 +102,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 	if err != nil {
 		return nil, err
 	}
-	invoke := func(ctx context.Context, receiver functions.Receiver, payload []byte) ([]byte, error) {
+	invoke := func(ctx context.Context, receiver channel.Receiver, payload []byte) ([]byte, error) {
 		resp, err := m.Invoke(ctx, receiver, payload)
 		if err != nil {
 			// Trim out wrapped message.
@@ -116,10 +116,10 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 		}
 		return resp, nil
 	}
-	invokeStream := func(ctx context.Context, receiver functions.Receiver) (functions.Streamer, error) {
+	invokeStream := func(ctx context.Context, receiver channel.Receiver) (channel.Streamer, error) {
 		return nil, errorz.New(errorz.Unimplemented, "streaming is not implemented for waPC")
 	}
-	invoker := functions.NewInvoker(invoke, invokeStream, msgpackcodec)
+	invoker := channel.NewInvoker(invoke, invokeStream, msgpackcodec)
 	done := make(chan struct{}, 1)
 
 	return &compute.Compute{

@@ -21,19 +21,22 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/nanobus/go-functions"
-	jsoncodec "github.com/nanobus/go-functions/codecs/json"
-	"github.com/nanobus/go-functions/transports/mux"
+	functions "github.com/nanobus/nanobus/channel"
+	jsoncodec "github.com/nanobus/nanobus/channel/codecs/json"
+	"github.com/nanobus/nanobus/channel/transports/mux"
 )
 
 func main() {
 	ctx := context.Background()
 	codec := jsoncodec.New()
 	m := mux.New("http://localhost:8081", codec.ContentType())
-	invoker := functions.NewInvoker(m.Invoke, codec)
+	invoker := functions.NewInvoker(m.Invoke, nil, codec)
 
 	var response interface{}
-	err := invoker.InvokeWithReturn(ctx, "customers.v1.Inbound", "createCustomer", map[string]interface{}{
+	err := invoker.InvokeWithReturn(ctx, functions.Receiver{
+		Namespace: "customers.v1.Inbound",
+		Operation: "createCustomer",
+	}, map[string]interface{}{
 		"id":        1234,
 		"firstName": "John",
 		"lastName":  "Doe",
