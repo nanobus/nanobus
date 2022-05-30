@@ -181,12 +181,34 @@ func (r *Runtime) Initialize() error {
 		//[]string{runtime.DefaultAPIListenAddress}
 	}
 
-	runtimeConfig := runtime.NewRuntimeConfig(r.appID, placementAddresses, r.controlPlaneAddress,
-		r.allowedOrigins, r.config, r.componentsPath,
-		string(runtime.EmbeddedProtocol), r.mode, daprAPIHTTPPort, daprInternalGRPC, 0, daprAPIListenAddressList, nil, 0,
-		profPort, r.enableProfiling,
-		concurrency, r.enableMTLS, r.sentryAddress, r.appSSL, maxRequestBodySize, "", 4, false,
-		5*time.Second, "")
+	runtimeConfig := runtime.NewRuntimeConfig(
+		r.appID,
+		placementAddresses,
+		r.controlPlaneAddress,
+		r.allowedOrigins,
+		r.config,
+		r.componentsPath,
+		string(runtime.EmbeddedProtocol),
+		r.mode,
+		daprAPIHTTPPort,
+		daprInternalGRPC,
+		0,
+		daprAPIListenAddressList,
+		nil,
+		0,
+		profPort,
+		r.enableProfiling,
+		concurrency,
+		r.enableMTLS,
+		r.sentryAddress,
+		r.appSSL,
+		maxRequestBodySize,
+		"",
+		4,
+		false,
+		5*time.Second,
+		false,
+	)
 
 	// // set environment variables
 	// // TODO - consider adding host address to runtime config and/or caching result in utils package
