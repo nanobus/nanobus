@@ -1,6 +1,15 @@
 ![NanoBus Logo](docs/images/nanobus-logo.svg)
 
+NanoBus is a lightweight microservice runtime that reduces developer responsibility so that teams can **focus on core application logic**. It streamlines development by:
+
+* Allowing developers to embrace the benefits of an [API-first approach](https://swagger.io/resources/articles/adopting-an-api-first-approach/), namely, having confidence that services are communicating properly and reliably at scale
+* Generating boilerplate code for REST/RPC, workflow, and event-driven applications to eliminate repetitive work and minimize potential for manual errors
+* Simplifying usage of cloud primitives and other microservice dependencies to basic function calls without SDKs or potentially vulerable 3rd party libraries
+* Packaging your application for deployment
+
+<!--
 NanoBus is a lightweight microservice runtime layer that simplifies your application's core logic by moving infrastructure concerns to composable pipelines. The primary goal of NanoBus is to codify best practices so developers can **focus on business outcomes, not boilerplate code**.
+-->
 
 ## Key Features
 
@@ -10,7 +19,7 @@ In conjunction with Dapr, NanoBus allows the developer to focus on what matters 
 
 ### Data pipelines
 
-Communicating with other services and Dapr building block is simplified in declarative, composable pipelines. Secure API endpoints, transform data, support multiple serialization formats, and apply resiliency policies using configuration.
+Communicating with other services and cloud primitives/building blocks is simplified in declarative, composable pipelines. Secure API endpoints, transform data, support multiple serialization formats, and apply resiliency policies using succinct configuration.
 
 ### Automatic API endpoints with documentation
 
