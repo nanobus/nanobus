@@ -208,6 +208,7 @@ func (r *Runtime) Initialize() error {
 		false,
 		5*time.Second,
 		false,
+		false,
 	)
 
 	// // set environment variables

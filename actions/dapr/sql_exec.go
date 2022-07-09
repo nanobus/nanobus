@@ -107,7 +107,7 @@ func SQLExecConfigAction(
 			},
 		}
 
-		resp, err := binding.Invoke(&r)
+		resp, err := binding.Invoke(ctx, &r)
 		if err != nil {
 			return nil, err
 		}

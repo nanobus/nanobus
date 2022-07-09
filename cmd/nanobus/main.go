@@ -785,8 +785,8 @@ func main() {
 		return respData, "application/json", err
 	})
 
-	inputBindingHandler := func(function string, codec codec.Codec, args []interface{}) func(*bindings.ReadResponse) ([]byte, error) {
-		return func(msg *bindings.ReadResponse) ([]byte, error) {
+	inputBindingHandler := func(function string, codec codec.Codec, args []interface{}) bindings.Handler {
+		return func(ctx context.Context, msg *bindings.ReadResponse) ([]byte, error) {
 			target := function
 
 			decoded, typeName, err := codec.Decode(msg.Data, args...)
@@ -1018,7 +1018,7 @@ func main() {
 			os.Exit(1)
 		}
 		log.Info("subscribing to topic", "pubsub", sub.Pubsub, "topic", sub.Topic)
-		if err = p.Subscribe(pubsub.SubscribeRequest{
+		if err = p.Subscribe(ctx, pubsub.SubscribeRequest{
 			Topic:    sub.Topic,
 			Metadata: sub.Metadata,
 		}, pubsubHandler(sub.Function, codec, sub.CodecArgs)); err != nil {
