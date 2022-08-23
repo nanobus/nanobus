@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	go_runtime "runtime"
+	"runtime"
 	"strings"
 
 	"github.com/nanobus/nanobus/channel"
@@ -58,7 +58,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 	}
 
 	c := WaPCConfig{
-		PoolSize: uint64(go_runtime.NumCPU() * 5),
+		PoolSize: uint64(runtime.NumCPU() * 5),
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 
 	engine := wazero.Engine()
 
-	module, err := engine.New(context.Background(), wasmBytes, func(ctx context.Context, binding, namespace, operation string, payload []byte) ([]byte, error) {
+	module, err := engine.New(context.Background(), func(ctx context.Context, binding, namespace, operation string, payload []byte) ([]byte, error) {
 		lastDot := strings.LastIndexByte(namespace, '.')
 		if lastDot < 0 {
 			return nil, fmt.Errorf("invalid namespace %q", namespace)
@@ -90,13 +90,14 @@ func WaPCLoader(with interface{}, resolver resolve.ResolveAs) (*compute.Compute,
 		}
 
 		return msgpackcodec.Encode(result)
+	}, wasmBytes, &wapc.ModuleConfig{
+		Logger: wapc.PrintlnLogger,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	module.SetLogger(wapc.Println)
-	module.SetWriter(wapc.Print)
 
 	m, err := wapc_mux.New(module, uint64(c.PoolSize))
 	if err != nil {
