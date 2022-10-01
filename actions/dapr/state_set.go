@@ -18,21 +18,23 @@ package dapr
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/dapr/components-contrib/state"
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 )
 
 type SetStateConfig struct {
-	// Store is name of state store to invoke.
-	Store string         `mapstructure:"store" validate:"required"`
-	Items []SetStateItem `mapstructure:"items" validate:"required"`
+	// Resource is name of state store to invoke.
+	Resource string         `mapstructure:"resource" validate:"required"`
+	Items    []SetStateItem `mapstructure:"items" validate:"required"`
 }
 
 type SetStateItem struct {
@@ -57,32 +59,25 @@ func SetStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Actio
 		return nil, err
 	}
 
-	var dapr *DaprComponents
+	var resources resource.Resources
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr); err != nil {
+		"resource:lookup", &resources); err != nil {
 		return nil, err
 	}
 
-	store, ok := dapr.StateStores[c.Store]
-	if !ok {
-		return nil, fmt.Errorf("state store %q not found", c.Store)
+	client, err := resource.Get[proto.StateStoreClient](resources, c.Resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return SetStateAction(store, &c), nil
-}
-
-type SetItem struct {
-	Key      string            `json:"key"`
-	Value    interface{}       `json:"value"`
-	Etag     *string           `json:"etag,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	return SetStateAction(client, &c), nil
 }
 
 func SetStateAction(
-	store state.Store,
+	client proto.StateStoreClient,
 	config *SetStateConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		_r := [25]state.SetRequest{}
+		_r := [25]*proto.SetRequest{}
 		r := _r[0:0]
 
 		for i := range config.Items {
@@ -118,7 +113,9 @@ func SetStateAction(
 			}
 		}
 
-		err := store.BulkSet(r)
+		_, err := client.BulkSet(ctx, &proto.BulkSetRequest{
+			Items: r,
+		})
 
 		return nil, err
 	}
@@ -127,16 +124,15 @@ func SetStateAction(
 func createSetItem(
 	data actions.Data,
 	item interface{},
-	config *SetStateItem) (it state.SetRequest, err error) {
+	config *SetStateItem) (it *proto.SetRequest, err error) {
 	variables := make(map[string]interface{}, len(data)+1)
 	for k, v := range data {
 		variables[k] = v
 	}
 	variables["item"] = item
 
-	it = state.SetRequest{
-		Value: variables["input"],
-	}
+	var value interface{} = variables["input"]
+	it = &proto.SetRequest{}
 	keyInt, err := config.Key.Eval(variables)
 	if err != nil {
 		return it, backoff.Permanent(fmt.Errorf("could not evaluate key: %w", err))
@@ -144,7 +140,7 @@ func createSetItem(
 	it.Key = fmt.Sprintf("%v", keyInt)
 
 	if config.Value != nil {
-		if it.Value, err = config.Value.Eval(variables); err != nil {
+		if value, err = config.Value.Eval(variables); err != nil {
 			return it, backoff.Permanent(fmt.Errorf("could not evaluate value: %w", err))
 		}
 	}
@@ -153,6 +149,13 @@ func createSetItem(
 			return it, backoff.Permanent(fmt.Errorf("could not evaluate metadata: %w", err))
 		}
 	}
+
+	// TODO: ues codec
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		return it, backoff.Permanent(fmt.Errorf("could not serialize value: %w", err))
+	}
+	it.Value = jsonBytes
 
 	return it, nil
 }

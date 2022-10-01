@@ -18,6 +18,8 @@ package resource
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -34,4 +36,18 @@ func (r Registry) Register(loaders ...NamedLoader) {
 		name, loader := l()
 		r[name] = loader
 	}
+}
+
+func Get[T any](r Resources, name string) (res T, err error) {
+	var iface interface{}
+	iface, ok := r[name]
+	if !ok {
+		return res, fmt.Errorf("resource %q is not registered", name)
+	}
+	res, ok = iface.(T)
+	if !ok {
+		return res, fmt.Errorf("resource %q is not a %s", name, reflect.TypeOf(res).Name())
+	}
+
+	return res, nil
 }

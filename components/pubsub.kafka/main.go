@@ -14,29 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package compute_test
+package main
 
 import (
-	"fmt"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/nanobus/nanobus/compute"
-	"github.com/nanobus/nanobus/resolve"
+	dapr "github.com/dapr-sandbox/components-go-sdk"
+	"github.com/dapr/components-contrib/pubsub/kafka"
+	"github.com/dapr/kit/logger"
 )
 
-func TestRegistry(t *testing.T) {
-	r := compute.Registry{}
+var log = logger.NewLogger("kafka-pluggable")
 
-	loader := func(with interface{}, resolver resolve.ResolveAs) (compute.Invoker, error) {
-		return nil, nil
-	}
-	namedLoader := func() (string, compute.Loader) {
-		return "test", loader
-	}
-
-	r.Register(namedLoader)
-
-	assert.Equal(t, fmt.Sprintf("%v", compute.Loader(loader)), fmt.Sprintf("%p", r["test"]))
+func main() {
+	dapr.MustRun(dapr.UsePubSub(kafka.NewKafka(log)))
 }

@@ -17,21 +17,20 @@ limitations under the License.
 package transport_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nanobus/nanobus/channel"
-	"github.com/nanobus/nanobus/errorz"
-	"github.com/nanobus/nanobus/spec"
+	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/transport"
 )
 
 func TestRegistry(t *testing.T) {
 	r := transport.Registry{}
 
-	loader := func(address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, codecs ...channel.Codec) (transport.Transport, error) {
+	loader := func(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
 		return nil, nil
 	}
 	namedLoader := func() (string, transport.Loader) {

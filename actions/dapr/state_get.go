@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dapr/components-contrib/state"
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/coalesce"
@@ -28,11 +28,12 @@ import (
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 )
 
 type GetStateConfig struct {
-	// Name is name of binding to invoke.
-	Store string `mapstructure:"store" validate:"required"`
+	// Resource is name of binding to invoke.
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke.
 	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 	// NotFoundError is the error to return if the key is not found.
@@ -54,22 +55,22 @@ func GetStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Actio
 		return nil, err
 	}
 
-	var dapr *DaprComponents
+	var resources resource.Resources
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr); err != nil {
+		"resource:lookup", &resources); err != nil {
 		return nil, err
 	}
 
-	store, ok := dapr.StateStores[c.Store]
-	if !ok {
-		return nil, fmt.Errorf("state store %q not found", c.Store)
+	client, err := resource.Get[proto.StateStoreClient](resources, c.Resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return GetStateAction(store, &c), nil
+	return GetStateAction(client, &c), nil
 }
 
 func GetStateAction(
-	store state.Store,
+	client proto.StateStoreClient,
 	config *GetStateConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		keyInt, err := config.Key.Eval(data)
@@ -78,8 +79,9 @@ func GetStateAction(
 		}
 		key := fmt.Sprintf("%v", keyInt)
 
-		resp, err := store.Get(&state.GetRequest{
+		resp, err := client.Get(ctx, &proto.GetRequest{
 			Key: key,
+			// TODO
 		})
 		if err != nil {
 			return nil, err
@@ -87,11 +89,12 @@ func GetStateAction(
 
 		var response interface{}
 		if len(resp.Data) > 0 {
+			// TODO: use codec
 			err = coalesce.JSONUnmarshal(resp.Data, &response)
 		} else if config.NotFoundError != "" {
 			return nil, errorz.Return(config.NotFoundError, errorz.Metadata{
-				"store": config.Store,
-				"key":   key,
+				"resource": config.Resource,
+				"key":      key,
 			})
 		}
 

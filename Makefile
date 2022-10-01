@@ -13,7 +13,7 @@
 # limitations under the License.
 
 .PHONY: clean lint changelog snapshot copy-wasmer release-dry-run release build-linux-amd64 docker
-.PHONY: build 
+.PHONY: all build
 .PHONY: deps
 
 # Check for required command tools to build or stop immediately
@@ -30,6 +30,11 @@ GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
 GO_BUILDER_VERSION=latest
 GOPATH = $(shell go env GOPATH)
+COMPONENTS := $(wildcard components/*)
+
+.PHONY: components $(COMPONENTS)
+
+all: build components
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -40,6 +45,12 @@ build:
 	CGO_ENABLED=0 go build -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build $(BINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
+
+components: $(COMPONENTS)
+
+$(COMPONENTS):
+	echo "Building $@"
+	CGO_ENABLED=0 go build -o $(shell pwd)/$(BUILDDIR)/$@ $@/main.go
 
 install:
 	CGO_ENABLED=0 go install ./cmd/...
@@ -99,7 +110,7 @@ build-linux-amd64:
 		-v $(GOPATH)/pkg:/go/pkg \
 		-w /go/src/github.com/nanobus/nanobus \
 		-e CGO_ENABLED=0 \
-		golang:1.17.8 \
+		golang:1.19.2 \
 		go build -o dist/nanobus-linux_linux_amd64/nanobus $(MAIN)
 
 docker: release-dry-run

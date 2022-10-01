@@ -20,16 +20,14 @@ import (
 	"context"
 	"errors"
 
-	"github.com/nanobus/nanobus/channel"
-	"github.com/nanobus/nanobus/errorz"
-	"github.com/nanobus/nanobus/spec"
+	"github.com/nanobus/nanobus/resolve"
 )
 
 var ErrBadInput = errors.New("input was malformed")
 
 type (
 	NamedLoader func() (string, Loader)
-	Loader      func(address string, namespaces spec.Namespaces, invoker Invoker, errorResolver errorz.Resolver, codecs ...channel.Codec) (Transport, error)
+	Loader      func(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (Transport, error)
 
 	Transport interface {
 		Listen() error

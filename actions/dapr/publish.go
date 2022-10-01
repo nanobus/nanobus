@@ -1,37 +1,22 @@
-/*
-Copyright 2022 The NanoBus Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package dapr
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/dapr/components-contrib/pubsub"
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 )
 
-type PublishMessageConfig struct {
-	// Pubsub is name of pubsub to publish to.
-	Pubsub string `mapstructure:"pubsub" validate:"required"`
+type PublishConfig struct {
+	// Resource is the name of the connection resource to use.
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Topic is the name of the topic to publish to.
 	Topic string `mapstructure:"topic" validate:"required"`
 	// Codec is the configured codec to use for encoding the message.
@@ -46,21 +31,21 @@ type PublishMessageConfig struct {
 	Metadata *expr.DataExpr `mapstructure:"metadata"`
 }
 
-// PublishMessage is the NamedLoader for Dapr pubsub publish message.
-func PublishMessage() (string, actions.Loader) {
-	return "@dapr/publish_message", PublishMessageLoader
+// Publish is the NamedLoader for the publish action.
+func Publish() (string, actions.Loader) {
+	return "@dapr/publish", PublishLoader
 }
 
-func PublishMessageLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c PublishMessageConfig
+func PublishLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	c := PublishConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
 
-	var dapr *DaprComponents
+	var resources resource.Resources
 	var codecs codec.Codecs
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr,
+		"resource:lookup", &resources,
 		"codec:lookup", &codecs); err != nil {
 		return nil, err
 	}
@@ -70,18 +55,18 @@ func PublishMessageLoader(with interface{}, resolver resolve.ResolveAs) (actions
 		return nil, fmt.Errorf("codec %q not found", c.Codec)
 	}
 
-	pubsub, ok := dapr.PubSubs[c.Pubsub]
-	if !ok {
-		return nil, fmt.Errorf("pubsub %q not found", c.Pubsub)
+	client, err := resource.Get[proto.PubSubClient](resources, c.Resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return PublishMessageAction(pubsub, codec, &c), nil
+	return PublishAction(&c, codec, client), nil
 }
 
-func PublishMessageAction(
-	component pubsub.PubSub,
+func PublishAction(
+	config *PublishConfig,
 	codec codec.Codec,
-	config *PublishMessageConfig) actions.Action {
+	client proto.PubSubClient) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var err error
 
@@ -115,11 +100,12 @@ func PublishMessageAction(
 			metadata["partitionKey"] = key
 		}
 
-		err = component.Publish(&pubsub.PublishRequest{
-			Data:       dataBytes,
-			PubsubName: config.Pubsub,
-			Topic:      config.Topic,
-			Metadata:   metadata,
+		_, err = client.Publish(ctx, &proto.PublishRequest{
+			Data:        dataBytes,
+			PubsubName:  config.Resource,
+			Topic:       config.Topic,
+			Metadata:    metadata,
+			ContentType: codec.ContentType(),
 		})
 
 		return nil, err

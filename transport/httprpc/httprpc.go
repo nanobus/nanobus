@@ -17,6 +17,7 @@ limitations under the License.
 package httprpc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +28,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/nanobus/nanobus/channel"
+	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resolve"
 
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
@@ -68,9 +71,42 @@ func WithFilters(filters ...filter.Filter) Option {
 	}
 }
 
-// func Loader() (string, transport.Loader) {
-// 	return "httprpc", New
-// }
+type Configuration struct {
+	Address string `mapstructure:"address" validate:"required"`
+}
+
+func Load() (string, transport.Loader) {
+	return "httprpc", Loader
+}
+
+func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
+	var jsoncodec channel.Codec
+	var msgpackcodec channel.Codec
+	var transportInvoker transport.Invoker
+	var namespaces spec.Namespaces
+	var errorResolver errorz.Resolver
+	var filters []filter.Filter
+	var log logr.Logger
+	if err := resolve.Resolve(resolver,
+		"codec:json", &jsoncodec,
+		"codec:msgpack", &msgpackcodec,
+		"transport:invoker", &transportInvoker,
+		"spec:namespaces", &namespaces,
+		"errors:resolver", &errorResolver,
+		"filter:lookup", &filters,
+		"system:logger", &log); err != nil {
+		return nil, err
+	}
+
+	var c Configuration
+	if err := config.Decode(with, &c); err != nil {
+		return nil, err
+	}
+
+	return New(log, c.Address, namespaces, transportInvoker, errorResolver,
+		WithFilters(filters...),
+		WithCodecs(jsoncodec, msgpackcodec))
+}
 
 func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
@@ -104,6 +140,7 @@ func (t *HTTPRPC) Listen() error {
 		return err
 	}
 	t.ln = ln
+	t.log.Info("HTTP RPC server listening", "address", t.address)
 
 	return http.Serve(ln, r)
 }

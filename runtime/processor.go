@@ -136,6 +136,10 @@ func (p *Processor) Service(ctx context.Context, namespace, service, function st
 	return output, true, err
 }
 
+func (p *Processor) GetProviders() Namespaces {
+	return p.providers
+}
+
 func (p *Processor) Provider(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error) {
 	nss := namespace + "." + service
 	s, ok := p.providers[nss]

@@ -79,7 +79,10 @@ func TestHTTP(t *testing.T) {
 					Body:       body,
 				}, nil
 			},
-			config: map[string]interface{}{},
+			config: map[string]interface{}{
+				"url":    "https://test.io",
+				"method": "GET",
+			},
 			data: actions.Data{
 				"input": map[string]interface{}{
 					"name":        "test",
@@ -109,7 +112,9 @@ func TestHTTP(t *testing.T) {
 				}, nil
 			},
 			config: map[string]interface{}{
-				"body": "input",
+				"url":    "https://test.io",
+				"method": "GET",
+				"body":   "input",
 				"headers": `{
 	"X-Test": "test",
 }`,
@@ -147,7 +152,10 @@ func TestHTTP(t *testing.T) {
 			do: func(req *http.Request) (*http.Response, error) {
 				return nil, errors.New("test error")
 			},
-			config: map[string]interface{}{},
+			config: map[string]interface{}{
+				"url":    "https://test.io",
+				"method": "GET",
+			},
 			data: actions.Data{
 				"input": map[string]interface{}{},
 			},
@@ -166,7 +174,10 @@ func TestHTTP(t *testing.T) {
 					Body:       body,
 				}, nil
 			},
-			config: map[string]interface{}{},
+			config: map[string]interface{}{
+				"url":    "https://test.io",
+				"method": "GET",
+			},
 			data: actions.Data{
 				"input": map[string]interface{}{},
 			},
@@ -178,6 +189,8 @@ func TestHTTP(t *testing.T) {
 		{
 			name: "invalid config",
 			config: map[string]interface{}{
+				"url":       "https://test.io",
+				"method":    "GET",
 				"codecArgs": 1234,
 			},
 			data:      actions.Data{},
@@ -186,7 +199,9 @@ func TestHTTP(t *testing.T) {
 		{
 			name: "unknown codec error",
 			config: map[string]interface{}{
-				"codec": "unknown",
+				"url":    "https://test.io",
+				"method": "GET",
+				"codec":  "unknown",
 			},
 			data:      actions.Data{},
 			loaderErr: `unknown codec "unknown"`,

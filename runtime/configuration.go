@@ -29,24 +29,32 @@ import (
 
 type Configuration struct {
 	Import        []string                   `json:"import" yaml:"import"`
+	Transports    map[string]Component       `json:"transports" yaml:"transports"`
 	Specs         []Component                `json:"specs" yaml:"specs"`
 	Filters       map[string][]Component     `json:"filters" yaml:"filters"`
 	Codecs        map[string]Component       `json:"codecs" yaml:"codecs"`
 	Resources     map[string]Component       `json:"resources" yaml:"resources"`
-	Compute       Component                  `json:"compute" yaml:"compute"`
+	Compute       []Component                `json:"compute" yaml:"compute"`
 	Resiliency    Resiliency                 `json:"resiliency" yaml:"resiliency"`
 	Services      Services                   `json:"services" yaml:"services"`
 	Providers     Services                   `json:"providers" yaml:"providers"`
 	Events        FunctionPipelines          `json:"events" yaml:"events"`
 	Pipelines     FunctionPipelines          `json:"pipelines" yaml:"pipelines"`
-	Subscriptions interface{}                `json:"subscriptions" yaml:"subscriptions"`
-	InputBindings interface{}                `json:"inputBindings" yaml:"inputBindings"`
-	Decoding      interface{}                `json:"decoding" yaml:"decoding"`
+	Subscriptions []Subscription             `json:"subscriptions" yaml:"subscriptions"`
 	Errors        map[string]errorz.Template `json:"errors" yaml:"errors"`
 }
 
+type Subscription struct {
+	Resource  string            `mapstructure:"resource"`
+	Topic     string            `mapstructure:"topic"`
+	Metadata  map[string]string `mapstructure:"metadata"`
+	Codec     string            `mapstructure:"codec"`
+	CodecArgs []interface{}     `mapstructure:"codecArgs"`
+	Function  string            `mapstructure:"function"`
+}
+
 type Component struct {
-	Type string      `json:"type" yaml:"type"`
+	Uses string      `json:"uses" yaml:"uses"`
 	With interface{} `json:"with" yaml:"with"`
 }
 

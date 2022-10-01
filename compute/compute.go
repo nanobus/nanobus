@@ -18,8 +18,14 @@ package compute
 
 import (
 	"context"
+	"io"
 
-	"github.com/nanobus/nanobus/channel"
+	"github.com/WasmRS/wasmrs-go/invoke"
+	"github.com/WasmRS/wasmrs-go/operations"
+	"github.com/WasmRS/wasmrs-go/payload"
+	"github.com/WasmRS/wasmrs-go/rx/flux"
+	"github.com/WasmRS/wasmrs-go/rx/mono"
+
 	"github.com/nanobus/nanobus/resolve"
 )
 
@@ -27,15 +33,30 @@ type (
 	BusInvoker   func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error)
 	StateInvoker func(ctx context.Context, namespace, id, key string) ([]byte, error)
 	NamedLoader  func() (string, Loader)
-	Loader       func(with interface{}, resolver resolve.ResolveAs) (*Compute, error)
+	Loader       func(with interface{}, resolver resolve.ResolveAs) (Invoker, error)
 	Registry     map[string]Loader
 
-	Compute struct {
-		Invoker           *channel.Invoker
-		Start             func() error
-		WaitUntilShutdown func() error
-		Close             func() error
-		Environ           func() []string
+	// Compute struct {
+	// 	Invoker           Invoker
+	// 	Start             func() error
+	// 	WaitUntilShutdown func() error
+	// 	Close             func() error
+	// 	Environ           func() []string
+	// }
+
+	Invoker interface {
+		io.Closer
+		Operations() operations.Table
+
+		FireAndForget(context.Context, payload.Payload)
+		RequestResponse(context.Context, payload.Payload) mono.Mono[payload.Payload]
+		RequestStream(context.Context, payload.Payload) flux.Flux[payload.Payload]
+		RequestChannel(context.Context, payload.Payload, flux.Flux[payload.Payload]) flux.Flux[payload.Payload]
+
+		SetRequestResponseHandler(index uint32, handler invoke.RequestResponseHandler)
+		SetFireAndForgetHandler(index uint32, handler invoke.FireAndForgetHandler)
+		SetRequestStreamHandler(index uint32, handler invoke.RequestStreamHandler)
+		SetRequestChannelHandler(index uint32, handler invoke.RequestChannelHandler)
 	}
 )
 

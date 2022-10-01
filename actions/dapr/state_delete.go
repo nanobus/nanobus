@@ -20,17 +20,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dapr/components-contrib/state"
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 )
 
 type DeleteStateConfig struct {
 	// Name is name of binding to invoke.
-	Store string `mapstructure:"store" validate:"required"`
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke.
 	Key *expr.ValueExpr `mapstructure:"key" validate:"required"`
 }
@@ -46,22 +47,22 @@ func DeleteStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Ac
 		return nil, err
 	}
 
-	var dapr *DaprComponents
+	var resources resource.Resources
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr); err != nil {
+		"resource:lookup", &resources); err != nil {
 		return nil, err
 	}
 
-	store, ok := dapr.StateStores[c.Store]
-	if !ok {
-		return nil, fmt.Errorf("state store %q not found", c.Store)
+	client, err := resource.Get[proto.StateStoreClient](resources, c.Resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return DeleteStateAction(store, &c), nil
+	return DeleteStateAction(client, &c), nil
 }
 
 func DeleteStateAction(
-	store state.Store,
+	client proto.StateStoreClient,
 	config *DeleteStateConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		keyInt, err := config.Key.Eval(data)
@@ -70,7 +71,7 @@ func DeleteStateAction(
 		}
 		key := fmt.Sprintf("%v", keyInt)
 
-		err = store.Delete(&state.DeleteRequest{
+		_, err = client.Delete(ctx, &proto.DeleteRequest{
 			Key: key,
 		})
 		if err != nil {

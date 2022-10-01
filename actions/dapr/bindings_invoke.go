@@ -19,20 +19,20 @@ package dapr
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
-	"github.com/dapr/components-contrib/bindings"
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
 )
 
 type InvokeBindingConfig struct {
-	// Name is name of binding to invoke.
-	Name string `mapstructure:"name" validate:"required"`
+	// Resource is name of binding to invoke.
+	Resource string `mapstructure:"resource" validate:"required"`
 	// Operation is the name of the operation type for the binding to invoke
 	Operation string `mapstructure:"operation" validate:"required"`
 	// Data is the input bindings sent
@@ -52,27 +52,27 @@ func InvokeBindingLoader(with interface{}, resolver resolve.ResolveAs) (actions.
 		return nil, err
 	}
 
-	var dapr *DaprComponents
+	var resources resource.Resources
 	if err := resolve.Resolve(resolver,
-		"dapr:components", &dapr); err != nil {
+		"resource:lookup", &resources); err != nil {
 		return nil, err
 	}
 
-	binding, ok := dapr.OutputBindings[c.Name]
-	if !ok {
-		return nil, fmt.Errorf("output binding %q not found", c.Name)
+	client, err := resource.Get[proto.OutputBindingClient](resources, c.Resource)
+	if err != nil {
+		return nil, err
 	}
 
-	return InvokeBindingAction(binding, &c), nil
+	return InvokeBindingAction(client, &c), nil
 }
 
 func InvokeBindingAction(
-	binding bindings.OutputBinding,
+	client proto.OutputBindingClient,
 	config *InvokeBindingConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var bindingData interface{}
-		r := bindings.InvokeRequest{
-			Operation: bindings.OperationKind(config.Operation),
+		r := proto.InvokeRequest{
+			Operation: config.Operation,
 		}
 
 		var err error
@@ -92,7 +92,7 @@ func InvokeBindingAction(
 			return nil, err
 		}
 
-		resp, err := binding.Invoke(ctx, &r)
+		resp, err := client.Invoke(ctx, &r)
 		if err != nil {
 			return nil, err
 		}

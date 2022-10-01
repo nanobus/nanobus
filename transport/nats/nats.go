@@ -25,6 +25,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/nanobus/nanobus/channel"
+	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resolve"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/multierr"
 
@@ -70,6 +72,43 @@ func WithFilters(filters ...filter.Filter) Option {
 	}
 }
 
+type Configuration struct {
+	Address string `mapstructure:"address" validate:"required"`
+}
+
+func Load() (string, transport.Loader) {
+	return "nats", Loader
+}
+
+func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
+	var jsoncodec channel.Codec
+	var msgpackcodec channel.Codec
+	var transportInvoker transport.Invoker
+	var namespaces spec.Namespaces
+	var errorResolver errorz.Resolver
+	var filters []filter.Filter
+	var log logr.Logger
+	if err := resolve.Resolve(resolver,
+		"codec:json", &jsoncodec,
+		"codec:msgpack", &msgpackcodec,
+		"transport:invoker", &transportInvoker,
+		"spec:namespaces", &namespaces,
+		"errors:resolver", &errorResolver,
+		"filter:lookup", &filters,
+		"system:logger", &log); err != nil {
+		return nil, err
+	}
+
+	var c Configuration
+	if err := config.Decode(with, &c); err != nil {
+		return nil, err
+	}
+
+	return New(log, c.Address, namespaces, transportInvoker, errorResolver,
+		WithFilters(filters...),
+		WithCodecs(jsoncodec, msgpackcodec))
+}
+
 func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
@@ -88,6 +127,8 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 		cancel()
 		return nil, err
 	}
+
+	log.Info("Connected to NATS", "address", address)
 
 	return &NATS{
 		log:           log,

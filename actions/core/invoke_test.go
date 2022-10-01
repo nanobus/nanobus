@@ -26,6 +26,7 @@ import (
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
+	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -38,9 +39,9 @@ type mockInvoker struct {
 	err       error
 }
 
-func (m *mockInvoker) InvokeWithReturn(ctx context.Context, namespace, operation string, input interface{}, output interface{}) error {
-	m.namespace = namespace
-	m.operation = operation
+func (m *mockInvoker) InvokeWithReturn(ctx context.Context, receiver channel.Receiver, input interface{}, output interface{}) error {
+	m.namespace = receiver.Namespace
+	m.operation = receiver.Operation
 	m.input = input
 	if m.output != nil {
 		resolve.As(m.output, output)

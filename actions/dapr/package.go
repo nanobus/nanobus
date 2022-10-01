@@ -21,12 +21,9 @@ import (
 )
 
 var All = []actions.NamedLoader{
-	Inoke,
-	InvokeActor,
-	InvokeBinding,
-	SetState,
-	GetState,
+	Publish,
 	DeleteState,
-	PublishMessage,
-	SQLExec,
+	GetState,
+	SetState,
+	InvokeBinding,
 }

@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 /*
 Copyright 2022 The NanoBus Authors.
 
@@ -20,9 +23,6 @@ limitations under the License.
 
 // This program downloads the dist assets for the current swagger-ui version and places them into the embed directory
 // TODO: Compress?
-
-//go:build ignore
-// +build ignore
 
 package main
 

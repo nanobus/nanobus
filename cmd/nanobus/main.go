@@ -18,44 +18,36 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"net"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
-	"reflect"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/dapr/components-contrib/bindings"
-	"github.com/dapr/components-contrib/pubsub"
-	"github.com/dapr/dapr/pkg/actors"
-	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
-	dapr_rt "github.com/dapr/dapr/pkg/runtime"
-	"github.com/dapr/dapr/pkg/runtime/embedded"
+	"github.com/WasmRS/wasmrs-go/payload"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	"github.com/gorilla/mux"
 	"github.com/mattn/go-colorable"
-	"github.com/mitchellh/mapstructure"
-	"github.com/nanobus/nanobus/channel"
 	json_codec "github.com/nanobus/nanobus/channel/codecs/json"
 	msgpack_codec "github.com/nanobus/nanobus/channel/codecs/msgpack"
-	"github.com/nanobus/nanobus/channel/stateful"
+	"github.com/nanobus/nanobus/mesh"
 	"github.com/oklog/run"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	// register transports
-	_ "go.nanomsg.org/mangos/v3/transport/ipc"
-	_ "go.nanomsg.org/mangos/v3/transport/tcp"
+	// _ "go.nanomsg.org/mangos/v3/transport/ipc"
+	// _ "go.nanomsg.org/mangos/v3/transport/tcp"
+
+	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
@@ -70,15 +62,12 @@ import (
 	codec_json "github.com/nanobus/nanobus/codec/json"
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
 	"github.com/nanobus/nanobus/compute"
-	compute_mux "github.com/nanobus/nanobus/compute/mux"
-	compute_rsocket "github.com/nanobus/nanobus/compute/rsocket"
-	compute_wapc "github.com/nanobus/nanobus/compute/wapc"
+	compute_wasmrs "github.com/nanobus/nanobus/compute/wasmrs"
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/resource"
 	"github.com/nanobus/nanobus/runtime"
-	dapr_runtime "github.com/nanobus/nanobus/runtime/dapr"
 	"github.com/nanobus/nanobus/security/claims"
 	"github.com/nanobus/nanobus/spec"
 	spec_apex "github.com/nanobus/nanobus/spec/apex"
@@ -91,37 +80,6 @@ import (
 )
 
 var ErrInvalidURISyntax = errors.New("invalid invocation URI syntax")
-
-type decoding struct {
-	Pubsub  []pubsubDecoding  `mapstructure:"pubsub"`
-	Binding []bindingDecoding `mapstructure:"binding"`
-}
-
-type pubsubDecoding struct {
-	PubsubName string        `mapstructure:"pubsubname"`
-	Topic      string        `mapstructure:"topic"`
-	Codec      string        `mapstructure:"codec"`
-	Args       []interface{} `mapstructure:"args"`
-}
-
-type bindingDecoding struct {
-	BindingName string        `mapstructure:"bindingname"`
-	Codec       string        `mapstructure:"codec"`
-	Args        []interface{} `mapstructure:"args"`
-}
-
-type pubsubKey struct {
-	PubsubName string `mapstructure:"pubsubname"`
-	Topic      string `mapstructure:"topic"`
-}
-
-type codecConfig struct {
-	codec codec.Codec
-	args  []interface{}
-}
-
-type pubsubDecoders map[pubsubKey]codecConfig
-type bindingDecoders map[string]codecConfig
 
 type Runtime struct {
 	log        logr.Logger
@@ -153,38 +111,14 @@ func main() {
 	// zapLog := zap.NewExample()
 	log := zapr.NewLogger(zapLog)
 
-	daprRuntime := dapr_runtime.New()
-	daprRuntime.AttachFlags()
-
 	// NanoBus flags
 
-	var httpListenAddr string
-	flag.StringVar(
-		&httpListenAddr,
-		"http-listen-addr",
-		LookupEnvOrString("HTTP_LISTEN_ADDR", ":8080"),
-		"http listen address",
-	)
 	var busListenAddr string
 	flag.StringVar(
 		&busListenAddr,
 		"bus-listen-addr",
 		LookupEnvOrString("BUS_LISTEN_ADDR", "localhost:32320"),
 		"bus listen address",
-	)
-	var restListenAddr string
-	flag.StringVar(
-		&restListenAddr,
-		"rest-listen-addr",
-		LookupEnvOrString("REST_LISTEN_ADDR", ":8090"),
-		"rest listen address",
-	)
-	var natsURL string
-	flag.StringVar(
-		&natsURL,
-		"nats-url",
-		LookupEnvOrString("NATS_URL", ""),
-		"nats url",
 	)
 	var busFile string
 	flag.StringVar(
@@ -193,20 +127,8 @@ func main() {
 		LookupEnvOrString("CONFIG", "bus.yaml"),
 		"The bus configuration file",
 	)
-	var appPort int
-	flag.IntVar(
-		&appPort,
-		"app-port",
-		LookupEnvOrInt("PORT", 9000),
-		"The application listening port",
-	)
 	flag.Parse()
 	args := flag.Args()
-
-	if err := daprRuntime.Initialize(); err != nil {
-		log.Error(err, "could not initialize Dapr runtime")
-		os.Exit(1)
-	}
 
 	// Load the configuration
 	config, err := loadConfiguration(busFile)
@@ -214,6 +136,14 @@ func main() {
 		log.Error(err, "could not load configuration", "file", busFile)
 		os.Exit(1)
 	}
+
+	// Transport registration
+	transportRegistry := transport.Registry{}
+	transportRegistry.Register(
+		httprpc.Load,
+		rest.Load,
+		nats.Load,
+	)
 
 	// Spec registration
 	specRegistry := spec.Registry{}
@@ -224,52 +154,26 @@ func main() {
 	namespaces := make(spec.Namespaces)
 	if len(config.Specs) == 0 {
 		config.Specs = append(config.Specs, runtime.Component{
-			Type: "apex",
+			Uses: "apex",
 			With: map[string]interface{}{
 				"filename": "spec.apexlang",
 			},
 		})
 	}
 	for _, spec := range config.Specs {
-		loader, ok := specRegistry[spec.Type]
+		loader, ok := specRegistry[spec.Uses]
 		if !ok {
-			log.Error(nil, "could not find spec", "type", spec.Type)
+			log.Error(nil, "could not find spec", "type", spec.Uses)
 			os.Exit(1)
 		}
 		nss, err := loader(spec.With)
 		if err != nil {
-			log.Error(err, "error loading spec", "type", spec.Type)
+			log.Error(err, "error loading spec", "type", spec.Uses)
 			os.Exit(1)
 		}
 		for _, ns := range nss {
 			namespaces[ns.Name] = ns
 		}
-	}
-
-	actorEntities := []string{}
-	for namespaceName, ns := range namespaces {
-		for _, s := range ns.Services {
-			_, hasStateful := s.Annotation("stateful")
-			_, hasActor := s.Annotation("actor")
-			_, hasWorkflow := s.Annotation("workflow")
-			if hasStateful || hasActor || hasWorkflow {
-				entityName := namespaceName + "." + s.Name
-				actorEntities = append(actorEntities, entityName)
-			}
-		}
-	}
-
-	daprComponents := dapr.DaprComponents{
-		Entities: actorEntities,
-	}
-	dapr_runtime.RegisterComponents(daprRuntime)
-	daprRuntime.AddOptions(
-		dapr_rt.WithComponentsCallback(daprComponents.RegisterComponents),
-		dapr_rt.WithEmbeddedHandlers(&daprComponents),
-	)
-	if err = daprRuntime.Run(); err != nil {
-		log.Error(err, "error running Dapr runtime")
-		os.Exit(1)
 	}
 
 	// Filter registration
@@ -281,9 +185,10 @@ func main() {
 	// Compute registration
 	computeRegistry := compute.Registry{}
 	computeRegistry.Register(
-		compute_mux.Mux,
-		compute_wapc.WaPC,
-		compute_rsocket.RSocket,
+		compute_wasmrs.WasmRS,
+		// compute_mux.Mux,
+		// compute_wapc.WaPC,
+		// compute_rsocket.RSocket,
 	)
 
 	// Codec registration
@@ -300,22 +205,25 @@ func main() {
 	resourceRegistry.Register(
 		postgres.Connection,
 		gorm.Connection,
+		dapr.PubSub,
+		dapr.StateStore,
+		dapr.OutputBinding,
 	)
 
 	// Action registration
 	actionRegistry := actions.Registry{}
 	actionRegistry.Register(core.All...)
-	actionRegistry.Register(dapr.All...)
 	actionRegistry.Register(postgres.All...)
 	actionRegistry.Register(gorm.All...)
+	actionRegistry.Register(dapr.All...)
 
 	// Codecs
 	jsoncodec := json_codec.New()
 	msgpackcodec := msgpack_codec.New()
 
 	// Dependencies
-	var invoker *channel.Invoker
-	var busInvoker compute.BusInvoker
+	// var invoker *channel.Invoker
+	// var busInvoker compute.BusInvoker
 	httpClient := getHTTPClient()
 	env := getEnvironment()
 	dependencies := map[string]interface{}{
@@ -325,7 +233,6 @@ func main() {
 		"codec:msgpack":   msgpackcodec,
 		"spec:namespaces": namespaces,
 		"os:env":          env,
-		"dapr:components": &daprComponents,
 	}
 	resolver := func(name string) (interface{}, bool) {
 		dep, ok := dependencies[name]
@@ -340,7 +247,7 @@ func main() {
 		if loadable.Auto {
 			if _, exists := config.Codecs[name]; !exists {
 				config.Codecs[name] = runtime.Component{
-					Type: name,
+					Uses: name,
 				}
 			}
 		}
@@ -349,14 +256,14 @@ func main() {
 	codecs := make(codec.Codecs)
 	codecsByContentType := make(codec.Codecs)
 	for name, component := range config.Codecs {
-		loadable, ok := codecRegistry[component.Type]
+		loadable, ok := codecRegistry[component.Uses]
 		if !ok {
-			log.Error(nil, "could not find codec", "type", component.Type)
+			log.Error(nil, "Could not find codec", "type", component.Uses)
 			os.Exit(1)
 		}
 		c, err := loadable.Loader(component.With, resolveAs)
 		if err != nil {
-			log.Error(err, "error loading codec", "type", component.Type)
+			log.Error(err, "Error loading codec", "type", component.Uses)
 			os.Exit(1)
 		}
 		codecs[name] = c
@@ -367,68 +274,27 @@ func main() {
 
 	resources := resource.Resources{}
 	for name, component := range config.Resources {
-		loader, ok := resourceRegistry[component.Type]
+		log.Info("Initializing resource", "name", name)
+
+		loader, ok := resourceRegistry[component.Uses]
 		if !ok {
-			log.Error(nil, "could not find resource", "type", component.Type)
+			log.Error(nil, "Could not find resource", "type", component.Uses)
 			os.Exit(1)
 		}
 		c, err := loader(ctx, component.With, resolveAs)
 		if err != nil {
-			log.Error(err, "error loading resource", "type", component.Type)
+			log.Error(err, "Error loading resource", "type", component.Uses)
 			os.Exit(1)
 		}
+
 		resources[name] = c
 	}
 	dependencies["resource:lookup"] = resources
 
-	pubsubDecs := pubsubDecoders{}
-	bindingDecs := bindingDecoders{}
-	if config.Decoding != nil {
-		var dec decoding
-		err = mapstructure.Decode(config.Decoding, &dec)
-		if err != nil {
-			log.Error(err, "error decoding config")
-			os.Exit(1)
-		}
-
-		for _, psd := range dec.Pubsub {
-			codec, ok := codecs[psd.Codec]
-			if !ok {
-				log.Error(err, "codec not configured", "name", psd.Codec)
-				os.Exit(1)
-			}
-			if psd.Args == nil {
-				psd.Args = []interface{}{}
-			}
-			pubsubDecs[pubsubKey{
-				PubsubName: psd.PubsubName,
-				Topic:      psd.Topic,
-			}] = codecConfig{
-				codec: codec,
-				args:  psd.Args,
-			}
-		}
-
-		for _, bd := range dec.Binding {
-			codec, ok := codecs[bd.Codec]
-			if !ok {
-				log.Error(err, "codec not configured", "name", bd.Codec)
-				os.Exit(1)
-			}
-			if bd.Args == nil {
-				bd.Args = []interface{}{}
-			}
-			bindingDecs[bd.BindingName] = codecConfig{
-				codec: codec,
-				args:  bd.Args,
-			}
-		}
-	}
-
 	// Create processor
 	processor, err := runtime.NewProcessor(log, config, actionRegistry, resolver)
 	if err != nil {
-		log.Error(err, "could not create NanoBus runtime")
+		log.Error(err, "Could not create NanoBus runtime")
 		os.Exit(1)
 	}
 
@@ -441,64 +307,145 @@ func main() {
 		resolveAs:  resolveAs,
 		env:        env,
 	}
-	busInvoker = rt.BusInvoker
-	dependencies["bus:invoker"] = busInvoker
+	// busInvoker = rt.BusInvoker
+	// dependencies["bus:invoker"] = busInvoker
 	dependencies["state:invoker"] = func(ctx context.Context, namespace, id, key string) ([]byte, error) {
-		resp, err := daprComponents.Actors.GetState(ctx, &actors.GetStateRequest{
-			ActorType: namespace,
-			ActorID:   id,
-			Key:       key,
-		})
-		if err != nil {
-			log.Error(err, "could not get actor state")
-			return nil, err
-		}
-
-		return resp.Data, nil
+		// TODO: Retrieve state
+		return []byte{}, nil
 	}
-
-	appURL := fmt.Sprintf("http://127.0.0.1:%d", appPort)
-	os.Setenv("APP_URL", appURL)
-	// Internal invoker
-	if config.Compute.Type == "" {
-		config.Compute.Type = "rsocket"
-	}
-	computeLoader, ok := computeRegistry[config.Compute.Type]
-	if !ok {
-		log.Error(err, "could not find compute", "type", config.Compute.Type)
-		os.Exit(1)
-	}
-	computeInstance, err := computeLoader(config.Compute.With, resolveAs)
-	if err != nil {
-		log.Error(err, "could not load compute", "type", config.Compute.Type)
-		os.Exit(1)
-	}
-	invoker = computeInstance.Invoker
-	dependencies["client:invoker"] = invoker
 
 	if err = processor.Initialize(); err != nil {
-		log.Error(err, "could not initialize processor")
+		log.Error(err, "Could not initialize processor")
 		os.Exit(1)
 	}
+
+	m := mesh.New()
+
+	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
+
+	for _, comp := range config.Compute {
+		computeLoader, ok := computeRegistry[comp.Uses]
+		if !ok {
+			log.Error(err, "could not find compute", "type", comp.Uses)
+			os.Exit(1)
+		}
+		invoker, err := computeLoader(comp.With, resolveAs)
+		if err != nil {
+			log.Error(err, "could not load compute", "type", comp.Uses)
+			os.Exit(1)
+		}
+		m.Link(invoker)
+	}
+
+	for _, subscription := range config.Subscriptions {
+		pubsub, err := resource.Get[proto.PubSubClient](resources, subscription.Resource)
+		if err != nil {
+			log.Error(err, "Could not load resource", "name", subscription.Resource)
+			os.Exit(1)
+		}
+
+		c, ok := codecs[subscription.Codec]
+		if !ok {
+			log.Error(nil, "Could not find codec", "name", subscription.Resource)
+			os.Exit(1)
+		}
+
+		pull, err := pubsub.PullMessages(ctx)
+		if err != nil {
+			log.Error(nil, "Could not pull messages", "name", subscription.Resource)
+			os.Exit(1)
+		}
+
+		go func(pull proto.PubSub_PullMessagesClient, c codec.Codec, sub runtime.Subscription) {
+			if err := pull.Send(&proto.PullMessagesRequest{
+				Topic: &proto.Topic{
+					Name:     sub.Topic,
+					Metadata: sub.Metadata,
+				},
+			}); err != nil {
+				log.Error(err, "Error subscribing")
+				return
+			}
+
+			log.Info("Subscribed to pubsub", "resource", sub.Resource, "topic", sub.Topic)
+
+			for {
+				recv, err := pull.Recv()
+				if err == io.EOF || err == context.Canceled {
+					return
+				}
+				if err != nil {
+					log.Error(err, "Error receiving messages")
+					return
+				}
+
+				input, messageType, err := c.Decode(recv.Data, sub.CodecArgs...)
+				if err != nil {
+					log.Error(err, "could not decode message")
+					pull.Send(&proto.PullMessagesRequest{
+						AckMessageId: recv.Id,
+						AckError: &proto.AckMessageError{
+							Message: err.Error(),
+						},
+					})
+					continue
+				}
+
+				data := actions.Data{
+					"input": input,
+				}
+
+				pipelineName := sub.Function
+				if pipelineName == "" {
+					pipelineName = messageType
+				}
+
+				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+					logInbound(log, "events::type="+pipelineName, string(jsonBytes))
+				}
+
+				_, err = processor.Event(ctx, pipelineName, data)
+				if err != nil {
+					log.Error(err, "could not process message")
+					pull.Send(&proto.PullMessagesRequest{
+						AckMessageId: recv.Id,
+						AckError: &proto.AckMessageError{
+							Message: err.Error(),
+						},
+					})
+					continue
+				}
+
+				pull.Send(&proto.PullMessagesRequest{
+					AckMessageId: recv.Id,
+				})
+			}
+		}(pull, c, subscription)
+	}
+
+	// Big 'ol TODO
+	// invoker = computeInstance.Invoker
+	// dependencies["client:invoker"] = invoker
 
 	filters := []filter.Filter{}
 	if configFilters, ok := config.Filters["http"]; ok {
 		for _, f := range configFilters {
-			filterLoader, ok := filterRegistry[f.Type]
+			filterLoader, ok := filterRegistry[f.Uses]
 			if !ok {
-				log.Error(nil, "could not find filter", "type", f.Type)
+				log.Error(nil, "could not find filter", "type", f.Uses)
 				os.Exit(1)
 			}
 
 			filter, err := filterLoader(f.With, resolveAs)
 			if err != nil {
-				log.Error(err, "could not load filter", "type", f.Type)
+				log.Error(err, "could not load filter", "type", f.Uses)
 				os.Exit(1)
 			}
 
 			filters = append(filters, filter)
 		}
 	}
+	dependencies["filter:lookup"] = filters
 
 	translateError := func(err error) *errorz.Error {
 		if errz, ok := err.(*errorz.Error); ok {
@@ -547,539 +494,15 @@ func main() {
 
 		return e
 	}
-
-	daprComponents.InvokeHandler(func(ctx context.Context, method, contentType string, payload []byte, metadata map[string][]string) ([]byte, string, error) {
-		//log.Printf("INVOKE HANDLER %s", method)
-		var input interface{}
-		var output interface{}
-
-		claimsMap := claims.FromContext(ctx)
-
-		if strings.HasPrefix(method, "actors/") {
-			// TODO: Decoder
-			if len(payload) > 0 {
-				if err := msgpack.Unmarshal(payload, &input); err != nil {
-					return nil, "", err
-				}
-			}
-
-			parts := strings.Split(method, "/")
-			if len(parts) == 5 && parts[3] == "method" {
-				actorType := parts[1]
-				actorID := parts[2]
-				fn := parts[4]
-
-				lastDot := strings.LastIndexByte(actorType, '.')
-				if lastDot < 0 {
-					return nil, "", fmt.Errorf("invalid method %q", actorType)
-				}
-				service := actorType[lastDot+1:]
-				namespace := actorType[:lastDot]
-
-				target := actorType + "/" + fn
-
-				if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-					logInbound(log, target, string(jsonBytes))
-				}
-
-				data := actions.Data{
-					"claims":   claimsMap,
-					"input":    input,
-					"metadata": metadata,
-					"env":      env,
-				}
-
-				ctx := function.ToContext(ctx, function.Function{
-					Namespace: actorType,
-					Operation: fn,
-				})
-
-				output, ok, err = rt.processor.Service(ctx, namespace, service, fn, data)
-				if err != nil {
-					return nil, "", err
-				}
-				if ok && output != nil {
-					input = output
-				}
-
-				var response stateful.Response
-				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
-					Namespace: actorType,
-					Operation: fn,
-					EntityID:  actorID,
-				}, input, &response); err != nil {
-					return nil, "", translateError(err)
-				}
-
-				mutation := response.Mutation
-				numOperations := len(mutation.Set) + len(mutation.Remove)
-				if numOperations > 0 {
-					operations := make([]actors.TransactionalOperation, numOperations)
-					if len(mutation.Set) > 0 {
-						i := 0
-						for key, value := range mutation.Set {
-							if len(value.Data) == 0 && value.DataBase64 != "" {
-								if value.Data, err = base64.StdEncoding.DecodeString(value.DataBase64); err != nil {
-									return nil, "", err
-								}
-								value.DataBase64 = ""
-							}
-							valueBytes, err := msgpackcodec.Encode(&value)
-							if err != nil {
-								return nil, "", err
-							}
-							operations[i] = actors.TransactionalOperation{
-								Operation: actors.Upsert,
-								Request: actors.TransactionalUpsert{
-									Key:   key,
-									Value: valueBytes,
-								},
-							}
-							i++
-						}
-					}
-
-					if len(mutation.Remove) > 0 {
-						i := len(mutation.Set)
-						for _, key := range response.Mutation.Remove {
-							operations[i] = actors.TransactionalOperation{
-								Operation: actors.Delete,
-								Request: actors.TransactionalDelete{
-									Key: key,
-								},
-							}
-							i++
-						}
-					}
-
-					if err = daprComponents.Actors.TransactionalStateOperation(ctx, &actors.TransactionalRequest{
-						Operations: operations,
-						ActorType:  actorType,
-						ActorID:    actorID,
-					}); err != nil {
-						return nil, "", fmt.Errorf("could not update state for actor %s/%s: %w", actorType, actorID, err)
-					}
-				}
-
-				var respData []byte
-				if !isNil(response.Result) {
-					if respData, err = msgpack.Marshal(response.Result); err != nil {
-						return nil, "", err
-					}
-				}
-
-				return respData, "application/msgpack", nil
-			} else if len(parts) == 6 && parts[3] == "method" {
-				actorType := parts[1]
-				actorID := parts[2]
-				callback := parts[4] // "timer" or "remind"
-				name := parts[5]     // timer or reminder name
-
-				type InvokeHandlerRequest struct {
-					Name string `msgpack:"name" json:"name"`
-					Data []byte `msgpack:"data" json:"data"`
-				}
-
-				type wrapper struct {
-					Data    []byte `json:"data"`
-					DueTime string `json:"dueTime"`
-					Period  string `json:"period"`
-				}
-
-				var w wrapper
-				if err = json.Unmarshal(payload, &w); err != nil {
-					return nil, "", translateError(err)
-				}
-
-				request := InvokeHandlerRequest{
-					Name: name,
-					Data: w.Data,
-				}
-				if err = invoker.Invoke(ctx, channel.Receiver{
-					Namespace: actorType,
-					Operation: callback,
-					EntityID:  actorID,
-				}, &request); err != nil {
-					fmt.Println(err)
-					return nil, "", translateError(err)
-				}
-
-				return []byte{}, "application/msgpack", nil
-			} else if len(parts) == 3 {
-				actorType := parts[1]
-				actorID := parts[2]
-
-				fmt.Println("Deactivating " + actorType + "/" + actorID)
-				if err = invoker.Invoke(ctx, channel.Receiver{
-					Namespace: actorType,
-					Operation: "deactivate",
-					EntityID:  actorID,
-				}, input); err != nil {
-					return nil, "", translateError(err)
-				}
-
-				return []byte{}, "application/msgpack", nil
-			}
-		} else {
-			// TODO: Decoder
-			if err := json.Unmarshal(payload, &input); err != nil {
-				return nil, "", err
-			}
-
-			target := method
-			idx := strings.LastIndex(method, "/")
-			if idx < 0 {
-				return nil, "", fmt.Errorf("invalid method %q", method)
-			}
-			fn := method[idx+1:]
-			method = method[:idx]
-
-			lastDot := strings.LastIndexByte(method, '.')
-			if lastDot < 0 {
-				return nil, "", fmt.Errorf("invalid method %q", method)
-			}
-			service := method[lastDot+1:]
-			namespace := method[:lastDot]
-			ns := namespace + "." + service
-
-			data := actions.Data{
-				"claims":   claimsMap,
-				"input":    input,
-				"metadata": metadata,
-			}
-
-			if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-				logInbound(log, target, string(jsonBytes))
-			}
-
-			data["env"] = env
-
-			ctx := function.ToContext(ctx, function.Function{
-				Namespace: ns,
-				Operation: fn,
-			})
-
-			output, ok, err = rt.processor.Service(ctx, namespace, service, fn, data)
-			if err != nil {
-				return nil, "", err
-			}
-
-			if !ok {
-				// No pipeline exits for the operation so invoke directly.
-				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
-					Namespace: ns,
-					Operation: fn,
-				}, input, &output); err != nil {
-					return nil, "", translateError(err)
-				}
-			}
-		}
-
-		var respData []byte
-		if output != nil {
-			if respData, err = json.Marshal(&output); err != nil {
-				return nil, "", err
-			}
-		}
-
-		return respData, "application/json", err
-	})
-
-	inputBindingHandler := func(function string, codec codec.Codec, args []interface{}) bindings.Handler {
-		return func(ctx context.Context, msg *bindings.ReadResponse) ([]byte, error) {
-			target := function
-
-			decoded, typeName, err := codec.Decode(msg.Data, args...)
-			if err != nil {
-				log.Error(err, "error decoding event payload")
-				return nil, err
-			}
-
-			data := actions.Data{
-				"input":    decoded,
-				"type":     typeName,
-				"metadata": msg.Metadata,
-			}
-
-			if target == "" {
-				target = typeName
-			}
-
-			if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
-				logInbound(log, target, string(jsonBytes))
-			}
-
-			data["env"] = env
-
-			result, err := rt.processor.Event(ctx, target, data)
-			if err != nil {
-				log.Error(err, "error processing event")
-				return nil, err
-			}
-
-			var resultBytes []byte
-			if result != nil {
-				resultBytes, err = codec.Encode(result)
-			}
-
-			return resultBytes, err
-		}
-	}
-
-	type InputBinding struct {
-		Binding   string        `mapstructure:"binding"`
-		Codec     string        `mapstructure:"codec"`
-		CodecArgs []interface{} `mapstructure:"codecArgs"`
-		Function  string        `mapstructure:"function"`
-	}
-
-	var inputBindings []InputBinding
-	if rt.config.InputBindings != nil {
-		if err := mapstructure.Decode(rt.config.InputBindings, &inputBindings); err != nil {
-			log.Error(err, "could not decode inout bindings configuration")
-			os.Exit(1)
-		}
-	}
-
-	// Direct input bindings
-	for _, binding := range inputBindings {
-		p, ok := daprComponents.InputBindings[binding.Binding]
-		if !ok {
-			log.Error(nil, "input binding not configured", "name", binding.Binding)
-			os.Exit(1)
-		}
-		if binding.CodecArgs == nil {
-			binding.CodecArgs = []interface{}{}
-		}
-		c, ok := codecs[binding.Codec]
-		if !ok {
-			log.Error(nil, "codec not configured", "name", binding.Codec)
-			os.Exit(1)
-		}
-
-		go func(p bindings.InputBinding, binding InputBinding, c codec.Codec) {
-			log.Info("reading from input binding", "name", binding.Binding)
-			if err = p.Read(inputBindingHandler(binding.Function, c, binding.CodecArgs)); err != nil {
-				log.Error(err, "error reading from input binding", "name", binding.Binding)
-			}
-		}(p, binding, c)
-	}
-
-	stateHandler := func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		namespace := mux.Vars(r)["namespace"]
-		id := mux.Vars(r)["id"]
-		key := mux.Vars(r)["key"]
-		returnBase64 := r.URL.Query().Has("base64")
-
-		resp, err := daprComponents.Actors.GetState(r.Context(), &actors.GetStateRequest{
-			ActorType: namespace,
-			ActorID:   id,
-			Key:       key,
-		})
-		if err != nil {
-			log.Error(err, "could not get actor state")
-			handleError(err, w, http.StatusInternalServerError)
-			return
-		}
-
-		if returnBase64 && resp.Data != nil {
-			var rawItem stateful.RawItem
-			// Dapr stores actor state in JSON
-			if err := json.Unmarshal(resp.Data, &rawItem); err != nil {
-				log.Error(err, "could not unmarshal raw item")
-				handleError(err, w, http.StatusInternalServerError)
-				return
-			}
-
-			rawItem.DataBase64 = base64.StdEncoding.EncodeToString(rawItem.Data)
-			rawItem.Data = nil
-
-			if resp.Data, err = json.Marshal(rawItem); err != nil {
-				log.Error(err, "could not marshal raw item")
-				handleError(err, w, http.StatusInternalServerError)
-				return
-			}
-		}
-
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Write(resp.Data)
-	}
-
-	healthHandler := func(w http.ResponseWriter, r *http.Request) {
-		//fmt.Println("HEALTH HANDLER CALLED")
-		defer r.Body.Close()
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("OK"))
-	}
-
-	daprComponents.InputBindingHandler(func(ctx context.Context, event *embedded.BindingEvent) ([]byte, error) {
-		var input interface{}
-		if codec, ok := bindingDecs[event.BindingName]; ok {
-			decoded, typeName, err := codec.codec.Decode(event.Data, codec.args...)
-			if err != nil {
-				log.Error(err, "error decoding input binding payload")
-				return nil, err
-			}
-			input = map[string]interface{}{
-				"data": decoded,
-				"type": typeName,
-			}
-		} else if err := json.Unmarshal(event.Data, &input); err != nil {
-			return nil, err
-		}
-
-		actionData := actions.Data{
-			"input":    input,
-			"metadata": event.Metadata,
-			"env":      env,
-		}
-
-		output, err := rt.processor.Event(ctx, event.BindingName, actionData)
-		if err != nil {
-			return nil, err
-		}
-
-		var respData []byte
-		if output != nil {
-			if respData, err = json.Marshal(&output); err != nil {
-				return nil, err
-			}
-		}
-
-		return respData, err
-	})
-
-	pubsubHandler := func(function string, codec codec.Codec, args []interface{}) pubsub.Handler {
-		return func(ctx context.Context, msg *pubsub.NewMessage) error {
-			target := function
-
-			decoded, typeName, err := codec.Decode(msg.Data, args...)
-			if err != nil {
-				log.Error(err, "error decoding event payload")
-				return err
-			}
-
-			data := actions.Data{
-				"input":    decoded,
-				"type":     typeName,
-				"metadata": msg.Metadata,
-			}
-
-			if target == "" {
-				target = typeName
-			}
-
-			if jsonBytes, err := json.MarshalIndent(data, "", "  "); err == nil {
-				logInbound(log, target, string(jsonBytes))
-			}
-
-			data["env"] = env
-
-			_, err = rt.processor.Event(ctx, target, data)
-			if err != nil {
-				log.Error(err, "error processing event")
-				return err
-			}
-
-			return nil
-		}
-	}
-
-	type Subscription struct {
-		Pubsub    string            `mapstructure:"pubsub"`
-		Topic     string            `mapstructure:"topic"`
-		Metadata  map[string]string `mapstructure:"metadata"`
-		Codec     string            `mapstructure:"codec"`
-		CodecArgs []interface{}     `mapstructure:"codecArgs"`
-		Function  string            `mapstructure:"function"`
-	}
-
-	var subscriptions []Subscription
-	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
-		log.Error(err, "error decoding subscriptions")
-		os.Exit(1)
-	}
-
-	// Direct subscriptions
-	for _, sub := range subscriptions {
-		p, ok := daprComponents.PubSubs[sub.Pubsub]
-		if !ok {
-			log.Error(nil, "pubsub not configured", "name", sub.Pubsub)
-			os.Exit(1)
-		}
-		if sub.CodecArgs == nil {
-			sub.CodecArgs = []interface{}{}
-		}
-		codec, ok := codecs[sub.Codec]
-		if !ok {
-			log.Error(nil, "codec not configured", "name", sub.Codec)
-			os.Exit(1)
-		}
-		log.Info("subscribing to topic", "pubsub", sub.Pubsub, "topic", sub.Topic)
-		if err = p.Subscribe(ctx, pubsub.SubscribeRequest{
-			Topic:    sub.Topic,
-			Metadata: sub.Metadata,
-		}, pubsubHandler(sub.Function, codec, sub.CodecArgs)); err != nil {
-			log.Error(err, "could not subscribe to topic", "pubsub", sub.Pubsub, "topic", sub.Topic)
-			os.Exit(1)
-		}
-	}
-
-	// Subscriptions via the embedded app channel
-	daprComponents.PubSubHandler(func(ctx context.Context, event *embedded.TopicEvent) (embedded.EventResponseStatus, error) {
-		function := event.Path
-
-		if jsonBytes, err := json.MarshalIndent(event.CloudEvent, "", "  "); err == nil {
-			logInbound(log, function, string(jsonBytes))
-		}
-
-		var input interface{} = event.CloudEvent
-		if event.RawPayload {
-			dataBase64String, ok := event.CloudEvent["data_base64"].(string)
-			if !ok {
-				log.Error(nil, "data_base64 is not a string")
-				return embedded.EventResponseStatusRetry, err
-			}
-			inputBytes, err := base64.StdEncoding.DecodeString(dataBase64String)
-			if err != nil {
-				log.Error(err, "could not base64 decode raw payload")
-				return embedded.EventResponseStatusRetry, err
-			}
-
-			if codec, ok := pubsubDecs[pubsubKey{
-				PubsubName: event.PubsubName,
-				Topic:      event.Topic,
-			}]; ok {
-				decoded, typeName, err := codec.codec.Decode(inputBytes, codec.args...)
-				if err != nil {
-					log.Error(err, "could not decode raw payload bytes")
-					return embedded.EventResponseStatusRetry, err
-				}
-				input = map[string]interface{}{
-					"data": decoded,
-					"type": typeName,
-				}
-			} else {
-				input = inputBytes
-			}
-		}
-
-		data := actions.Data{
-			"input":    input,
-			"metadata": event.Metadata,
-			"env":      env,
-		}
-
-		_, err := rt.processor.Event(ctx, function, data)
-		if err != nil {
-			log.Error(err, "error processes event")
-			return embedded.EventResponseStatusRetry, err
-		}
-
-		return embedded.EventResponseStatusSuccess, nil
-	})
+	dependencies["errors:resolver"] = errorz.Resolver(translateError)
+
+	// healthHandler := func(w http.ResponseWriter, r *http.Request) {
+	// 	//fmt.Println("HEALTH HANDLER CALLED")
+	// 	defer r.Body.Close()
+
+	// 	w.Header().Set("Content-Type", "text/plain")
+	// 	w.Write([]byte("OK"))
+	// }
 
 	transportInvoker := func(ctx context.Context, namespace, service, id, fn string, input interface{}) (interface{}, error) {
 		if err := coalesceInput(namespaces, namespace, service, fn, input); err != nil {
@@ -1108,48 +531,37 @@ func main() {
 
 		response, ok, err := rt.processor.Service(ctx, namespace, service, fn, data)
 		if err != nil {
-			return nil, err
+			return nil, translateError(err)
 		}
 
+		// No pipeline exits for the operation so invoke directly.
 		if !ok {
-			// No pipeline exits for the operation so invoke directly.
-			if id == "" {
-				if err = invoker.InvokeWithReturn(ctx, channel.Receiver{
-					Namespace: ns,
-					Operation: fn,
-				}, input, &response); err != nil {
-					return nil, translateError(err)
-				}
-			} else {
-				data, err := msgpack.Marshal(input)
-				if err != nil {
-					return nil, err
-				}
-
-				req := invokev1.NewInvokeMethodRequest(fn).
-					WithActor(ns, id).
-					WithRawData(data, "application/msgpack")
-				res, err := daprComponents.Actors.Call(ctx, req)
-				if err != nil {
-					return nil, err
-				}
-				_, respBytes := res.RawData() // TODO: Use content type returned.
-
-				var response interface{}
-				if len(respBytes) > 0 {
-					if err = msgpack.Unmarshal(respBytes, &response); err != nil {
-						return nil, err
-					}
-				}
-
-				return response, nil
+			payloadData, err := msgpackcodec.Encode(input)
+			if err != nil {
+				return nil, translateError(err)
 			}
+
+			metadata := make([]byte, 8)
+			p := payload.New(payloadData, metadata)
+
+			result, err := m.RequestResponse(ctx, ns, fn, p).Block()
+			if err != nil {
+				return nil, translateError(err)
+			}
+
+			var resultDecoded interface{}
+			if err := msgpack.Unmarshal(result.Data(), &resultDecoded); err != nil {
+				return nil, translateError(err)
+			}
+
+			response = resultDecoded
 		}
 
 		return response, err
 	}
+	dependencies["transport:invoker"] = transport.Invoker(transportInvoker)
 
-	go computeInstance.Start()
+	// go computeInstance.Start()
 
 	var g run.Group
 	if len(args) > 0 {
@@ -1163,12 +575,12 @@ func main() {
 		}
 		g.Add(func() error {
 			appEnv := []string{
-				fmt.Sprintf("PORT=%d", appPort),
+				// fmt.Sprintf("PORT=%d", appPort),
 				fmt.Sprintf("BUS_URL=http://127.0.0.1:%s", busPort),
 			}
-			if computeInstance.Environ != nil {
-				appEnv = append(appEnv, computeInstance.Environ()...)
-			}
+			// if computeInstance.Environ != nil {
+			// 	appEnv = append(appEnv, computeInstance.Environ()...)
+			// }
 			env := []string{}
 			env = append(env, os.Environ()...)
 			env = append(env, appEnv...)
@@ -1184,92 +596,52 @@ func main() {
 			}
 		})
 	}
-	{
-		g.Add(func() error {
-			return daprRuntime.WaitUntilShutdown()
-		}, func(error) {
-			daprRuntime.Shutdown(1 * time.Second)
-		})
-	}
-	{
-		// Expose the bus
-		r := mux.NewRouter()
-		r.HandleFunc("/providers/{namespace}/{function}", rt.ProvidersHandler).Methods("POST")
-		r.HandleFunc("/events/{function}", rt.EventsHandler).Methods("POST")
-		r.HandleFunc("/state/{namespace}/{id}/{key}", stateHandler).Methods("GET")
-		r.HandleFunc("/healthz", healthHandler).Methods("GET")
-		//r.HandleFunc("/dapr/subscribe", rt.SubscriptionsHandler).Methods("GET")
+	// {
+	// 	// Expose the bus
+	// 	r := mux.NewRouter()
+	// 	r.HandleFunc("/healthz", healthHandler).Methods("GET")
 
-		log.Info("Bus listening", "address", busListenAddr)
-		ln, err := net.Listen("tcp", busListenAddr)
-		if err != nil {
-			log.Error(err, "could not create bus")
-			os.Exit(1)
-		}
-		g.Add(func() error {
-			return http.Serve(ln, r)
-		}, func(error) {
-			ln.Close()
-		})
-	}
+	// 	log.Info("Bus listening", "address", busListenAddr)
+	// 	ln, err := net.Listen("tcp", busListenAddr)
+	// 	if err != nil {
+	// 		log.Error(err, "could not create bus")
+	// 		os.Exit(1)
+	// 	}
+	// 	g.Add(func() error {
+	// 		return http.Serve(ln, r)
+	// 	}, func(error) {
+	// 		ln.Close()
+	// 	})
+	// }
 	{
 		g.Add(func() error {
-			return computeInstance.WaitUntilShutdown()
+			return m.WaitUntilShutdown()
 		}, func(error) {
-			computeInstance.Close()
+			m.Close()
 		})
 	}
-	{
-		// Expose HTTP-RPC
-		transport, err := httprpc.New(log,
-			httpListenAddr, namespaces, transportInvoker, translateError,
-			httprpc.WithFilters(filters...),
-			httprpc.WithCodecs(jsoncodec, msgpackcodec))
-		if err != nil {
-			log.Error(err, "could not create HTTP-RPC transport")
+
+	for name, comp := range config.Transports {
+		name := name // Make copy
+		loader, ok := transportRegistry[comp.Uses]
+		if !ok {
+			log.Error(nil, "unknown transport", "type", comp.Uses)
 			os.Exit(1)
 		}
-		g.Add(func() error {
-			log.Info("HTTP-RPC listening", "address", httpListenAddr)
-			return transport.Listen()
-		}, func(error) {
-			transport.Close()
-		})
-	}
-	{
-		// Expose REST
-		transport, err := rest.New(log,
-			restListenAddr, namespaces, transportInvoker, translateError,
-			rest.WithFilters(filters...),
-			rest.WithCodecs(jsoncodec, msgpackcodec))
+		log.Info("Initializing transport", "name", name)
+		t, err := loader(ctx, comp.With, resolveAs)
 		if err != nil {
-			log.Error(err, "could not create REST transport")
+			log.Error(err, "could not load transport", "type", comp.Uses)
 			os.Exit(1)
 		}
+
 		g.Add(func() error {
-			log.Info("REST listening", "address", restListenAddr)
-			return transport.Listen()
+			return t.Listen()
 		}, func(error) {
-			transport.Close()
+			t.Close()
 		})
 	}
-	if natsURL != "" {
-		// Expose NATS
-		transport, err := nats.New(log,
-			natsURL, namespaces, transportInvoker, translateError,
-			nats.WithFilters(filters...),
-			nats.WithCodecs(jsoncodec, msgpackcodec))
-		if err != nil {
-			log.Error(err, "could not create NATS transport")
-			os.Exit(1)
-		}
-		g.Add(func() error {
-			log.Info("NATS client connected", "url", natsURL)
-			return transport.Listen()
-		}, func(error) {
-			transport.Close()
-		})
-	}
+
 	{
 		g.Add(run.SignalHandler(ctx, syscall.SIGINT, syscall.SIGTERM))
 	}
@@ -1282,141 +654,27 @@ func main() {
 	}
 }
 
-func (rt *Runtime) ProvidersHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	namespace := mux.Vars(r)["namespace"]
-	function := mux.Vars(r)["function"]
+// func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
+// 	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
+// 		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
+// 	}
 
-	lastDot := strings.LastIndexByte(namespace, '.')
-	if lastDot < 0 {
-		handleError(ErrInvalidURISyntax, w, http.StatusBadRequest)
-		return
-	}
-	service := namespace[lastDot+1:]
-	namespace = namespace[:lastDot]
+// 	data := actions.Data{
+// 		"input": input,
+// 		"env":   rt.env,
+// 	}
 
-	var input interface{}
-	if err := msgpack.NewDecoder(r.Body).Decode(&input); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
+// 	output, err := rt.processor.Provider(ctx, namespace, service, function, data)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	data := actions.Data{
-		"input": input,
-	}
+// 	if output, err = coalesceOutput(rt.namespaces, namespace, service, function, output); err != nil {
+// 		return nil, err
+// 	}
 
-	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
-	}
-
-	data["env"] = rt.env
-
-	output, err := rt.processor.Provider(r.Context(), namespace, service, function, data)
-	if err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
-
-	if output, err = coalesceOutput(rt.namespaces, namespace, service, function, output); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/msgpack")
-	msgpack.NewEncoder(w).Encode(output)
-}
-
-func (rt *Runtime) BusInvoker(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error) {
-	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		logOutbound(rt.log, namespace+"."+service+"/"+function, string(jsonBytes))
-	}
-
-	data := actions.Data{
-		"input": input,
-		"env":   rt.env,
-	}
-
-	output, err := rt.processor.Provider(ctx, namespace, service, function, data)
-	if err != nil {
-		return nil, err
-	}
-
-	if output, err = coalesceOutput(rt.namespaces, namespace, service, function, output); err != nil {
-		return nil, err
-	}
-
-	return output, nil
-}
-
-func (rt *Runtime) EventsHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	function := mux.Vars(r)["function"]
-
-	var input interface{}
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
-	input = coalesce.Integers(input)
-
-	if jsonBytes, err := json.MarshalIndent(input, "", "  "); err == nil {
-		logInbound(rt.log, function, string(jsonBytes))
-	}
-
-	data := actions.Data{
-		"input": input,
-		"env":   rt.env,
-	}
-
-	output, err := rt.processor.Event(r.Context(), function, data)
-	if err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(output)
-}
-
-func (rt *Runtime) SubscriptionsHandler(w http.ResponseWriter, r *http.Request) {
-	type Subscription struct {
-		Pubsub   string            `mapstructure:"pubsub"`
-		Topic    string            `mapstructure:"topic"`
-		Metadata map[string]string `mapstructure:"metadata"`
-		Function string            `mapstructure:"function"`
-	}
-
-	var subscriptions []Subscription
-	if err := mapstructure.Decode(rt.config.Subscriptions, &subscriptions); err != nil {
-		handleError(err, w, http.StatusInternalServerError)
-		return
-	}
-
-	type DaprSupscription struct {
-		Pubsubname string            `json:"pubsubname"`
-		Topic      string            `json:"topic"`
-		Metadata   map[string]string `json:"metadata"`
-		Route      string            `json:"route"`
-	}
-
-	daprSubs := make([]DaprSupscription, len(subscriptions))
-	for i, sub := range subscriptions {
-		daprSubs[i] = DaprSupscription{
-			Pubsubname: sub.Pubsub,
-			Topic:      sub.Topic,
-			Metadata:   sub.Metadata,
-			Route:      "/inbound/" + sub.Function,
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(daprSubs)
-}
-
-func handleError(err error, w http.ResponseWriter, status int) {
-	w.WriteHeader(status)
-	fmt.Fprint(w, err.Error())
-}
+// 	return output, nil
+// }
 
 func loadConfiguration(filename string) (*runtime.Configuration, error) {
 	// TODO: Load from file or URI
@@ -1545,10 +803,4 @@ func logOutbound(log logr.Logger, target string, data string) {
 	if l.Enabled() {
 		l.Info("<== " + target + " " + data)
 	}
-}
-
-func isNil(val interface{}) bool {
-	return val == nil ||
-		(reflect.ValueOf(val).Kind() == reflect.Ptr &&
-			reflect.ValueOf(val).IsNil())
 }
