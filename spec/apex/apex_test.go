@@ -37,7 +37,7 @@ func TestParse(t *testing.T) {
 	name, loader := apex.Apex()
 	assert.Equal(t, "apex", name)
 	namespaces, err := loader(map[string]interface{}{
-		"filename": "testdata/spec.apex",
+		"filename": "testdata/spec.apexlang",
 	})
 	require.NoError(t, err)
 	require.Len(t, namespaces, 1)

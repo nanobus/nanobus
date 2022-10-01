@@ -89,7 +89,7 @@ func findById(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, idValue int
 			} else if hasMany, ok := ex.Annotation("hasMany"); ok {
 				if key, ok := hasMany.Argument("key"); ok {
 					keyName := keyField(t)
-					res, err = join(ctx, conn, ex.Type.ListType.Type,
+					res, err = join(ctx, conn, ex.Type.ItemType.Type,
 						key.ValueString()+" = $1", []interface{}{record[keyName]},
 						preload.Preload)
 					if err != nil {
@@ -169,7 +169,7 @@ func findOne(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 			} else if hasMany, ok := ex.Annotation("hasMany"); ok {
 				if key, ok := hasMany.Argument("key"); ok {
 					keyName := keyField(t)
-					res, err = join(ctx, conn, ex.Type.ListType.Type,
+					res, err = join(ctx, conn, ex.Type.ItemType.Type,
 						key.ValueString()+" = $1", []interface{}{record[keyName]},
 						preload.Preload)
 					if err != nil {
@@ -235,7 +235,7 @@ func join(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, where string, a
 				} else if hasMany, ok := ex.Annotation("hasMany"); ok {
 					if key, ok := hasMany.Argument("key"); ok {
 						keyName := keyField(t)
-						res, err = join(ctx, conn, ex.Type.ListType.Type,
+						res, err = join(ctx, conn, ex.Type.ItemType.Type,
 							key.ValueString()+" = $1", []interface{}{record[keyName]},
 							preload.Preload)
 						if err != nil {
@@ -327,7 +327,7 @@ func getMany(ctx context.Context, conn *pgxpool.Conn, t *spec.Type, input map[st
 				} else if hasMany, ok := ex.Annotation("hasMany"); ok {
 					if key, ok := hasMany.Argument("key"); ok {
 						keyName := keyField(t)
-						res, err = join(ctx, conn, ex.Type.ListType.Type,
+						res, err = join(ctx, conn, ex.Type.ItemType.Type,
 							key.ValueString()+" = $1", []interface{}{record[keyName]},
 							preload.Preload)
 						if err != nil {

@@ -1,7 +1,6 @@
 import * from "@nanobus/core"
-import * from "@nanobus/rest"
-import * from "@nanobus/openapi"
-import * from "@nanobus/grpc"
+import * from "@apexlang/rest"
+import * from "@apexlang/openapi"
 
 namespace "customers.v1"
   @version("0.1.0")
@@ -33,11 +32,11 @@ namespace "customers.v1"
 """
 Operations that can be performed on a customer.
 """
-role CustomerService @service @uses(["Outbound"]) @path("/customers") {
+interface Inbound @service @uses(["Outbound"]) @path("/customers") {
   """
   Creates a new customer.
   """
-  createCustomer{customer: Customer}: Customer
+  createCustomer[customer: Customer]: Customer
     @POST
     @response(
       status: CREATED,
@@ -50,7 +49,7 @@ role CustomerService @service @uses(["Outbound"]) @path("/customers") {
   """
   Retrieve a customer by id.
   """
-  getCustomer(id: u64 @fieldnum(1)): Customer
+  getCustomer(id: u64 @n(1)): Customer
     @GET
     @path("/{id}")
     @response(
@@ -72,7 +71,7 @@ role CustomerService @service @uses(["Outbound"]) @path("/customers") {
   """
   Return a page of customers using optional search filters.
   """
-  listCustomers{query: CustomerQuery @query}: CustomerPage
+  listCustomers[query: CustomerQuery @query]: CustomerPage
     @GET
   
   somethingSimple(customer: Customer) @nocode
@@ -81,24 +80,26 @@ role CustomerService @service @uses(["Outbound"]) @path("/customers") {
 """
 Stateful operations that can be performed on a customer.
 """
-role CustomerActor @stateful @path("/customer-actors/{id}") {
+interface CustomerActor @stateful @path("/customer-actors/{id}") {
   """
   Creates the customer state.
   """
-  createCustomer{customer: Customer}: Customer @POST
+  createCustomer[customer: Customer]: Customer @POST
   """
   Retrieve the customer state.
   """
   getCustomer(): Customer @GET
 }
 
-role Outbound @provider {
+interface Outbound @provider {
   "Saves a customer to the backend database"
-  saveCustomer{customer: Customer}
+  saveCustomer[customer: Customer]
   "Fetches a customer from the backend database"
   fetchCustomer(id: u64): Customer
   "Sends a customer creation event"
-  customerCreated{customer: Customer}
+  customerCreated[customer: Customer]
+  #"Get customers from the database"
+  #getCustomers(): stream Customer
 }
 
 """
@@ -106,78 +107,60 @@ Customer information.
 """
 type Customer {
   "The customer identifer"
-  id: u64 @key @fieldnum(1)
+  id: u64 @key @n(1)
   "The customer's first name"
-  firstName: string @fieldnum(2)
+  firstName: string @n(2)
   "The customer's middle name"
-  middleName: string? @fieldnum(3)
+  middleName: string? @n(3)
   "The customer's last name"
-  lastName: string @fieldnum(4)
+  lastName: string @n(4)
   "The customer's email address"
-  email: string @email @fieldnum(5)
-  "Customer's contact phone numbers"
-  phones: [Phone] @fieldnum(6)
+  email: string @email @n(5)
   "The customer's address"
-  address: Address @fieldnum(7)
-  "The customers application preferences"
-  preferences: {string: string} @fieldnum(8)
-  "Testing unions"
-  test: Test @fieldnum(999)
+  address: Address @n(6)
 }
 
 type CustomerQuery {
   "The customer identifer"
-  id: u64? @fieldnum(1)
+  id: u64? @n(1)
   "The customer's first name"
-  firstName: string? @fieldnum(2)
+  firstName: string? @n(2)
   "The customer's middle name"
-  middleName: string? @fieldnum(3)
+  middleName: string? @n(3)
   "The customer's last name"
-  lastName: string? @fieldnum(4)
+  lastName: string? @n(4)
   "The customer's email address"
-  email: string? @email @fieldnum(5)
+  email: string? @email @n(5)
   ""
-  offset: u64 = 0 @fieldnum(10)
-  limit: u64 = 100 @fieldnum(11)
+  offset: u64 = 0 @n(10)
+  limit: u64 = 100 @n(11)
 }
 
 type CustomerPage {
-  offset: u64 @fieldnum(1)
-  limit: u64 @fieldnum(2)
-  items: [Customer] @fieldnum(3)
+  offset: u64 @n(1)
+  limit: u64 @n(2)
+  items: [Customer] @n(3)
 }
 
 type Nested {
-  foo: string @fieldnum(1)
-  bar: string @fieldnum(2)
+  foo: string @n(1)
+  bar: string @n(2)
 }
-
-enum PhoneType {
-  home = 0 as "Home"
-  mobile = 1 as "Mobile"
-}
-
-type Phone {
-  type: PhoneType
-  number: string
-}
-
-union Test = Customer | Phone
 
 """
 Address information.
 """
 type Address {
   "The address line 1"
-  line1: string @fieldnum(1)
+  line1: string @n(1)
   "The address line 2"
-  line2: string? @fieldnum(2)
+  line2: string? @n(2)
   "The city"
-  city: string @fieldnum(3)
+  city: string @n(3)
   "The state"
-  state: string @fieldnum(4) @length(min: 2, max: 2)
+  state: string @n(4) @length(min: 2, max: 2)
   "The zipcode"
-  zip: string @fieldnum(5) @length(min: 5)
+  zip: string @n(5) @length(min: 5)
 }
 
 """
@@ -185,5 +168,5 @@ Error response.
 """
 type Error {
   "The detailed error message"
-  message: string @fieldnum(1)
+  message: string @n(1)
 }

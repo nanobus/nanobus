@@ -223,10 +223,10 @@ func exampleValue(a spec.Annotated, t *spec.TypeRef) interface{} {
 	case spec.KindDateTime:
 		return time.Now().Format(time.RFC3339Nano)
 	case spec.KindList:
-		return []interface{}{exampleValue(spec.Annotated{}, t.ListType)}
+		return []interface{}{exampleValue(spec.Annotated{}, t.ItemType)}
 	case spec.KindMap:
 		return map[string]interface{}{
-			"key": exampleValue(spec.Annotated{}, t.MapValueType),
+			"key": exampleValue(spec.Annotated{}, t.ValueType),
 		}
 	case spec.KindOptional:
 		return exampleValue(spec.Annotated{}, t.OptionalType)

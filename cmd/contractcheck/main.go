@@ -235,11 +235,11 @@ func exampleValue(t *spec.TypeRef, sample string, includeOptional bool) interfac
 		}
 		return uint64(456)
 	case spec.KindList:
-		return []interface{}{exampleValue(t.ListType, sample, includeOptional)}
+		return []interface{}{exampleValue(t.ItemType, sample, includeOptional)}
 	case spec.KindMap:
-		keyValue := fmt.Sprintf("%v", exampleValue(t.MapKeyType, sample, includeOptional))
+		keyValue := fmt.Sprintf("%v", exampleValue(t.KeyType, sample, includeOptional))
 		return map[string]interface{}{
-			keyValue: exampleValue(t.MapValueType, sample, includeOptional),
+			keyValue: exampleValue(t.ValueType, sample, includeOptional),
 		}
 	case spec.KindRaw:
 	case spec.KindString:

@@ -148,9 +148,10 @@ type (
 		Enum         *Enum
 		Union        *Union
 		OptionalType *TypeRef
-		ListType     *TypeRef
-		MapKeyType   *TypeRef
-		MapValueType *TypeRef
+		StreamType   *TypeRef
+		ItemType     *TypeRef
+		KeyType      *TypeRef
+		ValueType    *TypeRef
 	}
 
 	ValidationLoader func(t *TypeRef, f *Field, a *Annotation) (Validation, error)
@@ -664,7 +665,7 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool,
 		case []interface{}:
 			for i, item := range vv {
 				var itemChanged bool
-				item, itemChanged, err = t.ListType.Coalesce(item, validate)
+				item, itemChanged, err = t.ItemType.Coalesce(item, validate)
 				if err != nil {
 					return nil, false, err
 				}
@@ -677,7 +678,7 @@ func (t *TypeRef) Coalesce(value interface{}, validate bool) (interface{}, bool,
 			for i, item := range vv {
 				var itemChanged bool
 				var val interface{}
-				val, itemChanged, err = t.ListType.Coalesce(item, validate)
+				val, itemChanged, err = t.ItemType.Coalesce(item, validate)
 				if err != nil {
 					return nil, false, err
 				}
@@ -710,18 +711,22 @@ func (t *TypeRef) jsonValue() interface{} {
 		}
 	case KindList:
 		return map[string]interface{}{
-			"$list": t.ListType.jsonValue(),
+			"$list": t.ItemType.jsonValue(),
 		}
 	case KindMap:
 		return map[string]interface{}{
 			"$map": map[string]interface{}{
-				"keyType":   t.MapKeyType.jsonValue(),
-				"valueType": t.MapValueType.jsonValue(),
+				"keyType":   t.KeyType.jsonValue(),
+				"valueType": t.ValueType.jsonValue(),
 			},
 		}
 	case KindOptional:
 		return map[string]interface{}{
 			"$optional": t.OptionalType.jsonValue(),
+		}
+	case KindStream:
+		return map[string]interface{}{
+			"$stream": t.StreamType.jsonValue(),
 		}
 	case KindType:
 		return map[string]string{
@@ -943,6 +948,7 @@ type Kind int
 const (
 	KindUnknown Kind = iota
 	KindOptional
+	KindStream
 	KindList
 	KindMap
 	KindString
@@ -967,6 +973,7 @@ const (
 
 var kindStringMap = map[Kind]string{
 	KindOptional: "optional",
+	KindStream:   "stream",
 	KindList:     "list",
 	KindMap:      "map",
 	KindString:   "string",

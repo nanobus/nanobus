@@ -27,7 +27,7 @@ import (
 )
 
 type Config struct {
-	// Filename is the file name of the WIDL definition to load.
+	// Filename is the file name of the Apex definition to load.
 	Filename string `mapstructure:"filename"` // TODO: Load from external location
 }
 
@@ -38,7 +38,7 @@ func Apex() (string, spec.Loader) {
 
 func Loader(with interface{}) ([]*spec.Namespace, error) {
 	c := Config{
-		Filename: "spec.apex",
+		Filename: "spec.apexlang",
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func Parse(schema []byte) (*spec.Namespace, error) {
 
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
-		case *ast.RoleDefinition:
+		case *ast.InterfaceDefinition:
 			s, err := p.convertService(d)
 			if err != nil {
 				return nil, err
@@ -208,7 +208,7 @@ func (p *nsParser) createUnion(t *ast.UnionDefinition) *spec.Union {
 	return e.AddAnnotations(p.convertAnnotations(t.Annotations)...)
 }
 
-func (p *nsParser) convertService(role *ast.RoleDefinition) (*spec.Service, error) {
+func (p *nsParser) convertService(role *ast.InterfaceDefinition) (*spec.Service, error) {
 	opers, err := p.convertOperations(role.Operations)
 	if err != nil {
 		return nil, err
@@ -386,18 +386,23 @@ func (p *nsParser) convertTypeRef(t ast.Type) *spec.TypeRef {
 	case *ast.ListType:
 		return &spec.TypeRef{
 			Kind:     spec.KindList,
-			ListType: p.convertTypeRef(tt.Type),
+			ItemType: p.convertTypeRef(tt.Type),
 		}
 	case *ast.MapType:
 		return &spec.TypeRef{
-			Kind:         spec.KindMap,
-			MapKeyType:   p.convertTypeRef(tt.KeyType),
-			MapValueType: p.convertTypeRef(tt.ValueType),
+			Kind:      spec.KindMap,
+			KeyType:   p.convertTypeRef(tt.KeyType),
+			ValueType: p.convertTypeRef(tt.ValueType),
 		}
 	case *ast.Optional:
 		return &spec.TypeRef{
 			Kind:         spec.KindOptional,
 			OptionalType: p.convertTypeRef(tt.Type),
+		}
+	case *ast.Stream:
+		return &spec.TypeRef{
+			Kind:       spec.KindStream,
+			StreamType: p.convertTypeRef(tt.Type),
 		}
 	}
 

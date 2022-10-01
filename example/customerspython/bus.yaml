@@ -1,7 +1,7 @@
 specs:
   - type: apex
     with:
-      filename: spec.apex
+      filename: spec.apexlang
 
 compute:
   type: mux

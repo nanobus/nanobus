@@ -178,7 +178,7 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 						defaultResponse := responses.Default()
 						ary := openapi3.NewArraySchema()
 						ary.Items = openapi3.NewSchemaRef(
-							"#/components/schemas/"+oper.Returns.ListType.Type.Name, nil)
+							"#/components/schemas/"+oper.Returns.ItemType.Type.Name, nil)
 						defaultResponse.Value.
 							WithDescription("Success").
 							WithJSONSchemaRef(ary.NewRef())
@@ -364,10 +364,10 @@ func traverseTypeRef(foundTypes map[string]struct{}, t *spec.TypeRef) {
 			traverseType(foundTypes, t.Type)
 		}
 	case spec.KindMap:
-		traverseTypeRef(foundTypes, t.MapKeyType)
-		traverseTypeRef(foundTypes, t.MapValueType)
+		traverseTypeRef(foundTypes, t.KeyType)
+		traverseTypeRef(foundTypes, t.ValueType)
 	case spec.KindList:
-		traverseTypeRef(foundTypes, t.ListType)
+		traverseTypeRef(foundTypes, t.ItemType)
 	case spec.KindOptional:
 		traverseTypeRef(foundTypes, t.OptionalType)
 	}
@@ -416,27 +416,27 @@ func typeFormat(t *spec.TypeRef) *openapi3.Schema {
 	case spec.KindDateTime:
 		return openapi3.NewDateTimeSchema()
 	case spec.KindList:
-		if t.ListType.Kind == spec.KindType {
+		if t.ItemType.Kind == spec.KindType {
 			return &openapi3.Schema{
 				Type: "array",
 				Items: &openapi3.SchemaRef{
-					Ref: "#/components/schemas/" + t.ListType.Type.Name,
+					Ref: "#/components/schemas/" + t.ItemType.Type.Name,
 				},
 			}
 		}
 		return openapi3.NewArraySchema().
-			WithItems(typeFormat(t.ListType))
+			WithItems(typeFormat(t.ItemType))
 	case spec.KindMap:
-		if t.ListType.Kind == spec.KindType {
+		if t.ItemType.Kind == spec.KindType {
 			return &openapi3.Schema{
 				Type: "object",
 				AdditionalProperties: &openapi3.SchemaRef{
-					Ref: "#/components/schemas/" + t.ListType.Type.Name,
+					Ref: "#/components/schemas/" + t.ItemType.Type.Name,
 				},
 			}
 		}
 		return openapi3.NewObjectSchema().
-			WithAdditionalProperties(typeFormat(t.MapValueType))
+			WithAdditionalProperties(typeFormat(t.ValueType))
 	case spec.KindOptional:
 		return typeFormat(t.OptionalType)
 	case spec.KindEnum:

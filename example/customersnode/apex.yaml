@@ -1,4 +1,4 @@
-spec: spec.apex
+spec: spec.apexlang
 generates:
   src/adapter.ts:
     module: '@nanobus/codegen/typescript'

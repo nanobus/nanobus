@@ -107,7 +107,7 @@ func TestNamespace(t *testing.T) {
 				AddAnnotations(anno),
 			spec.NewField("parentDogIds", "The dog's parents", &spec.TypeRef{
 				Kind: spec.KindList,
-				ListType: &spec.TypeRef{
+				ItemType: &spec.TypeRef{
 					Kind: spec.KindString,
 				},
 			}, nil),
@@ -119,10 +119,10 @@ func TestNamespace(t *testing.T) {
 			}, nil),
 			spec.NewField("diet", "The dog's food intake", &spec.TypeRef{
 				Kind: spec.KindMap,
-				MapKeyType: &spec.TypeRef{
+				KeyType: &spec.TypeRef{
 					Kind: spec.KindString,
 				},
-				MapValueType: &spec.TypeRef{
+				ValueType: &spec.TypeRef{
 					Kind: spec.KindString,
 				},
 			}, nil),

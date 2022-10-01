@@ -1,6 +1,6 @@
 #!/bin/sh
 
-nanogen new go customers \
+apex new @nanobus/go customers \
     description="Customers App" \
     version=1.0.0 \
     module="github.com/nanobus/nanobus/example/customers" \
@@ -8,7 +8,7 @@ nanogen new go customers \
 
 cd customers
 
-cat > schema.apex <<EOF
+cat > spec.apexlang <<EOF
 namespace "customers.v1"
   @path("/v1")
   @info(
@@ -57,7 +57,7 @@ role Inbound @service @path("/customers") {
   """
   Retrieve a customer by id.
   """
-  getCustomer(id: u64 @fieldnum(1)): Customer
+  getCustomer(id: u64 @n(1)): Customer
     @GET
     @path("/{id}")
     @response(
@@ -88,22 +88,22 @@ Customer information.
 """
 type Customer {
   "The customer identifer"
-  id: u64 @key @fieldnum(1)
+  id: u64 @key @n(1)
   "The customer's first name"
-  firstName: string @fieldnum(2)
+  firstName: string @n(2)
   "The customer's middle name"
-  middleName: string? @fieldnum(3)
+  middleName: string? @n(3)
   "The customer's last name"
-  lastName: string @fieldnum(4)
+  lastName: string @n(4)
   "The customer's email address"
-  email: string @email @fieldnum(5)
+  email: string @email @n(5)
   "The customer's address"
-  address: Address @fieldnum(6)
+  address: Address @n(6)
 }
 
 type Nested {
-  foo: string @fieldnum(1)
-  bar: string @fieldnum(2)
+  foo: string @n(1)
+  bar: string @n(2)
 }
 
 """
@@ -111,15 +111,15 @@ Address information.
 """
 type Address {
   "The address line 1"
-  line1: string @fieldnum(1)
+  line1: string @n(1)
   "The address line 2"
-  line2: string? @fieldnum(2)
+  line2: string? @n(2)
   "The city"
-  city: string @fieldnum(3)
+  city: string @n(3)
   "The state"
-  state: string @fieldnum(4) @length(min: 2, max: 2)
+  state: string @n(4) @length(min: 2, max: 2)
   "The zipcode"
-  zip: string @fieldnum(5) @length(min: 5)
+  zip: string @n(5) @length(min: 5)
 }
 
 """
@@ -127,7 +127,7 @@ Error response.
 """
 type Error {
   "The detailed error message"
-  message: string @fieldnum(1)
+  message: string @n(1)
 }
 EOF
 

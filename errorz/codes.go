@@ -21,8 +21,7 @@ import (
 	"fmt"
 )
 
-// The code below is based on
-// https://github.com/encoredev/encore.dev/blob/main/beta/errs/codes.go
+// The code below is based on gRPC.
 
 // ErrCode is an RPC error code.
 type ErrCode int

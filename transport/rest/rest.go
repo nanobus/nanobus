@@ -217,8 +217,8 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 								required = false
 								t = t.OptionalType
 							}
-							if t.ListType != nil {
-								t = t.ListType
+							if t.ItemType != nil {
+								t = t.ItemType
 								isArray = true
 							}
 							if t.IsPrimitive() {
@@ -237,8 +237,8 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 									if t.OptionalType != nil {
 										t = t.OptionalType
 									}
-									if t.ListType != nil {
-										t = t.ListType
+									if t.ItemType != nil {
+										t = t.ItemType
 										isArray = true
 									}
 

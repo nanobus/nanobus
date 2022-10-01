@@ -226,7 +226,7 @@ func main() {
 		config.Specs = append(config.Specs, runtime.Component{
 			Type: "apex",
 			With: map[string]interface{}{
-				"filename": "spec.apex",
+				"filename": "spec.apexlang",
 			},
 		})
 	}
