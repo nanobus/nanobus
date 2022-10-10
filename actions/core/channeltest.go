@@ -47,7 +47,11 @@ func ChannelTestLoader(with interface{}, resolver resolve.ResolveAs) (actions.Ac
 func ChannelTestAction(
 	config *ChannelTestConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		s, ok := stream.FromContext(ctx)
+		source, ok := stream.SourceFromContext(ctx)
+		if !ok {
+			return nil, errors.New("stream not in context")
+		}
+		sink, ok := stream.SinkFromContext(ctx)
 		if !ok {
 			return nil, errors.New("stream not in context")
 		}
@@ -57,7 +61,7 @@ func ChannelTestAction(
 
 		var in map[string]interface{}
 		for {
-			if err := s.RecvData(&in); err != nil {
+			if err := source.Next(&in, nil); err != nil {
 				if err == io.EOF {
 					break
 				}
@@ -74,7 +78,7 @@ func ChannelTestAction(
 				}
 			}
 
-			if err := s.SendData(out); err != nil {
+			if err := sink.Next(out, nil); err != nil {
 				return nil, err
 			}
 		}

@@ -73,7 +73,7 @@ func QueryAction(
 	config *QueryConfig,
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		s, ok := stream.FromContext(ctx)
+		s, ok := stream.SinkFromContext(ctx)
 		if !ok {
 			return nil, errors.New("stream not in context")
 		}
@@ -107,7 +107,7 @@ func QueryAction(
 				record[fieldNames[i]] = v
 			}
 
-			if err = s.SendData(record); err != nil {
+			if err = s.Next(record, nil); err != nil {
 				return nil, err
 			}
 		}

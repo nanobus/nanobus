@@ -24,6 +24,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -37,6 +38,7 @@ type Environment map[string]string
 
 type Processor struct {
 	log             logr.Logger
+	tracer          trace.Tracer
 	config          *Configuration
 	registry        actions.Registry
 	resolver        resolve.DependencyResolver
@@ -57,6 +59,7 @@ type Runnable func(ctx context.Context, data actions.Data) (interface{}, error)
 
 type runnable struct {
 	log    logr.Logger
+	tracer trace.Tracer
 	config *Pipeline
 	steps  []step
 }
@@ -70,7 +73,7 @@ type step struct {
 	onError        Runnable
 }
 
-func NewProcessor(log logr.Logger, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
+func NewProcessor(log logr.Logger, tracer trace.Tracer, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
 	timeouts := make(map[string]time.Duration, len(configuration.Resiliency.Timeouts))
 	for name, d := range configuration.Resiliency.Timeouts {
 		timeouts[name] = time.Duration(d)
@@ -99,6 +102,7 @@ func NewProcessor(log logr.Logger, configuration *Configuration, registry action
 
 	p := Processor{
 		log:             log,
+		tracer:          tracer,
 		config:          configuration,
 		timeouts:        timeouts,
 		retries:         retries,
@@ -223,6 +227,9 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 	steps := make([]step, len(pl.Steps))
 	for i := range pl.Steps {
 		s := &pl.Steps[i]
+		if s.Name == "" {
+			s.Name = fmt.Sprintf("Step %d", i)
+		}
 		step, err := p.loadStep(s)
 		if err != nil {
 			return nil, err
@@ -232,6 +239,7 @@ func (p *Processor) LoadPipeline(pl *Pipeline) (Runnable, error) {
 
 	r := runnable{
 		log:    p.log,
+		tracer: p.tracer,
 		config: pl,
 		steps:  steps,
 	}
@@ -313,6 +321,9 @@ func (r *runnable) Run(ctx context.Context, data actions.Data) (interface{}, err
 		var output interface{}
 		rp := resiliency.Policy(r.log, s.config.Name, s.timeout, s.retry, s.circuitBreaker)
 		err = rp(ctx, func(ctx context.Context) error {
+			var span trace.Span
+			ctx, span = r.tracer.Start(ctx, s.config.Name)
+			defer span.End()
 			output, err = s.action(ctx, data)
 			if errors.Is(err, actions.ErrStop) {
 				return backoff.Permanent(err)

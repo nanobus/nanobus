@@ -21,12 +21,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/WasmRS/wasmrs-go/payload"
+	"github.com/WasmRS/wasmrs-go/rx/mono"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
-	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/resolve"
 )
@@ -34,21 +35,21 @@ import (
 type mockInvoker struct {
 	namespace string
 	operation string
-	input     interface{}
-	output    interface{}
+	input     payload.Payload
+	output    payload.Payload
 	err       error
 }
 
-func (m *mockInvoker) InvokeWithReturn(ctx context.Context, receiver channel.Receiver, input interface{}, output interface{}) error {
-	m.namespace = receiver.Namespace
-	m.operation = receiver.Operation
-	m.input = input
+func (m *mockInvoker) RequestResponse(ctx context.Context, namespace, operation string, p payload.Payload) mono.Mono[payload.Payload] {
+	m.namespace = namespace
+	m.operation = operation
+	m.input = p
 	if m.output != nil {
-		resolve.As(m.output, output)
-	} else if input != nil {
-		resolve.As(input, output)
+		return mono.Just(m.output)
+	} else if p != nil {
+		return mono.Just(p)
 	}
-	return m.err
+	return mono.Error[payload.Payload](m.err)
 }
 
 func TestInvoke(t *testing.T) {

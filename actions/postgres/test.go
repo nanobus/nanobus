@@ -49,7 +49,7 @@ func TestLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, e
 func TestAction(
 	config *TestConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		s, ok := stream.FromContext(ctx)
+		s, ok := stream.SinkFromContext(ctx)
 		if !ok {
 			return nil, errors.New("stream not in context")
 		}
@@ -61,7 +61,7 @@ func TestAction(
 		}
 
 		for i := 0; i < 10; i++ {
-			if err = s.SendData(v); err != nil {
+			if err = s.Next(v, nil); err != nil {
 				fmt.Println(err)
 				return nil, err
 			}

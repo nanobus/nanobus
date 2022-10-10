@@ -40,12 +40,16 @@ import (
 	"github.com/nanobus/nanobus/mesh"
 	"github.com/oklog/run"
 	"github.com/vmihailenco/msgpack/v5"
+	"go.etcd.io/etcd/version"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	// register transports
-	// _ "go.nanomsg.org/mangos/v3/transport/ipc"
-	// _ "go.nanomsg.org/mangos/v3/transport/tcp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	otel_resource "go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
@@ -110,6 +114,34 @@ func main() {
 	// }
 	// zapLog := zap.NewExample()
 	log := zapr.NewLogger(zapLog)
+
+	// OpenTelemetry Setup
+	// Write telemetry data to a file.
+	f, err := os.Create("traces.txt")
+	if err != nil {
+		log.Error(err, "could not create traces.txt")
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	exp, err := newExporter(f)
+	if err != nil {
+		log.Error(err, "could not create otel exporter")
+		os.Exit(1)
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exp),
+		trace.WithResource(newResource()),
+	)
+	defer func() {
+		if err := tp.Shutdown(ctx); err != nil {
+			log.Error(err, "error shutting down trace provider")
+			os.Exit(1)
+		}
+	}()
+	otel.SetTracerProvider(tp)
+	tracer := otel.Tracer("NanoBus")
 
 	// NanoBus flags
 
@@ -228,6 +260,7 @@ func main() {
 	env := getEnvironment()
 	dependencies := map[string]interface{}{
 		"system:logger":   log,
+		"system:tracer":   tracer,
 		"client:http":     httpClient,
 		"codec:json":      jsoncodec,
 		"codec:msgpack":   msgpackcodec,
@@ -292,7 +325,7 @@ func main() {
 	dependencies["resource:lookup"] = resources
 
 	// Create processor
-	processor, err := runtime.NewProcessor(log, config, actionRegistry, resolver)
+	processor, err := runtime.NewProcessor(log, tracer, config, actionRegistry, resolver)
 	if err != nil {
 		log.Error(err, "Could not create NanoBus runtime")
 		os.Exit(1)
@@ -336,6 +369,7 @@ func main() {
 		}
 		m.Link(invoker)
 	}
+	dependencies["compute:mesh"] = m
 
 	for _, subscription := range config.Subscriptions {
 		pubsub, err := resource.Get[proto.PubSubClient](resources, subscription.Resource)
@@ -536,7 +570,7 @@ func main() {
 
 		// No pipeline exits for the operation so invoke directly.
 		if !ok {
-			payloadData, err := msgpackcodec.Encode(input)
+			payloadData, err := msgpack.Marshal(input)
 			if err != nil {
 				return nil, translateError(err)
 			}
@@ -803,4 +837,29 @@ func logOutbound(log logr.Logger, target string, data string) {
 	if l.Enabled() {
 		l.Info("<== " + target + " " + data)
 	}
+}
+
+// newExporter returns a console exporter.
+func newExporter(w io.Writer) (trace.SpanExporter, error) {
+	return stdouttrace.New(
+		stdouttrace.WithWriter(w),
+		// Use human-readable output.
+		stdouttrace.WithPrettyPrint(),
+		// Do not print timestamps for the demo.
+		//stdouttrace.WithoutTimestamps(),
+	)
+}
+
+// newResource returns a resource describing this application.
+func newResource() *otel_resource.Resource {
+	r, _ := otel_resource.Merge(
+		otel_resource.Default(),
+		otel_resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("nanobus"),
+			semconv.ServiceVersionKey.String(version.Version),
+			attribute.String("environment", "demo"),
+		),
+	)
+	return r
 }

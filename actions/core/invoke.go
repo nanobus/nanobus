@@ -20,11 +20,15 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/WasmRS/wasmrs-go/payload"
+	"github.com/WasmRS/wasmrs-go/rx/mono"
 	"github.com/nanobus/nanobus/actions"
-	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"
 	"github.com/nanobus/nanobus/function"
+	"github.com/nanobus/nanobus/mesh"
 	"github.com/nanobus/nanobus/resolve"
 )
 
@@ -38,7 +42,7 @@ type InvokeConfig struct {
 }
 
 type Invoker interface {
-	InvokeWithReturn(ctx context.Context, receiver channel.Receiver, input, output interface{}) error
+	RequestResponse(ctx context.Context, namespace, operation string, p payload.Payload) mono.Mono[payload.Payload]
 }
 
 // Invoke is the NamedLoader for the invoke action.
@@ -52,13 +56,13 @@ func InvokeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action,
 		return nil, err
 	}
 
-	var invoker Invoker
+	var m *mesh.Mesh
 	if err := resolve.Resolve(resolver,
-		"client:invoker", &invoker); err != nil {
+		"compute:mesh", &m); err != nil {
 		return nil, err
 	}
 
-	return InvokeAction(invoker, &c), nil
+	return InvokeAction(m, &c), nil
 }
 
 func InvokeAction(
@@ -102,13 +106,24 @@ func InvokeAction(
 			}
 		}
 
-		var response interface{}
-		if err := invoker.InvokeWithReturn(ctx, channel.Receiver{
-			Namespace: namespace,
-			Operation: operation,
-		}, input, &response); err != nil {
+		payloadData, err := msgpack.Marshal(input)
+		if err != nil {
 			return nil, err
 		}
+
+		metadata := make([]byte, 8)
+		p := payload.New(payloadData, metadata)
+
+		result, err := invoker.RequestResponse(ctx, namespace, operation, p).Block()
+		if err != nil {
+			return nil, err
+		}
+
+		var response interface{}
+		if err := msgpack.Unmarshal(result.Data(), &response); err != nil {
+			return nil, err
+		}
+
 		if response != nil {
 			return response, nil
 		}

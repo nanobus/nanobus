@@ -33,6 +33,8 @@ import (
 	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/spec"
@@ -43,6 +45,7 @@ import (
 
 type Rest struct {
 	log           logr.Logger
+	tracer        trace.Tracer
 	address       string
 	namespaces    spec.Namespaces
 	invoker       transport.Invoker
@@ -104,6 +107,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	var errorResolver errorz.Resolver
 	var filters []filter.Filter
 	var log logr.Logger
+	var tracer trace.Tracer
 	if err := resolve.Resolve(resolver,
 		"codec:json", &jsoncodec,
 		"codec:msgpack", &msgpackcodec,
@@ -111,7 +115,8 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		"spec:namespaces", &namespaces,
 		"errors:resolver", &errorResolver,
 		"filter:lookup", &filters,
-		"system:logger", &log); err != nil {
+		"system:logger", &log,
+		"system:tracer", &tracer); err != nil {
 		return nil, err
 	}
 
@@ -120,12 +125,12 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		return nil, err
 	}
 
-	return New(log, c.Address, namespaces, transportInvoker, errorResolver,
+	return New(log, tracer, c.Address, namespaces, transportInvoker, errorResolver,
 		WithFilters(filters...),
 		WithCodecs(jsoncodec, msgpackcodec))
 }
 
-func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
+func New(log logr.Logger, tracer trace.Tracer, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -162,6 +167,7 @@ func New(log logr.Logger, address string, namespaces spec.Namespaces, invoker tr
 
 	rest := Rest{
 		log:           log,
+		tracer:        tracer,
 		address:       address,
 		namespaces:    namespaces,
 		invoker:       invoker,
@@ -339,7 +345,7 @@ func (t *Rest) Listen() error {
 	t.ln = ln
 	t.log.Info("REST server listening", "address", t.address)
 
-	return http.Serve(ln, t.router)
+	return http.Serve(ln, otelhttp.NewHandler(t.router, "rest"))
 }
 
 func (t *Rest) Close() (err error) {
@@ -354,7 +360,9 @@ func (t *Rest) Close() (err error) {
 func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	hasBody bool, bodyParamName string, queryParams map[string]queryParam) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		ns := fmt.Sprintf("%s.%s/%s", namespace, service, operation)
+		ctx, span := t.tracer.Start(r.Context(), ns)
+		defer span.End()
 		defer r.Body.Close()
 		vars := mux.Vars(r)
 		id := ""

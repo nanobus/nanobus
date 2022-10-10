@@ -91,7 +91,7 @@ func FindAllAction(
 	ns *spec.Namespace,
 	db *gorm.DB) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
-		s, ok := stream.FromContext(ctx)
+		s, ok := stream.SinkFromContext(ctx)
 		if !ok {
 			return nil, errors.New("stream not in context")
 		}
@@ -129,7 +129,7 @@ func FindAllAction(
 
 		for _, result := range results {
 			fmt.Println(result)
-			if err = s.SendData(result); err != nil {
+			if err = s.Next(result, nil); err != nil {
 				return nil, err
 			}
 		}

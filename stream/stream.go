@@ -22,25 +22,36 @@ import (
 	"github.com/nanobus/nanobus/channel/metadata"
 )
 
-type Stream interface {
-	Metadata() metadata.MD
-	RecvData(dst interface{}) error
-	SendHeaders(md metadata.MD, end ...bool) error
-	SendData(v interface{}, end ...bool) error
-	SendUnary(md metadata.MD, v interface{}) error
-	SendRequest(path string, v interface{}) error
-	SendReply(v interface{}) error
-	SendError(err error) error
+type Source interface {
+	Next(data any, md *metadata.MD) error
 }
 
-type streamKey struct{}
+type sourceKey struct{}
 
-// NewContext creates a new context with incoming `s` attached.
-func NewContext(ctx context.Context, s Stream) context.Context {
-	return context.WithValue(ctx, streamKey{}, s)
+// SourceNewContext creates a new context with incoming `s` attached.
+func SourceNewContext(ctx context.Context, s Source) context.Context {
+	return context.WithValue(ctx, sourceKey{}, s)
 }
 
-func FromContext(ctx context.Context) (s Stream, ok bool) {
-	s, ok = ctx.Value(streamKey{}).(Stream)
+func SourceFromContext(ctx context.Context) (s Source, ok bool) {
+	s, ok = ctx.Value(sourceKey{}).(Source)
+	return
+}
+
+type Sink interface {
+	Next(data any, md metadata.MD) error
+	Complete()
+	Error(err error)
+}
+
+type sinkKey struct{}
+
+// SinkNewContext creates a new context with incoming `s` attached.
+func SinkNewContext(ctx context.Context, s Sink) context.Context {
+	return context.WithValue(ctx, sinkKey{}, s)
+}
+
+func SinkFromContext(ctx context.Context) (s Sink, ok bool) {
+	s, ok = ctx.Value(sinkKey{}).(Sink)
 	return
 }

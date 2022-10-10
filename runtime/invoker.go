@@ -30,6 +30,7 @@ import (
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/channel"
 	"github.com/nanobus/nanobus/compute"
+	"github.com/nanobus/nanobus/stream"
 )
 
 type Invoker struct {
@@ -143,7 +144,8 @@ func (i *Invoker) RequestStream(ctx context.Context, p payload.Payload) flux.Flu
 	r, data := i.lookup(p)
 	return flux.Create(func(sink flux.Sink[payload.Payload]) {
 		go func() {
-			// TODO: set sink in context
+			s := stream.SinkFromFlux(sink)
+			ctx = stream.SinkNewContext(ctx, s)
 			result, err := r(ctx, data)
 			if err != nil {
 				sink.Error(err)
@@ -160,8 +162,29 @@ func (i *Invoker) RequestStream(ctx context.Context, p payload.Payload) flux.Flu
 	})
 }
 
-func (*Invoker) RequestChannel(context.Context, payload.Payload, flux.Flux[payload.Payload]) flux.Flux[payload.Payload] {
-	return nil
+func (i *Invoker) RequestChannel(ctx context.Context, p payload.Payload, in flux.Flux[payload.Payload]) flux.Flux[payload.Payload] {
+	r, data := i.lookup(p)
+	return flux.Create(func(sink flux.Sink[payload.Payload]) {
+		go func() {
+			streamSink := stream.SinkFromFlux(sink)
+			ctx = stream.SinkNewContext(ctx, streamSink)
+			streamSource := stream.SourceFromFlux(in)
+			ctx = stream.SourceNewContext(ctx, streamSource)
+
+			result, err := r(ctx, data)
+			if err != nil {
+				sink.Error(err)
+				return
+			}
+
+			if isNil(result) {
+				sink.Next(payload.New(nil))
+				return
+			}
+
+			sink.Complete()
+		}()
+	})
 }
 
 func (i *Invoker) lookup(p payload.Payload) (Runnable, actions.Data) {
