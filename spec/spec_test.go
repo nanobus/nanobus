@@ -28,21 +28,6 @@ import (
 	"github.com/nanobus/nanobus/spec"
 )
 
-func TestRegistry(t *testing.T) {
-	r := spec.Registry{}
-
-	loader := func(config interface{}) ([]*spec.Namespace, error) {
-		return nil, nil
-	}
-	namedLoader := func() (string, spec.Loader) {
-		return "test", loader
-	}
-
-	r.Register(namedLoader)
-
-	assert.Equal(t, fmt.Sprintf("%v", spec.Loader(loader)), fmt.Sprintf("%p", r["test"]))
-}
-
 func TestNamespace(t *testing.T) {
 	expectedBytes, err := os.ReadFile("testdata/expected.json")
 	if err != nil {

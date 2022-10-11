@@ -50,7 +50,7 @@ func Invoke() (string, actions.Loader) {
 	return "invoke", InvokeLoader
 }
 
-func InvokeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func InvokeLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := InvokeConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

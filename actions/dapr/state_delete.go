@@ -41,7 +41,7 @@ func DeleteState() (string, actions.Loader) {
 	return "@dapr/delete_state", DeleteStateLoader
 }
 
-func DeleteStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func DeleteStateLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := DeleteStateConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

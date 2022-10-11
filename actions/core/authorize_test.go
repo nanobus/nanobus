@@ -170,7 +170,7 @@ func TestAuthorize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := loader(tt.config, tt.resolver)
+			action, err := loader(ctx, tt.config, tt.resolver)
 			if tt.loaderErr != "" {
 				require.EqualError(t, err, tt.loaderErr, "loader error was expected")
 				return

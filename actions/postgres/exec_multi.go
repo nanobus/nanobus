@@ -51,7 +51,7 @@ func ExecMulti() (string, actions.Loader) {
 	return "@postgres/exec_multi", ExecMultiLoader
 }
 
-func ExecMultiLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func ExecMultiLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := ExecMultiConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

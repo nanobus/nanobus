@@ -50,7 +50,7 @@ func FindAll() (string, actions.Loader) {
 	return "@gorm/find_all", FindAllLoader
 }
 
-func FindAllLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func FindAllLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := FindAllConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

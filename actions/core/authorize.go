@@ -41,7 +41,7 @@ func Authorize() (string, actions.Loader) {
 	return "authorize", AuthorizeLoader
 }
 
-func AuthorizeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func AuthorizeLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := AuthorizeConfig{
 		Error: "permission_denied",
 	}

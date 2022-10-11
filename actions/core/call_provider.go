@@ -38,7 +38,7 @@ func CallProvider() (string, actions.Loader) {
 	return "call_provider", CallProviderLoader
 }
 
-func CallProviderLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func CallProviderLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c CallProviderConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

@@ -81,7 +81,7 @@ func TestJMESPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := loader(tt.config, nil)
+			action, err := loader(ctx, tt.config, nil)
 			if tt.loaderErr != "" {
 				require.EqualError(t, err, tt.loaderErr, "loader error was expected")
 				return

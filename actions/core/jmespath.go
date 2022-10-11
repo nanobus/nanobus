@@ -42,7 +42,7 @@ func JMESPath() (string, actions.Loader) {
 	return "jmespath", JMESPathLoader
 }
 
-func JMESPathLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func JMESPathLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c JMESPathConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

@@ -43,7 +43,7 @@ func HTTPResponse() (string, actions.Loader) {
 	return "http_response", HTTPResponseLoader
 }
 
-func HTTPResponseLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func HTTPResponseLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := HTTPResponseConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

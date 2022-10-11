@@ -50,7 +50,7 @@ func Load() (string, actions.Loader) {
 	return "@postgres/load", LoadLoader
 }
 
-func LoadLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func LoadLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := LoadConfig{
 		NotFoundError: "not_found",
 	}

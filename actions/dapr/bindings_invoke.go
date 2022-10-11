@@ -46,7 +46,7 @@ func InvokeBinding() (string, actions.Loader) {
 	return "@dapr/invoke_binding", InvokeBindingLoader
 }
 
-func InvokeBindingLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func InvokeBindingLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c InvokeBindingConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

@@ -37,7 +37,7 @@ func Assign() (string, actions.Loader) {
 	return "assign", AssignLoader
 }
 
-func AssignLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func AssignLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c AssignConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

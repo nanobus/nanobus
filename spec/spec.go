@@ -32,20 +32,18 @@ import (
 
 	"github.com/nanobus/nanobus/coalesce"
 	"github.com/nanobus/nanobus/errorz"
+	"github.com/nanobus/nanobus/registry"
 )
 
 type (
-	NamedLoader func() (string, Loader)
-	Loader      func(config interface{}) ([]*Namespace, error)
-	Registry    map[string]Loader
-)
+	NamedLoader = registry.NamedLoader[[]*Namespace]
+	Loader      = registry.Loader[[]*Namespace]
+	Registry    = registry.Registry[[]*Namespace]
 
-func (r Registry) Register(loaders ...NamedLoader) {
-	for _, l := range loaders {
-		name, loader := l()
-		r[name] = loader
-	}
-}
+	// NamedLoader func() (string, Loader)
+	// Loader      func(config interface{}) ([]*Namespace, error)
+	// Registry    map[string]Loader
+)
 
 type (
 	Namespaces map[string]*Namespace

@@ -226,7 +226,7 @@ func TestHTTP(t *testing.T) {
 				return false
 			}
 
-			action, err := loader(tt.config, resolver)
+			action, err := loader(ctx, tt.config, resolver)
 			if tt.loaderErr != "" {
 				require.EqualError(t, err, tt.loaderErr, "loader error was expected")
 				return

@@ -41,7 +41,7 @@ func Decode() (string, actions.Loader) {
 	return "decode", DecodeLoader
 }
 
-func DecodeLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func DecodeLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := DecodeConfig{
 		TypeField: "type",
 		DataField: "input",

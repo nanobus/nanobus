@@ -360,9 +360,7 @@ func (t *Rest) Close() (err error) {
 func (t *Rest) handler(namespace, service, operation string, isActor bool,
 	hasBody bool, bodyParamName string, queryParams map[string]queryParam) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ns := fmt.Sprintf("%s.%s/%s", namespace, service, operation)
-		ctx, span := t.tracer.Start(r.Context(), ns)
-		defer span.End()
+		ctx := r.Context()
 		defer r.Body.Close()
 		vars := mux.Vars(r)
 		id := ""

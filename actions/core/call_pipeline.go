@@ -34,7 +34,7 @@ func CallPipeline() (string, actions.Loader) {
 	return "call_pipeline", CallPipelineLoader
 }
 
-func CallPipelineLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func CallPipelineLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c CallPipelineConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

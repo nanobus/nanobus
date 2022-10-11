@@ -37,7 +37,7 @@ func Test() (string, actions.Loader) {
 	return "@postgres/test", TestLoader
 }
 
-func TestLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func TestLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c TestConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

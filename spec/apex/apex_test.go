@@ -17,6 +17,7 @@ limitations under the License.
 package apex_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -36,9 +37,9 @@ func TestParse(t *testing.T) {
 
 	name, loader := apex.Apex()
 	assert.Equal(t, "apex", name)
-	namespaces, err := loader(map[string]interface{}{
+	namespaces, err := loader(context.Background(), map[string]interface{}{
 		"filename": "testdata/spec.apexlang",
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Len(t, namespaces, 1)
 

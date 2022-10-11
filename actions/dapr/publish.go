@@ -36,7 +36,7 @@ func Publish() (string, actions.Loader) {
 	return "@dapr/publish", PublishLoader
 }
 
-func PublishLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func PublishLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := PublishConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

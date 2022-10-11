@@ -35,7 +35,7 @@ func ChannelTest() (string, actions.Loader) {
 	return "channel_test", ChannelTestLoader
 }
 
-func ChannelTestLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func ChannelTestLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := ChannelTestConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

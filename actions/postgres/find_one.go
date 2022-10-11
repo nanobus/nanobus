@@ -50,7 +50,7 @@ func FindOne() (string, actions.Loader) {
 	return "@postgres/find_one", FindOneLoader
 }
 
-func FindOneLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func FindOneLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := FindOneConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

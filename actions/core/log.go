@@ -43,7 +43,7 @@ func Log() (string, actions.Loader) {
 	return "log", LogLoader
 }
 
-func LogLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func LogLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c LogConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

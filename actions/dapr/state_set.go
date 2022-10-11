@@ -53,7 +53,7 @@ func SetState() (string, actions.Loader) {
 	return "@dapr/set_state", SetStateLoader
 }
 
-func SetStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func SetStateLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c SetStateConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

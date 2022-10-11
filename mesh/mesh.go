@@ -19,18 +19,22 @@ package mesh
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/WasmRS/wasmrs-go/operations"
 	"github.com/WasmRS/wasmrs-go/payload"
+	"github.com/WasmRS/wasmrs-go/rx"
 	"github.com/WasmRS/wasmrs-go/rx/flux"
 	"github.com/WasmRS/wasmrs-go/rx/mono"
 	"github.com/nanobus/nanobus/compute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 )
 
 type (
 	Mesh struct {
+		tracer      trace.Tracer
 		instances   map[string]compute.Invoker
 		exports     map[string]map[string]*atomic.Pointer[destination]
 		unsatisfied []*pending
@@ -38,8 +42,10 @@ type (
 	}
 
 	destination struct {
+		tracer   trace.Tracer
 		instance compute.Invoker
 		index    uint32
+		name     string
 	}
 
 	pending struct {
@@ -48,8 +54,9 @@ type (
 	}
 )
 
-func New() *Mesh {
+func New(tracer trace.Tracer) *Mesh {
 	return &Mesh{
+		tracer:      tracer,
 		instances:   make(map[string]compute.Invoker),
 		exports:     map[string]map[string]*atomic.Pointer[destination]{},
 		unsatisfied: make([]*pending, 0, 10),
@@ -152,8 +159,10 @@ func (m *Mesh) Link(inst compute.Invoker) {
 			}
 
 			ptr.Store(&destination{
+				tracer:   m.tracer,
 				instance: inst,
 				index:    op.Index,
+				name:     fmt.Sprintf("%s/%s", op.Namespace, op.Operation),
 			})
 			numExported++
 
@@ -205,14 +214,21 @@ func (m *Mesh) linkOperation(inst compute.Invoker, op operations.Operation) bool
 }
 
 func (d *destination) RequestResponse(ctx context.Context, p payload.Payload) mono.Mono[payload.Payload] {
+	ctx, span := d.tracer.Start(ctx, d.name)
 	md := p.Metadata()
 	if md != nil {
 		binary.BigEndian.PutUint32(md, d.index)
 	}
-	return d.instance.RequestResponse(ctx, p)
+	m := d.instance.RequestResponse(ctx, p)
+	m.Notify(func(_ rx.SignalType) {
+		span.End()
+	})
+	return m
 }
 
 func (d *destination) FireAndForget(ctx context.Context, p payload.Payload) {
+	ctx, span := d.tracer.Start(ctx, d.name)
+	defer span.End()
 	md := p.Metadata()
 	if md != nil {
 		binary.BigEndian.PutUint32(md, d.index)
@@ -221,17 +237,27 @@ func (d *destination) FireAndForget(ctx context.Context, p payload.Payload) {
 }
 
 func (d *destination) RequestStream(ctx context.Context, p payload.Payload) flux.Flux[payload.Payload] {
+	ctx, span := d.tracer.Start(ctx, d.name)
 	md := p.Metadata()
 	if md != nil {
 		binary.BigEndian.PutUint32(md, d.index)
 	}
-	return d.instance.RequestStream(ctx, p)
+	f := d.instance.RequestStream(ctx, p)
+	f.Notify(func(_ rx.SignalType) {
+		span.End()
+	})
+	return f
 }
 
 func (d *destination) RequestChannel(ctx context.Context, p payload.Payload, in flux.Flux[payload.Payload]) flux.Flux[payload.Payload] {
+	ctx, span := d.tracer.Start(ctx, d.name)
 	md := p.Metadata()
 	if md != nil {
 		binary.BigEndian.PutUint32(md, d.index)
 	}
-	return d.instance.RequestChannel(ctx, p, in)
+	f := d.instance.RequestChannel(ctx, p, in)
+	f.Notify(func(_ rx.SignalType) {
+		span.End()
+	})
+	return f
 }

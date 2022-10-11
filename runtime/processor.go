@@ -37,6 +37,7 @@ import (
 type Environment map[string]string
 
 type Processor struct {
+	ctx             context.Context
 	log             logr.Logger
 	tracer          trace.Tracer
 	config          *Configuration
@@ -73,7 +74,7 @@ type step struct {
 	onError        Runnable
 }
 
-func NewProcessor(log logr.Logger, tracer trace.Tracer, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
+func NewProcessor(ctx context.Context, log logr.Logger, tracer trace.Tracer, configuration *Configuration, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
 	timeouts := make(map[string]time.Duration, len(configuration.Resiliency.Timeouts))
 	for name, d := range configuration.Resiliency.Timeouts {
 		timeouts[name] = time.Duration(d)
@@ -101,6 +102,7 @@ func NewProcessor(log logr.Logger, tracer trace.Tracer, configuration *Configura
 	}
 
 	p := Processor{
+		ctx:             ctx,
 		log:             log,
 		tracer:          tracer,
 		config:          configuration,
@@ -260,7 +262,7 @@ func (p *Processor) loadStep(s *Step) (*step, error) {
 			return nil, fmt.Errorf("unregistered action %q", s.Uses)
 		}
 
-		action, err = loader(s.With, p.resolveAs)
+		action, err = loader(p.ctx, s.With, p.resolveAs)
 		if err != nil {
 			return nil, err
 		}

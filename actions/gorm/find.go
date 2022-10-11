@@ -57,7 +57,7 @@ func Find() (string, actions.Loader) {
 	return "@gorm/find", FindLoader
 }
 
-func FindLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func FindLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := FindConfig{
 		NotFoundError: "not_found",
 	}

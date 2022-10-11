@@ -36,8 +36,7 @@ func WasmRS() (string, compute.Loader) {
 	return "wasmrs", Loader
 }
 
-func Loader(with interface{}, resolver resolve.ResolveAs) (compute.Invoker, error) {
-	ctx := context.Background()
+func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (compute.Invoker, error) {
 	c := Config{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

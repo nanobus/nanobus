@@ -58,7 +58,7 @@ func HTTP() (string, actions.Loader) {
 	return "http", HTTPLoader
 }
 
-func HTTPLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func HTTPLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := HTTPConfig{
 		Codec: "json",
 	}

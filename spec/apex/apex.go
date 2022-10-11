@@ -17,12 +17,14 @@ limitations under the License.
 package apex
 
 import (
+	"context"
 	"os"
 
 	"github.com/apexlang/apex-go/ast"
 	"github.com/apexlang/apex-go/parser"
 
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/spec"
 )
 
@@ -36,7 +38,7 @@ func Apex() (string, spec.Loader) {
 	return "apex", Loader
 }
 
-func Loader(with interface{}) ([]*spec.Namespace, error) {
+func Loader(ctx context.Context, with interface{}, resolveAs resolve.ResolveAs) ([]*spec.Namespace, error) {
 	c := Config{
 		Filename: "spec.apexlang",
 	}

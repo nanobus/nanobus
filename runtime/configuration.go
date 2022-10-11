@@ -30,6 +30,7 @@ import (
 type Configuration struct {
 	Import        []string                   `json:"import" yaml:"import"`
 	Transports    map[string]Component       `json:"transports" yaml:"transports"`
+	Tracing       *Component                 `json:"tracing" yaml:"tracing"`
 	Specs         []Component                `json:"specs" yaml:"specs"`
 	Filters       map[string][]Component     `json:"filters" yaml:"filters"`
 	Codecs        map[string]Component       `json:"codecs" yaml:"codecs"`

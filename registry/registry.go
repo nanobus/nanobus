@@ -14,29 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package compute_test
+package registry
 
 import (
-	"fmt"
-	"testing"
+	"context"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/resolve"
 )
 
-func TestRegistry(t *testing.T) {
-	r := compute.Registry{}
+type (
+	NamedLoader[T any] func() (string, Loader[T])
+	Loader[T any]      func(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (T, error)
+	Registry[T any]    map[string]Loader[T]
+)
 
-	loader := func(with interface{}, resolver resolve.ResolveAs) (compute.Invoker, error) {
-		return nil, nil
+func (r Registry[T]) Register(loaders ...NamedLoader[T]) {
+	for _, l := range loaders {
+		name, loader := l()
+		r[name] = loader
 	}
-	namedLoader := func() (string, compute.Loader) {
-		return "test", loader
-	}
-
-	r.Register(namedLoader)
-
-	assert.Equal(t, fmt.Sprintf("%v", compute.Loader(loader)), fmt.Sprintf("%p", r["test"]))
 }

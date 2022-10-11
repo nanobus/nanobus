@@ -46,7 +46,7 @@ func Exec() (string, actions.Loader) {
 	return "@postgres/exec", ExecLoader
 }
 
-func ExecLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func ExecLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := ExecConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

@@ -45,7 +45,7 @@ func Query() (string, actions.Loader) {
 	return "@postgres/query", QueryLoader
 }
 
-func QueryLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func QueryLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := QueryConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

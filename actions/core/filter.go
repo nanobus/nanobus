@@ -36,7 +36,7 @@ func Filter() (string, actions.Loader) {
 	return "filter", FilterLoader
 }
 
-func FilterLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func FilterLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c FilterConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

@@ -20,23 +20,17 @@ import (
 	"context"
 	"errors"
 
-	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/registry"
 )
 
 type (
-	Data        map[string]interface{}
-	NamedLoader func() (string, Loader)
-	Loader      func(with interface{}, resolver resolve.ResolveAs) (Action, error)
-	Action      func(ctx context.Context, data Data) (interface{}, error)
-	Registry    map[string]Loader
-)
+	NamedLoader = registry.NamedLoader[Action]
+	Loader      = registry.Loader[Action]
+	Registry    = registry.Registry[Action]
 
-func (r Registry) Register(loaders ...NamedLoader) {
-	for _, l := range loaders {
-		name, loader := l()
-		r[name] = loader
-	}
-}
+	Data   map[string]interface{}
+	Action func(ctx context.Context, data Data) (interface{}, error)
+)
 
 func (d Data) Clone() Data {
 	clone := make(Data, len(d)+5)

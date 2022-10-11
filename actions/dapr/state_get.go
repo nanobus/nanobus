@@ -47,7 +47,7 @@ func GetState() (string, actions.Loader) {
 	return "@dapr/get_state", GetStateLoader
 }
 
-func GetStateLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func GetStateLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := GetStateConfig{
 		NotFoundError: "not_found",
 	}

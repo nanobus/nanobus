@@ -46,10 +46,12 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+
 	otel_resource "go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdk_trace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	"go.opentelemetry.io/otel/trace"
 
 	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
@@ -75,6 +77,9 @@ import (
 	"github.com/nanobus/nanobus/security/claims"
 	"github.com/nanobus/nanobus/spec"
 	spec_apex "github.com/nanobus/nanobus/spec/apex"
+	nb_tracing "github.com/nanobus/nanobus/tracing"
+	nb_jaeger "github.com/nanobus/nanobus/tracing/jaeger"
+	nb_stdout "github.com/nanobus/nanobus/tracing/stdout"
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/filter/jwt"
@@ -114,34 +119,6 @@ func main() {
 	// }
 	// zapLog := zap.NewExample()
 	log := zapr.NewLogger(zapLog)
-
-	// OpenTelemetry Setup
-	// Write telemetry data to a file.
-	f, err := os.Create("traces.txt")
-	if err != nil {
-		log.Error(err, "could not create traces.txt")
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	exp, err := newExporter(f)
-	if err != nil {
-		log.Error(err, "could not create otel exporter")
-		os.Exit(1)
-	}
-
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
-		trace.WithResource(newResource()),
-	)
-	defer func() {
-		if err := tp.Shutdown(ctx); err != nil {
-			log.Error(err, "error shutting down trace provider")
-			os.Exit(1)
-		}
-	}()
-	otel.SetTracerProvider(tp)
-	tracer := otel.Tracer("NanoBus")
 
 	// NanoBus flags
 
@@ -183,31 +160,6 @@ func main() {
 		spec_apex.Apex,
 	)
 
-	namespaces := make(spec.Namespaces)
-	if len(config.Specs) == 0 {
-		config.Specs = append(config.Specs, runtime.Component{
-			Uses: "apex",
-			With: map[string]interface{}{
-				"filename": "spec.apexlang",
-			},
-		})
-	}
-	for _, spec := range config.Specs {
-		loader, ok := specRegistry[spec.Uses]
-		if !ok {
-			log.Error(nil, "could not find spec", "type", spec.Uses)
-			os.Exit(1)
-		}
-		nss, err := loader(spec.With)
-		if err != nil {
-			log.Error(err, "error loading spec", "type", spec.Uses)
-			os.Exit(1)
-		}
-		for _, ns := range nss {
-			namespaces[ns.Name] = ns
-		}
-	}
-
 	// Filter registration
 	filterRegistry := filter.Registry{}
 	filterRegistry.Register(
@@ -242,6 +194,12 @@ func main() {
 		dapr.OutputBinding,
 	)
 
+	tracingRegistry := nb_tracing.Registry{}
+	tracingRegistry.Register(
+		nb_jaeger.Jaeger,
+		nb_stdout.Stdout,
+	)
+
 	// Action registration
 	actionRegistry := actions.Registry{}
 	actionRegistry.Register(core.All...)
@@ -258,9 +216,10 @@ func main() {
 	// var busInvoker compute.BusInvoker
 	httpClient := getHTTPClient()
 	env := getEnvironment()
+	namespaces := make(spec.Namespaces)
 	dependencies := map[string]interface{}{
-		"system:logger":   log,
-		"system:tracer":   tracer,
+		"system:logger": log,
+		//"system:tracer":   tracer,
 		"client:http":     httpClient,
 		"codec:json":      jsoncodec,
 		"codec:msgpack":   msgpackcodec,
@@ -272,6 +231,67 @@ func main() {
 		return dep, ok
 	}
 	resolveAs := resolve.ToResolveAs(resolver)
+
+	var spanExporter sdk_trace.SpanExporter
+	if config.Tracing != nil {
+		loadable, ok := tracingRegistry[config.Tracing.Uses]
+		if !ok {
+			log.Error(nil, "Could not find codec", "type", config.Tracing.Uses)
+			os.Exit(1)
+		}
+		var err error
+		spanExporter, err = loadable(ctx, config.Tracing.With, resolveAs)
+		if err != nil {
+			log.Error(err, "Error loading codec", "type", config.Tracing.Uses)
+			os.Exit(1)
+		}
+	}
+
+	var tp trace.TracerProvider
+
+	if spanExporter == nil {
+		tp = trace.NewNoopTracerProvider()
+	} else {
+		ntp := sdk_trace.NewTracerProvider(
+			sdk_trace.WithBatcher(spanExporter),
+			sdk_trace.WithResource(newResource()),
+		)
+		defer func() {
+			if err := ntp.Shutdown(ctx); err != nil {
+				log.Error(err, "error shutting down trace provider")
+				os.Exit(1)
+			}
+		}()
+		tp = ntp
+	}
+
+	otel.SetTracerProvider(tp)
+	tracer := otel.Tracer("NanoBus")
+	dependencies["system:tracer"] = tracer
+
+	if len(config.Specs) == 0 {
+		config.Specs = append(config.Specs, runtime.Component{
+			Uses: "apex",
+			With: map[string]interface{}{
+				"filename": "spec.apexlang",
+			},
+		})
+	}
+	for _, spec := range config.Specs {
+		loader, ok := specRegistry[spec.Uses]
+		if !ok {
+			log.Error(nil, "could not find spec", "type", spec.Uses)
+			os.Exit(1)
+		}
+		nss, err := loader(ctx, spec.With, resolveAs)
+		if err != nil {
+			log.Error(err, "error loading spec", "type", spec.Uses)
+			os.Exit(1)
+		}
+		for _, ns := range nss {
+			namespaces[ns.Name] = ns
+		}
+	}
 
 	if config.Codecs == nil {
 		config.Codecs = map[string]runtime.Component{}
@@ -325,7 +345,7 @@ func main() {
 	dependencies["resource:lookup"] = resources
 
 	// Create processor
-	processor, err := runtime.NewProcessor(log, tracer, config, actionRegistry, resolver)
+	processor, err := runtime.NewProcessor(ctx, log, tracer, config, actionRegistry, resolver)
 	if err != nil {
 		log.Error(err, "Could not create NanoBus runtime")
 		os.Exit(1)
@@ -352,7 +372,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := mesh.New()
+	m := mesh.New(tracer)
 
 	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
 
@@ -362,7 +382,7 @@ func main() {
 			log.Error(err, "could not find compute", "type", comp.Uses)
 			os.Exit(1)
 		}
-		invoker, err := computeLoader(comp.With, resolveAs)
+		invoker, err := computeLoader(ctx, comp.With, resolveAs)
 		if err != nil {
 			log.Error(err, "could not load compute", "type", comp.Uses)
 			os.Exit(1)
@@ -840,14 +860,16 @@ func logOutbound(log logr.Logger, target string, data string) {
 }
 
 // newExporter returns a console exporter.
-func newExporter(w io.Writer) (trace.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-		// Use human-readable output.
-		stdouttrace.WithPrettyPrint(),
-		// Do not print timestamps for the demo.
-		//stdouttrace.WithoutTimestamps(),
-	)
+func newExporter(w io.Writer) (sdk_trace.SpanExporter, error) {
+	url := "http://localhost:14268/api/traces"
+	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
+	// return stdouttrace.New(
+	// 	stdouttrace.WithWriter(w),
+	// 	// Use human-readable output.
+	// 	stdouttrace.WithPrettyPrint(),
+	// 	// Do not print timestamps for the demo.
+	// 	//stdouttrace.WithoutTimestamps(),
+	// )
 }
 
 // newResource returns a resource describing this application.

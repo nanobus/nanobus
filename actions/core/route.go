@@ -63,7 +63,7 @@ func Route() (string, actions.Loader) {
 	return "route", RouteLoader
 }
 
-func RouteLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func RouteLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	var c RouteConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err

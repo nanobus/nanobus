@@ -26,23 +26,16 @@ import (
 	"github.com/WasmRS/wasmrs-go/rx/flux"
 	"github.com/WasmRS/wasmrs-go/rx/mono"
 
-	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/registry"
 )
 
 type (
+	NamedLoader = registry.NamedLoader[Invoker]
+	Loader      = registry.Loader[Invoker]
+	Registry    = registry.Registry[Invoker]
+
 	BusInvoker   func(ctx context.Context, namespace, service, function string, input interface{}) (interface{}, error)
 	StateInvoker func(ctx context.Context, namespace, id, key string) ([]byte, error)
-	NamedLoader  func() (string, Loader)
-	Loader       func(with interface{}, resolver resolve.ResolveAs) (Invoker, error)
-	Registry     map[string]Loader
-
-	// Compute struct {
-	// 	Invoker           Invoker
-	// 	Start             func() error
-	// 	WaitUntilShutdown func() error
-	// 	Close             func() error
-	// 	Environ           func() []string
-	// }
 
 	Invoker interface {
 		io.Closer
@@ -59,10 +52,3 @@ type (
 		SetRequestChannelHandler(index uint32, handler invoke.RequestChannelHandler)
 	}
 )
-
-func (r Registry) Register(loaders ...NamedLoader) {
-	for _, l := range loaders {
-		name, loader := l()
-		r[name] = loader
-	}
-}

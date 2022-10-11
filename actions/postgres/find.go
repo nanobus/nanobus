@@ -65,7 +65,7 @@ func Find() (string, actions.Loader) {
 	return "@postgres/find", FindLoader
 }
 
-func FindLoader(with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+func FindLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := FindConfig{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
