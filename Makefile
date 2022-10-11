@@ -46,11 +46,17 @@ build:
 	@echo "Build $(BINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
+components-docker: GOOS:=linux
+components-docker: GOARCH:=amd64
+components-docker: $(COMPONENTS)
+
+components: GOOS:=$(GOOS)
+components: GOARCH:=$(GOARCH)
 components: $(COMPONENTS)
 
 $(COMPONENTS):
 	echo "Building $@"
-	CGO_ENABLED=0 go build -o $(shell pwd)/$(BUILDDIR)/$@ $@/main.go
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(shell pwd)/$(BUILDDIR)/$@ $@/main.go
 
 install:
 	CGO_ENABLED=0 go install ./cmd/...
@@ -98,7 +104,7 @@ release: changelog
 		-w /nanobus \
 		ghcr.io/gythialy/golang-cross:$(GO_BUILDER_VERSION) --rm-dist --timeout=60m --release-notes=CHANGELOG.md
 
-lint: 
+lint:
 	golangci-lint run --fix
 
 build-linux-amd64:
