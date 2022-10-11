@@ -31,55 +31,71 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/WasmRS/wasmrs-go/payload"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"github.com/mattn/go-colorable"
-	json_codec "github.com/nanobus/nanobus/channel/codecs/json"
-	msgpack_codec "github.com/nanobus/nanobus/channel/codecs/msgpack"
-	"github.com/nanobus/nanobus/mesh"
-	"github.com/oklog/run"
-	"github.com/vmihailenco/msgpack/v5"
-	"go.etcd.io/etcd/version"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/oklog/run"
+	"github.com/vmihailenco/msgpack/v5"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-
 	otel_resource "go.opentelemetry.io/otel/sdk/resource"
 	sdk_trace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
+	// COMPONENT MODEL / PLUGGABLE COMPONENTS
+	"github.com/WasmRS/wasmrs-go/payload"
 	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
+	// NANOBUS CORE
+	"github.com/nanobus/nanobus/coalesce"
+	"github.com/nanobus/nanobus/errorz"
+	"github.com/nanobus/nanobus/function"
+	"github.com/nanobus/nanobus/mesh"
+	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/resource"
+	"github.com/nanobus/nanobus/runtime"
+	"github.com/nanobus/nanobus/security/claims"
+	"github.com/nanobus/nanobus/version"
+
+	// CHANNELS
+	json_codec "github.com/nanobus/nanobus/channel/codecs/json"
+	msgpack_codec "github.com/nanobus/nanobus/channel/codecs/msgpack"
+
+	// SPECIFICATION LANGUAGES
+	"github.com/nanobus/nanobus/spec"
+	spec_apex "github.com/nanobus/nanobus/spec/apex"
+
+	// COMPONENTS
+	"github.com/nanobus/nanobus/compute"
+	compute_wasmrs "github.com/nanobus/nanobus/compute/wasmrs"
+
+	// ACTIONS
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/actions/core"
 	"github.com/nanobus/nanobus/actions/dapr"
 	"github.com/nanobus/nanobus/actions/gorm"
 	"github.com/nanobus/nanobus/actions/postgres"
-	"github.com/nanobus/nanobus/coalesce"
+
+	// CODECS
 	"github.com/nanobus/nanobus/codec"
 	cloudevents_avro "github.com/nanobus/nanobus/codec/cloudevents/avro"
 	cloudevents_json "github.com/nanobus/nanobus/codec/cloudevents/json"
 	"github.com/nanobus/nanobus/codec/confluentavro"
 	codec_json "github.com/nanobus/nanobus/codec/json"
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
-	"github.com/nanobus/nanobus/compute"
-	compute_wasmrs "github.com/nanobus/nanobus/compute/wasmrs"
-	"github.com/nanobus/nanobus/errorz"
-	"github.com/nanobus/nanobus/function"
-	"github.com/nanobus/nanobus/resolve"
-	"github.com/nanobus/nanobus/resource"
-	"github.com/nanobus/nanobus/runtime"
-	"github.com/nanobus/nanobus/security/claims"
-	"github.com/nanobus/nanobus/spec"
-	spec_apex "github.com/nanobus/nanobus/spec/apex"
-	nb_tracing "github.com/nanobus/nanobus/tracing"
-	nb_jaeger "github.com/nanobus/nanobus/tracing/jaeger"
-	nb_stdout "github.com/nanobus/nanobus/tracing/stdout"
+
+	// TELEMETRY / TRACING
+	otel_tracing "github.com/nanobus/nanobus/telemetry/tracing"
+	tracing_jaeger "github.com/nanobus/nanobus/telemetry/tracing/jaeger"
+	tracing_otlp "github.com/nanobus/nanobus/telemetry/tracing/otlp"
+	tracing_stdout "github.com/nanobus/nanobus/telemetry/tracing/stdout"
+
+	// TRANSPORTS
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/filter/jwt"
@@ -87,8 +103,6 @@ import (
 	"github.com/nanobus/nanobus/transport/nats"
 	"github.com/nanobus/nanobus/transport/rest"
 )
-
-var ErrInvalidURISyntax = errors.New("invalid invocation URI syntax")
 
 type Runtime struct {
 	log        logr.Logger
@@ -194,10 +208,11 @@ func main() {
 		dapr.OutputBinding,
 	)
 
-	tracingRegistry := nb_tracing.Registry{}
+	tracingRegistry := otel_tracing.Registry{}
 	tracingRegistry.Register(
-		nb_jaeger.Jaeger,
-		nb_stdout.Stdout,
+		tracing_jaeger.Jaeger,
+		tracing_otlp.OTLP,
+		tracing_stdout.Stdout,
 	)
 
 	// Action registration
@@ -857,20 +872,7 @@ func logOutbound(log logr.Logger, target string, data string) {
 	if l.Enabled() {
 		l.Info("<== " + target + " " + data)
 	}
-}
-
-// newExporter returns a console exporter.
-func newExporter(w io.Writer) (sdk_trace.SpanExporter, error) {
-	url := "http://localhost:14268/api/traces"
-	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
-	// return stdouttrace.New(
-	// 	stdouttrace.WithWriter(w),
-	// 	// Use human-readable output.
-	// 	stdouttrace.WithPrettyPrint(),
-	// 	// Do not print timestamps for the demo.
-	// 	//stdouttrace.WithoutTimestamps(),
-	// )
-}
+} // )
 
 // newResource returns a resource describing this application.
 func newResource() *otel_resource.Resource {

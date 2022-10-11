@@ -3,17 +3,19 @@ package jaeger
 import (
 	"context"
 
-	"github.com/nanobus/nanobus/config"
-	"github.com/nanobus/nanobus/resolve"
-	"github.com/nanobus/nanobus/tracing"
-
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/telemetry/tracing"
 )
 
 type Config struct {
 	// CollectorEndpoint is the endpoint for jaeger span collection.
 	CollectorEndpoint string `mapstructure:"collectorEndpoint"`
+	Username          string `mapstructure:"username"`
+	Password          string `mapstructure:"password"`
 }
 
 // Jaeger is the NamedLoader for Jaeger.
@@ -29,6 +31,16 @@ func Loader(ctx context.Context, with interface{}, resolveAs resolve.ResolveAs) 
 		return nil, err
 	}
 
-	return jaeger.New(jaeger.WithCollectorEndpoint(
-		jaeger.WithEndpoint(c.CollectorEndpoint)))
+	opts := []jaeger.CollectorEndpointOption{
+		jaeger.WithEndpoint(c.CollectorEndpoint),
+	}
+
+	if c.Username != "" {
+		opts = append(opts, jaeger.WithUsername(c.Username))
+	}
+	if c.Password != "" {
+		opts = append(opts, jaeger.WithPassword(c.Password))
+	}
+
+	return jaeger.New(jaeger.WithCollectorEndpoint(opts...))
 }

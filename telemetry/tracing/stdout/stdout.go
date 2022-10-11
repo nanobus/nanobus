@@ -6,11 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nanobus/nanobus/config"
-	"github.com/nanobus/nanobus/resolve"
-	"github.com/nanobus/nanobus/tracing"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/telemetry/tracing"
 )
 
 type Config struct {

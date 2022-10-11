@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/actgardner/gogen-avro/v9/compiler"
-	"github.com/actgardner/gogen-avro/v9/vm"
+	"github.com/actgardner/gogen-avro/v10/compiler"
+	"github.com/actgardner/gogen-avro/v10/vm"
 
 	"github.com/nanobus/nanobus/codec"
 	"github.com/nanobus/nanobus/resolve"
@@ -25,7 +25,7 @@ func CloudEventsAvro() (string, bool, codec.Loader) {
 }
 
 func Loader(with interface{}, resolver resolve.ResolveAs) (codec.Codec, error) {
-	t := AvroCloudEvent{}
+	t := CloudEvent{}
 	deser, err := compiler.CompileSchemaBytes([]byte(t.Schema()), []byte(t.Schema()))
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (c *Codec) ContentType() string {
 
 // Decode decodes CloudEvents Avro bytes to a value.
 func (c *Codec) Decode(msgValue []byte, args ...interface{}) (interface{}, string, error) {
-	t := NewAvroCloudEvent()
+	t := NewCloudEvent()
 	deser, err := compiler.CompileSchemaBytes([]byte(t.Schema()), []byte(t.Schema()))
 	if err != nil {
 		return nil, "", err
@@ -83,60 +83,60 @@ func (c *Codec) Decode(msgValue []byte, args ...interface{}) (interface{}, strin
 	}
 
 	switch t.Data.UnionType {
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumBytes:
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumBytes:
 		event["data"] = t.Data.Bytes
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumBool:
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumBool:
 		event["data"] = t.Data.Bool
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumMapUnionNullBoolAvroCloudEventDataDoubleString:
-		event["data"] = decodeDataMap(t.Data.MapUnionNullBoolAvroCloudEventDataDoubleString)
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumArrayAvroCloudEventData:
-		event["data"] = decodeCloudEventDataArray(t.Data.ArrayAvroCloudEventData)
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumDouble:
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumMapUnionNullBoolCloudEventDataDoubleString:
+		event["data"] = decodeDataMap(t.Data.MapUnionNullBoolCloudEventDataDoubleString)
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumArrayCloudEventData:
+		event["data"] = decodeCloudEventDataArray(t.Data.ArrayCloudEventData)
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumDouble:
 		event["data"] = t.Data.Double
-	case UnionBytesNullBoolMapUnionNullBoolAvroCloudEventDataDoubleStringArrayAvroCloudEventDataDoubleStringTypeEnumString:
+	case UnionBytesNullBoolMapUnionNullBoolCloudEventDataDoubleStringArrayCloudEventDataDoubleStringTypeEnumString:
 		event["data"] = t.Data.String
 	}
 
 	return event, eventType, err
 }
 
-func decodeDataMap(d map[string]*UnionNullBoolAvroCloudEventDataDoubleString) map[string]interface{} {
+func decodeDataMap(d map[string]*UnionNullBoolCloudEventDataDoubleString) map[string]interface{} {
 	m := make(map[string]interface{}, len(d))
 	for key, value := range d {
 		switch value.UnionType {
-		case UnionNullBoolAvroCloudEventDataDoubleStringTypeEnumBool:
+		case UnionNullBoolCloudEventDataDoubleStringTypeEnumBool:
 			m[key] = value.Bool
-		case UnionNullBoolAvroCloudEventDataDoubleStringTypeEnumAvroCloudEventData:
-			m[key] = decodeCloudEventData(&value.AvroCloudEventData)
-		case UnionNullBoolAvroCloudEventDataDoubleStringTypeEnumDouble:
+		case UnionNullBoolCloudEventDataDoubleStringTypeEnumCloudEventData:
+			m[key] = decodeCloudEventData(&value.CloudEventData)
+		case UnionNullBoolCloudEventDataDoubleStringTypeEnumDouble:
 			m[key] = value.Double
-		case UnionNullBoolAvroCloudEventDataDoubleStringTypeEnumString:
+		case UnionNullBoolCloudEventDataDoubleStringTypeEnumString:
 			m[key] = value.String
 		}
 	}
 	return m
 }
 
-func decodeCloudEventData(d *AvroCloudEventData) map[string]interface{} {
+func decodeCloudEventData(d *CloudEventData) map[string]interface{} {
 	m := make(map[string]interface{}, len(d.Value))
 	for key, value := range d.Value {
 		switch value.UnionType {
-		case UnionNullBoolMapAvroCloudEventDataArrayAvroCloudEventDataDoubleStringTypeEnumBool:
+		case UnionNullBoolMapCloudEventDataArrayCloudEventDataDoubleStringTypeEnumBool:
 			m[key] = value.Bool
-		case UnionNullBoolMapAvroCloudEventDataArrayAvroCloudEventDataDoubleStringTypeEnumMapAvroCloudEventData:
-			m[key] = decodeCloudEventDataMap(value.MapAvroCloudEventData)
-		case UnionNullBoolMapAvroCloudEventDataArrayAvroCloudEventDataDoubleStringTypeEnumArrayAvroCloudEventData:
-			m[key] = decodeCloudEventDataArray(value.ArrayAvroCloudEventData)
-		case UnionNullBoolMapAvroCloudEventDataArrayAvroCloudEventDataDoubleStringTypeEnumDouble:
+		case UnionNullBoolMapCloudEventDataArrayCloudEventDataDoubleStringTypeEnumMapCloudEventData:
+			m[key] = decodeCloudEventDataMap(value.MapCloudEventData)
+		case UnionNullBoolMapCloudEventDataArrayCloudEventDataDoubleStringTypeEnumArrayCloudEventData:
+			m[key] = decodeCloudEventDataArray(value.ArrayCloudEventData)
+		case UnionNullBoolMapCloudEventDataArrayCloudEventDataDoubleStringTypeEnumDouble:
 			m[key] = value.Double
-		case UnionNullBoolMapAvroCloudEventDataArrayAvroCloudEventDataDoubleStringTypeEnumString:
+		case UnionNullBoolMapCloudEventDataArrayCloudEventDataDoubleStringTypeEnumString:
 			m[key] = value.String
 		}
 	}
 	return m
 }
 
-func decodeCloudEventDataArray(d []AvroCloudEventData) []interface{} {
+func decodeCloudEventDataArray(d []CloudEventData) []interface{} {
 	m := make([]interface{}, len(d))
 	for i := range d {
 		value := &d[i]
@@ -145,7 +145,7 @@ func decodeCloudEventDataArray(d []AvroCloudEventData) []interface{} {
 	return m
 }
 
-func decodeCloudEventDataMap(d map[string]AvroCloudEventData) map[string]interface{} {
+func decodeCloudEventDataMap(d map[string]CloudEventData) map[string]interface{} {
 	m := make(map[string]interface{}, len(d))
 	for key, value := range d {
 		m[key] = decodeCloudEventData(&value)
