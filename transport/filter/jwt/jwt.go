@@ -52,12 +52,12 @@ type Settings struct {
 	HMACSecretKey  []byte
 }
 
-// HTTP is the NamedLoader for the assign action.
-func HTTP() (string, filter.Loader) {
-	return "jwt", HTTPLoader
+// JWT is the NamedLoader for the JWT filter.
+func JWT() (string, filter.Loader) {
+	return "jwt", Loader
 }
 
-func HTTPLoader(with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
+func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
 	var settings Settings
 	var c Config
 	err := config.Decode(with, &c)
@@ -128,10 +128,10 @@ func HTTPLoader(with interface{}, resolver resolve.ResolveAs) (filter.Filter, er
 		}
 	}
 
-	return HTTPFilter(&settings), nil
+	return Filter(&settings), nil
 }
 
-func HTTPFilter(settings *Settings) filter.Filter {
+func Filter(settings *Settings) filter.Filter {
 	return func(ctx context.Context, header filter.Header) (context.Context, error) {
 		authorization := header.Get("Authorization")
 		if !strings.HasPrefix(authorization, "Bearer ") {

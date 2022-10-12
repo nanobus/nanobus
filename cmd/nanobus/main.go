@@ -177,7 +177,7 @@ func main() {
 	// Filter registration
 	filterRegistry := filter.Registry{}
 	filterRegistry.Register(
-		jwt.HTTP,
+		jwt.JWT,
 	)
 
 	// Compute registration
@@ -505,7 +505,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			filter, err := filterLoader(f.With, resolveAs)
+			filter, err := filterLoader(ctx, f.With, resolveAs)
 			if err != nil {
 				log.Error(err, "could not load filter", "type", f.Uses)
 				os.Exit(1)
