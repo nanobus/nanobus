@@ -269,7 +269,7 @@ func main() {
 	} else {
 		ntp := sdk_trace.NewTracerProvider(
 			sdk_trace.WithBatcher(spanExporter),
-			sdk_trace.WithResource(newResource()),
+			sdk_trace.WithResource(newOtelResource(config.Application)),
 		)
 		defer func() {
 			if err := ntp.Shutdown(ctx); err != nil {
@@ -874,15 +874,31 @@ func logOutbound(log logr.Logger, target string, data string) {
 	}
 } // )
 
-// newResource returns a resource describing this application.
-func newResource() *otel_resource.Resource {
+// newOtelResource returns a resource describing this application.
+func newOtelResource(app *runtime.Application) *otel_resource.Resource {
+	serviceKey := "nanobus"
+	version := version.Version
+	environment := "non-prod"
+
+	if app != nil {
+		if app.ID != "" {
+			serviceKey = app.ID
+		}
+		if app.Version != "" {
+			version = app.Version
+		}
+		if app.Environment != "" {
+			environment = app.Environment
+		}
+	}
+
 	r, _ := otel_resource.Merge(
 		otel_resource.Default(),
 		otel_resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("nanobus"),
-			semconv.ServiceVersionKey.String(version.Version),
-			attribute.String("environment", "demo"),
+			semconv.ServiceNameKey.String(serviceKey),
+			semconv.ServiceVersionKey.String(version),
+			attribute.String("environment", environment),
 		),
 	)
 	return r
