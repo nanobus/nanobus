@@ -79,12 +79,13 @@ func HTTPLoader(ctx context.Context, with interface{}, resolver resolve.ResolveA
 		return nil, fmt.Errorf("unknown codec %q", c.Codec)
 	}
 
-	return HTTPAction(httpClient, codec, &c), nil
+	return HTTPAction(httpClient, codec, codecs, &c), nil
 }
 
 func HTTPAction(
 	httpClient HTTPClient,
 	codec codec.Codec,
+	codecs codec.Codecs,
 	config *HTTPConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		var err error
@@ -133,6 +134,14 @@ func HTTPAction(
 			return nil, fmt.Errorf("expected 2XX status code; received %d", resp.StatusCode)
 		}
 
+		respCodec := codec
+		respContentType := resp.Header.Get("Content-Type")
+		if respContentType != "" {
+			if c, ok := codecs[respContentType]; ok {
+				respCodec = c
+			}
+		}
+
 		responseBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
@@ -140,7 +149,7 @@ func HTTPAction(
 
 		var response interface{}
 		if len(responseBytes) > 0 {
-			if response, _, err = codec.Decode(responseBytes, config.CodecArgs...); err != nil {
+			if response, _, err = respCodec.Decode(responseBytes, config.CodecArgs...); err != nil {
 				return nil, err
 			}
 

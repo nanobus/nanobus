@@ -88,6 +88,7 @@ import (
 	"github.com/nanobus/nanobus/codec/confluentavro"
 	codec_json "github.com/nanobus/nanobus/codec/json"
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
+	codec_text "github.com/nanobus/nanobus/codec/text"
 
 	// TELEMETRY / TRACING
 	otel_tracing "github.com/nanobus/nanobus/telemetry/tracing"
@@ -197,6 +198,8 @@ func main() {
 		confluentavro.ConfluentAvro,
 		cloudevents_avro.CloudEventsAvro,
 		cloudevents_json.CloudEventsJSON,
+		codec_text.Plain,
+		codec_text.HTML,
 	)
 
 	resourceRegistry := resource.Registry{}
