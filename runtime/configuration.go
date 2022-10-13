@@ -19,7 +19,9 @@ package runtime
 import (
 	"encoding/json"
 	"io"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -96,8 +98,16 @@ type Step struct {
 }
 
 func LoadYAML(in io.Reader) (*Configuration, error) {
+	data, err := io.ReadAll(in)
+	if err != nil {
+		return nil, err
+	}
+	// Replaces ${var} or $var in the string according to the values
+	// of the current environment variables.
+	configString := os.ExpandEnv(string(data))
+	r := strings.NewReader(configString)
 	var c Configuration
-	if err := yaml.NewDecoder(in).Decode(&c); err != nil {
+	if err := yaml.NewDecoder(r).Decode(&c); err != nil {
 		return nil, err
 	}
 	return &c, nil
