@@ -233,12 +233,9 @@ func (p *nsParser) convertOperations(operations []*ast.OperationDefinition) ([]*
 		if operation.Unary {
 			param := operation.Parameters[0]
 			if named, ok := param.Type.(*ast.Named); ok {
-				pt, _ := p.n.Type(named.Name.Value)
-				params = spec.NewType(p.n, pt.Name, pt.Description).
-					AddFields(pt.Fields...).
-					AddAnnotations(p.convertAnnotations(param.Annotations)...).
-					AddAnnotations(pt.Annotations...)
-				params.Validations = pt.Validations
+				if pt, ok := p.n.Type(named.Name.Value); ok {
+					params = pt
+				}
 			}
 		} else {
 			var err error

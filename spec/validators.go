@@ -52,8 +52,26 @@ var validators = map[string]ValidationLoader{
 			return nil, nil
 		}, nil
 	},
+	"email": func(t *TypeRef, f *Field, a *Annotation) (Validation, error) {
+		return func(v interface{}) ([]ValidationError, error) {
+			val := validator.New()
+			value := cast.ToString(v)
+
+			if err := val.Var(value, "email"); err != nil {
+				return []ValidationError{
+					{
+						//Fields:  []string{f.Name},
+						Message: fmt.Sprintf("%q is an invalid E-Mail address", f.Name),
+					},
+				}, nil
+			}
+
+			return nil, nil
+		}, nil
+	},
 }
 
 var validationRules = map[string]func(a *Annotation) (string, error){
-	"url": func(a *Annotation) (string, error) { return "url", nil },
+	"url":   func(a *Annotation) (string, error) { return "url", nil },
+	"email": func(a *Annotation) (string, error) { return "email", nil },
 }
