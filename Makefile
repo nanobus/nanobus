@@ -59,7 +59,7 @@ $(COMPONENTS):
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(shell pwd)/$(BUILDDIR)/$@ $@/main.go
 
 install:
-	CGO_ENABLED=0 go install ./cmd/...
+	CGO_ENABLED=0 go install -buildvcs=false ./cmd/...
 	@echo "Go install $(BINARY) done. Make sure $(shell go env GOPATH)/bin is in your path."
 
 clean:
