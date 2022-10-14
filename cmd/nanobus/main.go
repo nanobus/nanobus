@@ -33,6 +33,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/joho/godotenv"
 	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -118,6 +119,8 @@ type Runtime struct {
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	godotenv.Load()
 
 	// Initialize logger
 	zapConfig := zap.NewDevelopmentEncoderConfig()

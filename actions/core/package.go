@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/runtime"
@@ -36,6 +37,7 @@ var All = []actions.NamedLoader{
 	JMESPath,
 	JQ,
 	Log,
+	ReCaptcha,
 	Route,
 }
 
@@ -44,4 +46,8 @@ type Processor interface {
 	Pipeline(ctx context.Context, name string, data actions.Data) (interface{}, error)
 	Provider(ctx context.Context, namespace, service, function string, data actions.Data) (interface{}, error)
 	Event(ctx context.Context, name string, data actions.Data) (interface{}, error)
+}
+
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }

@@ -49,10 +49,6 @@ type HTTPConfig struct {
 	CodecArgs []interface{} `mapstructure:"codecArgs"`
 }
 
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // HTTP is the NamedLoader for Dapr output bindings
 func HTTP() (string, actions.Loader) {
 	return "http", HTTPLoader
