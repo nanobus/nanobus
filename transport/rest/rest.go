@@ -24,7 +24,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -92,7 +94,14 @@ func WithFilters(filters ...filter.Filter) Option {
 }
 
 type Configuration struct {
-	Address string `mapstructure:"address" validate:"required"`
+	Address string       `mapstructure:"address" validate:"required"`
+	Static  []StaticPath `mapstructure:"static"`
+}
+
+type StaticPath struct {
+	Dir   string `mapstructure:"dir" validate:"required"`
+	Path  string `mapstructure:"path" validate:"required"`
+	Strip string `mapstructure:"strip"`
 }
 
 func Load() (string, transport.Loader) {
@@ -125,12 +134,12 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		return nil, err
 	}
 
-	return New(log, tracer, c.Address, namespaces, transportInvoker, errorResolver,
+	return New(log, tracer, c, namespaces, transportInvoker, errorResolver,
 		WithFilters(filters...),
 		WithCodecs(jsoncodec, msgpackcodec))
 }
 
-func New(log logr.Logger, tracer trace.Tracer, address string, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
+func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces spec.Namespaces, invoker transport.Invoker, errorResolver errorz.Resolver, options ...Option) (transport.Transport, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {
@@ -146,7 +155,7 @@ func New(log logr.Logger, tracer trace.Tracer, address string, namespaces spec.N
 	r.Use(handlers.ProxyHeaders)
 	r.Use(mux.CORSMethodMiddleware(r))
 
-	docsHost := address
+	docsHost := config.Address
 	if strings.HasPrefix(docsHost, ":") {
 		docsHost = "localhost" + docsHost
 	}
@@ -168,7 +177,7 @@ func New(log logr.Logger, tracer trace.Tracer, address string, namespaces spec.N
 	rest := Rest{
 		log:           log,
 		tracer:        tracer,
-		address:       address,
+		address:       config.Address,
 		namespaces:    namespaces,
 		invoker:       invoker,
 		errorResolver: errorResolver,
@@ -332,6 +341,21 @@ func New(log logr.Logger, tracer trace.Tracer, address string, namespaces spec.N
 					hasBody, bodyParamName, queryParams)).Methods(methods...)
 			}
 		}
+	}
+
+	sort.Slice(config.Static, func(i, j int) bool {
+		return len(config.Static[i].Path) > len(config.Static[j].Path)
+	})
+	for _, path := range config.Static {
+		log.Info("Serving static files",
+			"dir", path.Dir,
+			"path", path.Path,
+			"strip", path.Strip)
+		fs := http.FileServer(http.Dir(path.Dir))
+		if path.Strip != "" {
+			fs = http.StripPrefix(path.Strip, fs)
+		}
+		r.PathPrefix(path.Path).Handler(handlers.LoggingHandler(os.Stdout, fs))
 	}
 
 	return &rest, nil
