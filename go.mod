@@ -3,6 +3,7 @@ module github.com/nanobus/nanobus
 go 1.19
 
 require (
+	github.com/MicahParks/keyfunc v1.5.1
 	github.com/WasmRS/wasmrs-go v0.0.0-00010101000000-000000000000
 	github.com/actgardner/gogen-avro/v10 v10.2.1
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
@@ -17,6 +18,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.0
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.12.5
 	github.com/google/uuid v1.3.0

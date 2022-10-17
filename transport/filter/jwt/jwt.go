@@ -27,8 +27,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/MicahParks/keyfunc"
+	"github.com/go-logr/logr"
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
@@ -44,12 +47,14 @@ type Config struct {
 	HMACSecretKeyFile    string `mapstructure:"hmacSecretKeyFile"`
 	HMACSecretKeyBase64  bool   `mapstructure:"hmacSecretKeyBase64"`
 	HMACSecretKeyString  string `mapstructure:"hmacSecretKeyString"`
+	JWKSURL              string `mapstructure:"jwksUrl"`
 }
 
 type Settings struct {
 	RSAPublicKey   *rsa.PublicKey
 	ECDSAPublicKey *ecdsa.PublicKey
 	HMACSecretKey  []byte
+	KeyFunc        *keyfunc.JWKS
 }
 
 // JWT is the NamedLoader for the JWT filter.
@@ -63,6 +68,32 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	err := config.Decode(with, &c)
 	if err != nil {
 		return nil, err
+	}
+
+	var logger logr.Logger
+	if err := resolve.Resolve(resolver,
+		"system:logger", &logger); err != nil {
+		return nil, err
+	}
+
+	if c.JWKSURL != "" {
+		logger.Info("Using JWKS URL for JWT verification")
+		// Create the JWKS from the resource at the given URL.
+		options := keyfunc.Options{
+			Ctx: ctx,
+			RefreshErrorHandler: func(err error) {
+				logger.Error(err, "There was an error with the jwt.Keyfunc")
+			},
+			RefreshInterval:   time.Hour,
+			RefreshRateLimit:  time.Minute * 5,
+			RefreshTimeout:    time.Second * 10,
+			RefreshUnknownKID: true,
+		}
+
+		settings.KeyFunc, err = keyfunc.Get(c.JWKSURL, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get the JWKS from the given URL.\nError: %w", err)
+		}
 	}
 
 	var rsaPublicKeyBytes []byte
@@ -128,10 +159,10 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		}
 	}
 
-	return Filter(&settings), nil
+	return Filter(logger, &settings), nil
 }
 
-func Filter(settings *Settings) filter.Filter {
+func Filter(log logr.Logger, settings *Settings) filter.Filter {
 	return func(ctx context.Context, header filter.Header) (context.Context, error) {
 		authorization := header.Get("Authorization")
 		if !strings.HasPrefix(authorization, "Bearer ") {
@@ -139,6 +170,9 @@ func Filter(settings *Settings) filter.Filter {
 		}
 
 		token, err := jwt.Parse(authorization[7:], func(token *jwt.Token) (interface{}, error) {
+			if settings.KeyFunc != nil {
+				return settings.KeyFunc.Keyfunc(token)
+			}
 			switch token.Method.(type) {
 			case *jwt.SigningMethodRSA:
 				return settings.RSAPublicKey, nil
