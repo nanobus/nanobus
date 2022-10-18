@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
@@ -38,6 +39,8 @@ type QueryConfig struct {
 	SQL string `mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
 	Args []*expr.ValueExpr `mapstructure:"args"`
+	// Single indicates a single row should be returned if found.
+	Single bool `mapstructure:"single"`
 }
 
 // Query is the NamedLoader for the invoke action.
@@ -74,7 +77,7 @@ func QueryAction(
 	pool *pgxpool.Pool) actions.Action {
 	return func(ctx context.Context, data actions.Data) (interface{}, error) {
 		s, ok := stream.SinkFromContext(ctx)
-		if !ok {
+		if !config.Single && !ok {
 			return nil, errors.New("stream not in context")
 		}
 
@@ -97,23 +100,44 @@ func QueryAction(
 		for i, f := range fields {
 			fieldNames[i] = snakeCaseToCamelCase(string(f.Name))
 		}
-		for rows.Next() {
-			record := make(map[string]interface{})
-			values, err := rows.Values()
-			if err != nil {
-				return nil, err
-			}
-			for i, v := range values {
-				record[fieldNames[i]] = v
-			}
 
-			if err = s.Next(record, nil); err != nil {
-				return nil, err
+		if config.Single {
+			if rows.Next() {
+				record, err := rowsToRecord(rows, fieldNames)
+				if err != nil {
+					return nil, err
+				}
+
+				return record, nil
+			}
+		} else {
+			for rows.Next() {
+				record, err := rowsToRecord(rows, fieldNames)
+				if err != nil {
+					return nil, err
+				}
+
+				if err = s.Next(record, nil); err != nil {
+					return nil, err
+				}
 			}
 		}
 
 		return nil, nil
 	}
+}
+
+func rowsToRecord(rows pgx.Rows, fieldNames []string) (any, error) {
+	record := make(map[string]interface{})
+	values, err := rows.Values()
+	if err != nil {
+		return nil, err
+	}
+	for i, v := range values {
+		record[fieldNames[i]] = v
+	}
+
+	return record, nil
 }
 
 func snakeCaseToCamelCase(inputUnderScoreStr string) (camelCase string) {

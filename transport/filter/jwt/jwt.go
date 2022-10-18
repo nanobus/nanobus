@@ -34,6 +34,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/nanobus/nanobus/config"
+	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/security/claims"
 	"github.com/nanobus/nanobus/transport/filter"
@@ -54,7 +55,7 @@ type Settings struct {
 	RSAPublicKey   *rsa.PublicKey
 	ECDSAPublicKey *ecdsa.PublicKey
 	HMACSecretKey  []byte
-	KeyFunc        *keyfunc.JWKS
+	KeyFunc        jwt.Keyfunc
 }
 
 // JWT is the NamedLoader for the JWT filter.
@@ -90,10 +91,11 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 			RefreshUnknownKID: true,
 		}
 
-		settings.KeyFunc, err = keyfunc.Get(c.JWKSURL, options)
+		kf, err := keyfunc.Get(c.JWKSURL, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get the JWKS from the given URL.\nError: %w", err)
 		}
+		settings.KeyFunc = kf.Keyfunc
 	}
 
 	var rsaPublicKeyBytes []byte
@@ -159,20 +161,8 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		}
 	}
 
-	return Filter(logger, &settings), nil
-}
-
-func Filter(log logr.Logger, settings *Settings) filter.Filter {
-	return func(ctx context.Context, header filter.Header) (context.Context, error) {
-		authorization := header.Get("Authorization")
-		if !strings.HasPrefix(authorization, "Bearer ") {
-			return ctx, nil
-		}
-
-		token, err := jwt.Parse(authorization[7:], func(token *jwt.Token) (interface{}, error) {
-			if settings.KeyFunc != nil {
-				return settings.KeyFunc.Keyfunc(token)
-			}
+	if settings.KeyFunc == nil {
+		settings.KeyFunc = func(token *jwt.Token) (interface{}, error) {
 			switch token.Method.(type) {
 			case *jwt.SigningMethodRSA:
 				return settings.RSAPublicKey, nil
@@ -183,9 +173,28 @@ func Filter(log logr.Logger, settings *Settings) filter.Filter {
 			}
 
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		})
+		}
+	}
+
+	return Filter(logger, &settings), nil
+}
+
+func Filter(log logr.Logger, settings *Settings) filter.Filter {
+	return func(ctx context.Context, header filter.Header) (context.Context, error) {
+		authorization := header.Get("Authorization")
+		if !strings.HasPrefix(authorization, "Bearer ") {
+			return ctx, nil
+		}
+
+		tokenString := authorization[7:]
+		// Check for the prefix of all JWTs.
+		if !strings.HasPrefix(tokenString, "ey") {
+			return ctx, nil
+		}
+
+		token, err := jwt.Parse(tokenString, settings.KeyFunc)
 		if err != nil {
-			return nil, err
+			return nil, errorz.Wrap(err, errorz.Unauthenticated, err.Error())
 		}
 
 		if token != nil {
