@@ -11,13 +11,14 @@ import (
 
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/runtime"
 	"github.com/nanobus/nanobus/telemetry/tracing"
 )
 
 type Config struct {
-	Filename          string `mapstructure:"filename"`
-	PrettyPrint       bool   `mapstructure:"prettyPrint"`
-	WithoutTimestamps bool   `mapstructure:"withoutTimestamps"`
+	Filename          runtime.FilePath `mapstructure:"filename"`
+	PrettyPrint       bool             `mapstructure:"prettyPrint"`
+	WithoutTimestamps bool             `mapstructure:"withoutTimestamps"`
 }
 
 // Jaeger is the NamedLoader for Jaeger.
@@ -34,7 +35,7 @@ func Loader(ctx context.Context, with interface{}, resolveAs resolve.ResolveAs) 
 
 	// Write telemetry data to a file.
 	if c.Filename != "" {
-		f, err := os.Create(c.Filename)
+		f, err := os.Create(string(c.Filename))
 		if err != nil {
 			return nil, err
 		}

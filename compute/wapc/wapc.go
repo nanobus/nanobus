@@ -37,7 +37,7 @@ package wapc
 
 // type WaPCConfig struct {
 // 	// Filename is the file name of the waPC/WebAssembly module to load.
-// 	Filename string `mapstructure:"filename" validate:"required"` // TODO: Load from external location
+// 	Filename runtime.FilePath `mapstructure:"filename" validate:"required"` // TODO: Load from external location
 // 	// PoolSize controls the number of waPC instance of the module to create and pool.
 // 	// It also represents the maximum number of concurrent requests the module can process.
 // 	PoolSize uint64 `mapstructure:"poolSize"`

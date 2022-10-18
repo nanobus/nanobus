@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -97,6 +98,19 @@ type Step struct {
 	OnError        *Pipeline   `json:"onError,omitempty" yaml:"onError,omitempty" mapstructure:"onError"`
 }
 
+func DefaultConfiguration() Configuration {
+	return Configuration{
+		// Specs: []Component{
+		// 	{
+		// 		Uses: "apex",
+		// 		With: map[string]interface{}{
+		// 			"filename": "spec.apexlang",
+		// 		},
+		// 	},
+		// },
+	}
+}
+
 func LoadYAML(in io.Reader) (*Configuration, error) {
 	data, err := io.ReadAll(in)
 	if err != nil {
@@ -106,7 +120,7 @@ func LoadYAML(in io.Reader) (*Configuration, error) {
 	// of the current environment variables.
 	configString := os.ExpandEnv(string(data))
 	r := strings.NewReader(configString)
-	var c Configuration
+	c := DefaultConfiguration()
 	if err := yaml.NewDecoder(r).Decode(&c); err != nil {
 		return nil, err
 	}
@@ -115,6 +129,26 @@ func LoadYAML(in io.Reader) (*Configuration, error) {
 
 func Combine(config *Configuration, configs ...*Configuration) {
 	for _, c := range configs {
+		// Compute
+		if len(c.Compute) > 0 {
+			config.Compute = append(config.Compute, c.Compute...)
+		}
+
+		// Specs
+		if len(c.Specs) > 0 {
+			config.Specs = append(config.Specs, c.Specs...)
+		}
+
+		// Resources
+		if len(c.Resources) > 0 && config.Resources == nil {
+			config.Resources = make(map[string]Component)
+		}
+		for k, v := range c.Resources {
+			if _, exists := config.Resources[k]; !exists {
+				config.Resources[k] = v
+			}
+		}
+
 		// Filters
 		if len(c.Filters) > 0 && config.Filters == nil {
 			config.Filters = make(map[string][]Component)
@@ -229,6 +263,38 @@ func Combine(config *Configuration, configs ...*Configuration) {
 	}
 }
 
+var configBaseDir string
+
+func SetConfigBaseDir(path string) {
+	configBaseDir = path
+}
+
+type FilePath string
+
+func (f *FilePath) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+
+	return f.DecodeString(str)
+}
+
+func (f *FilePath) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+
+	return f.DecodeString(str)
+}
+
+func (f *FilePath) DecodeString(value string) error {
+	*f = FilePath(filepath.Join(configBaseDir, value))
+
+	return nil
+}
+
 type Duration time.Duration
 
 func (d *Duration) UnmarshalJSON(data []byte) error {
@@ -237,7 +303,7 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	return d.Parse(str)
+	return d.DecodeString(str)
 }
 
 func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -246,10 +312,10 @@ func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	return d.Parse(str)
+	return d.DecodeString(str)
 }
 
-func (d *Duration) Parse(str string) error {
+func (d *Duration) DecodeString(str string) error {
 	millis, err := strconv.ParseUint(str, 10, 32)
 	if err == nil {
 		*d = Duration(millis) * Duration(time.Millisecond)

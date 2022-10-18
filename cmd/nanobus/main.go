@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -290,14 +291,14 @@ func main() {
 	tracer := otel.Tracer("NanoBus")
 	dependencies["system:tracer"] = tracer
 
-	if len(config.Specs) == 0 {
-		config.Specs = append(config.Specs, runtime.Component{
-			Uses: "apex",
-			With: map[string]interface{}{
-				"filename": "spec.apexlang",
-			},
-		})
-	}
+	// if len(config.Specs) == 0 {
+	// 	config.Specs = append(config.Specs, runtime.Component{
+	// 		Uses: "apex",
+	// 		With: map[string]interface{}{
+	// 			"filename": "spec.apexlang",
+	// 		},
+	// 	})
+	// }
 	for _, spec := range config.Specs {
 		loader, ok := specRegistry[spec.Uses]
 		if !ok {
@@ -759,13 +760,22 @@ func loadConfiguration(filename string) (*runtime.Configuration, error) {
 	}
 	defer f.Close()
 
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, err
+	}
+	baseDir := filepath.Dir(absPath)
+
 	c, err := runtime.LoadYAML(f)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, imp := range c.Import {
-		imported, err := loadConfiguration(imp)
+		path := filepath.Join(baseDir, imp)
+		dir := filepath.Dir(path)
+		runtime.SetConfigBaseDir(dir)
+		imported, err := loadConfiguration(path)
 		if err != nil {
 			return nil, err
 		}

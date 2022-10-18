@@ -25,12 +25,14 @@ import (
 
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/runtime"
 	"github.com/nanobus/nanobus/spec"
 )
 
 type Config struct {
 	// Filename is the file name of the Apex definition to load.
-	Filename string `mapstructure:"filename"` // TODO: Load from external location
+	// TODO: Load from external location
+	Filename runtime.FilePath `mapstructure:"filename" validate:"required"`
 }
 
 // Apex is the NamedLoader for the Apex spec.
@@ -46,7 +48,7 @@ func Loader(ctx context.Context, with interface{}, resolveAs resolve.ResolveAs) 
 		return nil, err
 	}
 
-	specBytes, err := os.ReadFile(c.Filename)
+	specBytes, err := os.ReadFile(string(c.Filename))
 	if err != nil {
 		return nil, err
 	}

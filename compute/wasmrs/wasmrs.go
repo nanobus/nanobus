@@ -24,11 +24,12 @@ import (
 	"github.com/nanobus/nanobus/compute"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/resolve"
+	"github.com/nanobus/nanobus/runtime"
 )
 
 type Config struct {
 	// Filename is the file name of the WasmRS module to load.
-	Filename string `mapstructure:"filename" validate:"required"` // TODO: Load from external location
+	Filename runtime.FilePath `mapstructure:"filename" validate:"required"` // TODO: Load from external location
 }
 
 // WasmRS
@@ -42,7 +43,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		return nil, err
 	}
 
-	source, err := os.ReadFile(c.Filename)
+	source, err := os.ReadFile(string(c.Filename))
 	if err != nil {
 		return nil, err
 	}
