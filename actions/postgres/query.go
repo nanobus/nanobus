@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/nanobus/nanobus/actions"
@@ -53,6 +55,7 @@ func QueryLoader(ctx context.Context, with interface{}, resolver resolve.Resolve
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
+	c.SQL = strings.TrimSpace(c.SQL)
 
 	var resources resource.Resources
 	if err := resolve.Resolve(resolver,
@@ -134,6 +137,14 @@ func rowsToRecord(rows pgx.Rows, fieldNames []string) (any, error) {
 		return nil, err
 	}
 	for i, v := range values {
+		switch vv := v.(type) {
+		case [16]byte:
+			v = uuid.UUID(vv).String()
+		// TODO: add customer msgpack serializer for time.Time.
+		// Then this can be removed.
+		case time.Time:
+			v = vv.Format(time.RFC3339Nano)
+		}
 		record[fieldNames[i]] = v
 	}
 

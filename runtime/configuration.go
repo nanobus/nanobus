@@ -116,9 +116,20 @@ func LoadYAML(in io.Reader) (*Configuration, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Replaces ${var} or $var in the string according to the values
+
+	// Replaces ${env:var} or $env:var in the string according to the values
 	// of the current environment variables.
-	configString := os.ExpandEnv(string(data))
+	configString := os.Expand(string(data), func(key string) string {
+		var value string
+		if strings.HasPrefix(key, "env:") {
+			value = os.Getenv(key[4:])
+		}
+		if value == "" {
+			return "$" + key
+		}
+		return value
+	})
+
 	r := strings.NewReader(configString)
 	c := DefaultConfiguration()
 	if err := yaml.NewDecoder(r).Decode(&c); err != nil {
