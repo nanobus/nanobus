@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
@@ -138,12 +137,10 @@ func rowsToRecord(rows pgx.Rows, fieldNames []string) (any, error) {
 	}
 	for i, v := range values {
 		switch vv := v.(type) {
+		// Assume [16]byte are UUID types in Postgres
+		// and convert to string
 		case [16]byte:
 			v = uuid.UUID(vv).String()
-		// TODO: add customer msgpack serializer for time.Time.
-		// Then this can be removed.
-		case time.Time:
-			v = vv.Format(time.RFC3339Nano)
 		}
 		record[fieldNames[i]] = v
 	}
