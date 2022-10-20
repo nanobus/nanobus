@@ -144,18 +144,18 @@ func (i *Invoker) RequestStream(ctx context.Context, p payload.Payload) flux.Flu
 	r, data := i.lookup(p)
 	return flux.Create(func(sink flux.Sink[payload.Payload]) {
 		go func() {
-			s := stream.SinkFromFlux(sink)
+			s := stream.FromSink(sink)
 			ctx = stream.SinkNewContext(ctx, s)
-			result, err := r(ctx, data)
+			_, err := r(ctx, data)
 			if err != nil {
 				sink.Error(err)
 				return
 			}
 
-			if isNil(result) {
-				sink.Next(payload.New(nil))
-				return
-			}
+			// if isNil(result) {
+			// 	sink.Next(payload.New(nil))
+			// 	return
+			// }
 
 			sink.Complete()
 		}()
@@ -166,7 +166,7 @@ func (i *Invoker) RequestChannel(ctx context.Context, p payload.Payload, in flux
 	r, data := i.lookup(p)
 	return flux.Create(func(sink flux.Sink[payload.Payload]) {
 		go func() {
-			streamSink := stream.SinkFromFlux(sink)
+			streamSink := stream.FromSink(sink)
 			ctx = stream.SinkNewContext(ctx, streamSink)
 			streamSource := stream.SourceFromFlux(in)
 			ctx = stream.SourceNewContext(ctx, streamSource)

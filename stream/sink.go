@@ -11,7 +11,7 @@ type sink struct {
 	f flux.Sink[payload.Payload]
 }
 
-func SinkFromFlux(f flux.Sink[payload.Payload]) Sink {
+func FromSink(f flux.Sink[payload.Payload]) Sink {
 	return &sink{
 		f: f,
 	}
