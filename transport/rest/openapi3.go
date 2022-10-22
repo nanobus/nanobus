@@ -427,11 +427,11 @@ func typeFormat(t *spec.TypeRef) *openapi3.Schema {
 		return openapi3.NewArraySchema().
 			WithItems(typeFormat(t.ItemType))
 	case spec.KindMap:
-		if t.ItemType.Kind == spec.KindType {
+		if t.ValueType.Kind == spec.KindType {
 			return &openapi3.Schema{
 				Type: "object",
 				AdditionalProperties: &openapi3.SchemaRef{
-					Ref: "#/components/schemas/" + t.ItemType.Type.Name,
+					Ref: "#/components/schemas/" + t.ValueType.Type.Name,
 				},
 			}
 		}
