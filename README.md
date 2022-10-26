@@ -86,7 +86,7 @@ Coming soon...
 apex new @nanobus/tinygo hello_world
 cd hello_world
 just
-just run
+nanobus
 ```
 
 In NanoBus, the developer only needs to follow these steps:
