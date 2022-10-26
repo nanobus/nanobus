@@ -159,7 +159,8 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 	if strings.HasPrefix(docsHost, ":") {
 		docsHost = "localhost" + docsHost
 	}
-	log.Info("Registering Swagger UI", "url", fmt.Sprintf("http://%s/swagger/", docsHost))
+	log.Info("Swagger UI", "url", fmt.Sprintf("http://%s/swagger/", docsHost))
+	log.Info("Swagger Spec", "url", fmt.Sprintf("http://%s/swagger/swagger_spec", docsHost))
 	if err := RegisterSwaggerRoutes(r, namespaces); err != nil {
 		return nil, err
 	}
