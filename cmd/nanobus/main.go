@@ -697,6 +697,10 @@ func main() {
 		})
 	}
 
+	if len(config.Transports) == 0 {
+		log.Info("Warning: no transports configured")
+	}
+
 	for name, comp := range config.Transports {
 		name := name // Make copy
 		loader, ok := transportRegistry[comp.Uses]
