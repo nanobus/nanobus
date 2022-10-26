@@ -50,7 +50,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	// COMPONENT MODEL / PLUGGABLE COMPONENTS
-	"github.com/WasmRS/wasmrs-go/payload"
 	proto "github.com/dapr/dapr/pkg/proto/components/v1"
 
 	// NANOBUS CORE
@@ -73,6 +72,7 @@ import (
 	spec_apex "github.com/nanobus/nanobus/spec/apex"
 
 	// COMPONENTS
+	"github.com/nanobus/iota/go/wasmrs/payload"
 	"github.com/nanobus/nanobus/compute"
 	compute_wasmrs "github.com/nanobus/nanobus/compute/wasmrs"
 

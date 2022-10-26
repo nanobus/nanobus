@@ -50,62 +50,52 @@ To learn more, see the [architecture page](/docs/architecture.md).
 
 ## Getting Started
 
-### Install the [nanogen CLI](https://github.com/nanobus/cli)
+### Install the Apex for Code Generation
 
-Windows
+NanoBus applications can be created quickly using [Apex](https://apexlang.io). The [Apex CLI](https://apexlang.io/docs/getting-started#cli) must be installed.
 
-```
-powershell -Command "iwr -useb https://raw.githubusercontent.com/nanobus/cli/master/install/install.ps1 | iex"
-```
+Next, run the following commands from a terminal to install NanoBus code generators.
 
-MacOS
-
-```
-curl -fsSL https://raw.githubusercontent.com/nanobus/cli/master/install/install.sh | /bin/bash
-```
-
-Linux
-
-```
-wget -q https://raw.githubusercontent.com/nanobus/cli/master/install/install.sh -O - | /bin/bash
+```cli
+git clone https://github.com/nanobus/iota.git
+cd iota/codegen
+just install
+just apex-install
 ```
 
-Homebrew
-
-```
-brew install nanobus/tap/nanogen
-```
+Note: The above step will be simplified once these packages are published to [NPM](https://www.npmjs.com).
 
 ### Create a NanoBus Application
 
-Choose a supported language:
+Choose a currently supported language:
 
-* Node.js (typescript)
-* C# / .NET (csharp)
-* Python (python)
-* Golang (go)
-* WASM AssemblyScript (assemblyscript)
-* WASM TinyGo (tinygo)
+* WASM TinyGo (@nanobus/tinygo)
+* WASM Rust (@nanobus/rust)
 
 Coming soon...
 
+* Node.js
+* C# / .NET
+* Python
+* Golang
+* AssemblyScript (WASM)
 * Java (Reactor)
-* Rust (Binary & WASM)
+* Rust (Native)
 
 ```shell
-nanogen new typescript hello_world
+apex new @nanobus/tinygo hello_world
 cd hello_world
-make
-make run
+just
+just run
 ```
 
 In NanoBus, the developer only needs to follow these steps:
 
-1. Create a new service using the `nanogen` CLI
-2. Define the services interfaces (IDL)
-3. Create pipelines that tie operations to Dapr building blocks
+1. Create a new service using `apex new [template] [directory]` or `apex init [template]`
+2. Define the services interfaces by editing `apex.aidl`
+3. Define pipelines in `bus.yaml` that tie operations to infrastructure building blocks
 4. Implement the service's core logic code
-5. Run `make docker`
+5. Run `just build`
 6. Deploy to your favorite container orchestrator
 
 Be sure to check out the [tutorial](example/README.md)!

@@ -21,8 +21,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/WasmRS/wasmrs-go/payload"
-	"github.com/WasmRS/wasmrs-go/rx/mono"
+	"github.com/nanobus/iota/go/wasmrs/payload"
+	"github.com/nanobus/iota/go/wasmrs/rx/mono"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

@@ -22,8 +22,8 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/WasmRS/wasmrs-go/payload"
-	"github.com/WasmRS/wasmrs-go/rx/mono"
+	"github.com/nanobus/iota/go/wasmrs/payload"
+	"github.com/nanobus/iota/go/wasmrs/rx/mono"
 	"github.com/nanobus/nanobus/actions"
 	"github.com/nanobus/nanobus/config"
 	"github.com/nanobus/nanobus/expr"

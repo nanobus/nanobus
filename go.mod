@@ -3,8 +3,8 @@ module github.com/nanobus/nanobus
 go 1.19
 
 require (
+	aidanwoods.dev/go-paseto v1.1.3
 	github.com/MicahParks/keyfunc v1.5.1
-	github.com/WasmRS/wasmrs-go v0.0.0-00010101000000-000000000000
 	github.com/actgardner/gogen-avro/v10 v10.2.1
 	github.com/agrea/ptr v0.0.0-20180711073057-77a518d99b7b
 	github.com/antonmedv/expr v1.9.0
@@ -34,12 +34,13 @@ require (
 	github.com/mattn/anko v0.1.9
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/mapstructure v1.5.1-0.20220423185008-bf980b35cac4
+	github.com/nanobus/iota/go v0.0.0-20221026151257-c183a7600366
 	github.com/nats-io/nats.go v1.17.0
 	github.com/oklog/run v1.1.0
 	github.com/rbretecher/go-postman-collection v0.9.0
 	github.com/sony/gobreaker v0.5.0
 	github.com/spf13/cast v1.5.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/wapc/wapc-go v0.5.4
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -62,7 +63,6 @@ require (
 )
 
 require (
-	aidanwoods.dev/go-paseto v1.1.3 // indirect
 	github.com/CosmWasm/tinyjson v0.9.0 // indirect
 	github.com/Workiva/go-datastructures v1.0.53 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
@@ -112,7 +112,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/goleak v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
-	golang.org/x/exp v0.0.0-20221011201855-a3968a42eed6 // indirect
+	golang.org/x/exp v0.0.0-20221025133541-111beb427cde // indirect
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
@@ -120,6 +120,5 @@ require (
 )
 
 replace (
-	github.com/WasmRS/wasmrs-go => ../../WasmRS/wasmrs-go
 	github.com/go-playground/validator/v10 => github.com/nanobus/validator/v10 v10.11.1-0.20220529195924-c104cf34f67b
 )
