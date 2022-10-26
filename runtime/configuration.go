@@ -39,6 +39,7 @@ type Configuration struct {
 	Filters       map[string][]Component     `json:"filters" yaml:"filters"`
 	Codecs        map[string]Component       `json:"codecs" yaml:"codecs"`
 	Resources     map[string]Component       `json:"resources" yaml:"resources"`
+	Migrate       map[string]Component       `json:"migrate" yaml:"migrate"`
 	Compute       []Component                `json:"compute" yaml:"compute"`
 	Resiliency    Resiliency                 `json:"resiliency" yaml:"resiliency"`
 	Services      Services                   `json:"services" yaml:"services"`
@@ -148,6 +149,16 @@ func Combine(config *Configuration, configs ...*Configuration) {
 		// Specs
 		if len(c.Specs) > 0 {
 			config.Specs = append(config.Specs, c.Specs...)
+		}
+
+		// Migrations
+		if len(c.Migrate) > 0 && config.Migrate == nil {
+			config.Migrate = make(map[string]Component)
+		}
+		for k, v := range c.Migrate {
+			if _, exists := config.Migrate[k]; !exists {
+				config.Migrate[k] = v
+			}
 		}
 
 		// Resources

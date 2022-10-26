@@ -57,6 +57,7 @@ import (
 	"github.com/nanobus/nanobus/errorz"
 	"github.com/nanobus/nanobus/function"
 	"github.com/nanobus/nanobus/mesh"
+	"github.com/nanobus/nanobus/migrate"
 	"github.com/nanobus/nanobus/resolve"
 	"github.com/nanobus/nanobus/resource"
 	"github.com/nanobus/nanobus/runtime"
@@ -91,6 +92,9 @@ import (
 	codec_json "github.com/nanobus/nanobus/codec/json"
 	codec_msgpack "github.com/nanobus/nanobus/codec/msgpack"
 	codec_text "github.com/nanobus/nanobus/codec/text"
+
+	// DB MIGRATION
+	migrate_postgres "github.com/nanobus/nanobus/migrate/postgres"
 
 	// TELEMETRY / TRACING
 	otel_tracing "github.com/nanobus/nanobus/telemetry/tracing"
@@ -229,6 +233,9 @@ func main() {
 	actionRegistry.Register(gorm.All...)
 	actionRegistry.Register(dapr.All...)
 
+	migrateRegistry := migrate.Registry{}
+	migrateRegistry.Register(migrate_postgres.NamedLoader)
+
 	// Codecs
 	jsoncodec := json_codec.New()
 	msgpackcodec := msgpack_codec.New()
@@ -346,6 +353,23 @@ func main() {
 	}
 	dependencies["codec:lookup"] = codecs
 	dependencies["codec:byContentType"] = codecsByContentType
+
+	for _, spec := range config.Migrate {
+		loader, ok := migrateRegistry[spec.Uses]
+		if !ok {
+			log.Error(nil, "could not find migrater", "type", spec.Uses)
+			os.Exit(1)
+		}
+		nss, err := loader(ctx, spec.With, resolveAs)
+		if err != nil {
+			log.Error(err, "error loading migrater", "type", spec.Uses)
+			os.Exit(1)
+		}
+		if err := nss(ctx); err != nil {
+			log.Error(err, "Could not migrate database")
+			os.Exit(1)
+		}
+	}
 
 	resources := resource.Resources{}
 	for name, component := range config.Resources {

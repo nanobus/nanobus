@@ -19,6 +19,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/cel-go v0.12.5
 	github.com/google/uuid v1.3.0
@@ -31,6 +32,7 @@ require (
 	github.com/jackc/pgx/v4 v4.17.2
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/joho/godotenv v1.4.0
+	github.com/lib/pq v1.10.7
 	github.com/mattn/anko v0.1.9
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/mapstructure v1.5.1-0.20220423185008-bf980b35cac4
@@ -74,6 +76,8 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.4 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
@@ -88,7 +92,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/lib/pq v1.10.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -119,6 +122,4 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 )
 
-replace (
-	github.com/go-playground/validator/v10 => github.com/nanobus/validator/v10 v10.11.1-0.20220529195924-c104cf34f67b
-)
+replace github.com/go-playground/validator/v10 => github.com/nanobus/validator/v10 v10.11.1-0.20220529195924-c104cf34f67b
