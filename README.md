@@ -98,8 +98,6 @@ In NanoBus, the developer only needs to follow these steps:
 5. Run `just build`
 6. Deploy to your favorite container orchestrator
 
-Be sure to check out the [tutorial](example/README.md)!
-
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the code of conduct and the process for submitting pull requests.
