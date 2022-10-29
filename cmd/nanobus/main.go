@@ -430,8 +430,6 @@ func main() {
 
 	m := mesh.New(tracer)
 
-	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
-
 	for _, comp := range config.Compute {
 		computeLoader, ok := computeRegistry[comp.Uses]
 		if !ok {
@@ -451,6 +449,8 @@ func main() {
 		log.Error(err, "Could not initialize processor")
 		os.Exit(1)
 	}
+
+	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
 
 	for _, subscription := range config.Subscriptions {
 		pubsub, err := resource.Get[proto.PubSubClient](resources, subscription.Resource)
