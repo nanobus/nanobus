@@ -428,11 +428,6 @@ func main() {
 		return []byte{}, nil
 	}
 
-	if err = processor.Initialize(); err != nil {
-		log.Error(err, "Could not initialize processor")
-		os.Exit(1)
-	}
-
 	m := mesh.New(tracer)
 
 	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
@@ -451,6 +446,11 @@ func main() {
 		m.Link(invoker)
 	}
 	dependencies["compute:mesh"] = m
+
+	if err = processor.Initialize(); err != nil {
+		log.Error(err, "Could not initialize processor")
+		os.Exit(1)
+	}
 
 	for _, subscription := range config.Subscriptions {
 		pubsub, err := resource.Get[proto.PubSubClient](resources, subscription.Resource)
