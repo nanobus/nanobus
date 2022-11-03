@@ -544,7 +544,9 @@ func main() {
 				}
 
 				var span trace.Span
-				ctx, span = tracer.Start(ctx, traceName)
+				ctx, span = tracer.Start(ctx, traceName, trace.WithAttributes(
+					semconv.MessagingOperationProcess,
+				))
 				_, err = processor.Event(ctx, pipelineName, data)
 				if err != nil {
 					log.Error(err, "could not process message")
