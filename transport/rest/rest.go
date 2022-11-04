@@ -17,6 +17,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/trace"
 
@@ -172,7 +173,6 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 
 	r := mux.NewRouter()
 	r.Use(handlers.ProxyHeaders)
-	r.Use(mux.CORSMethodMiddleware(r))
 
 	for _, addRoutes := range opts.routes {
 		addRoutes(r)
@@ -399,7 +399,9 @@ func (t *Rest) Listen() error {
 	t.ln = ln
 	t.log.Info("REST server listening", "address", t.address)
 
-	return http.Serve(ln, otelhttp.NewHandler(t.router, "rest"))
+	handler := otelhttp.NewHandler(t.router, "rest")
+	handler = cors.Default().Handler(handler)
+	return http.Serve(ln, handler)
 }
 
 func (t *Rest) Close() (err error) {
