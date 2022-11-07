@@ -24,6 +24,7 @@ var (
 type Context struct{}
 
 var commands struct {
+	DefaultRun defaultRunCmd `cmd:"" hidden:"" default:""`
 	// Run starts an application from a local configuration or OCI image reference.
 	Run runCmd `cmd:"" help:"Runs a NanoBus application from a local configuration or OCI image reference"`
 	// Invoke runs a single invocation using input from STDIN or a file.
@@ -41,6 +42,19 @@ func main() {
 	// Call the `Run` method of the selected parsed command.
 	err := ctx.Run(&Context{})
 	ctx.FatalIfErrorf(err)
+}
+
+type defaultRunCmd struct{}
+
+func (c *defaultRunCmd) Run() error {
+	if err := engine.Start(&engine.Info{
+		Mode:    engine.ModeService,
+		BusFile: "bus.yaml",
+	}); err != nil {
+		// Error is logged in `Start`.
+		os.Exit(1)
+	}
+	return nil
 }
 
 type runCmd struct {
@@ -66,11 +80,14 @@ func (c *runCmd) Run() error {
 		}
 	}
 
-	engine.Start(&engine.Info{
+	if err := engine.Start(&engine.Info{
 		Mode:    engine.ModeService,
 		BusFile: location,
 		Process: c.Args,
-	})
+	}); err != nil {
+		// Error is logged in `Start`.
+		os.Exit(1)
+	}
 	return nil
 }
 
@@ -120,7 +137,9 @@ func (c *invokeCmd) Run() error {
 		Input:     input,
 	}
 	if err := engine.Start(&info); err != nil {
+		// Error is logged in `Start`.
 		os.Exit(1)
+		return nil
 	}
 	result := info.Output
 
