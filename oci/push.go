@@ -15,6 +15,8 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
+const artifactType = "application/vnd.nanobus.iota.v1+json"
+
 func Push(reference, base string, fileRefs []string, dryRun bool) error {
 	store := file.New("")
 	defer store.Close()
@@ -27,22 +29,9 @@ func Push(reference, base string, fileRefs []string, dryRun bool) error {
 		return err
 	}
 
-	artifactType := "application/vnd.nanobus.iota.v1+json"
-	annotations := map[string]string{}
-	// subjectManifest := []byte(`{"layers":[]}`)
-	// subjectDesc := ocispec.Descriptor{
-	// 	MediaType:    ocispec.MediaTypeImageManifest,
-	// 	Digest:       digest.FromBytes(subjectManifest),
-	// 	Size:         int64(len(subjectManifest)),
-	// 	ArtifactType: artifactType,
-	// 	Annotations:  annotations,
-	// }
-
-	// test Pack
+	// Pack options
 	packOpts := oras.PackOptions{
-		// PackImageManifest:   true,
-		// Subject:             &subjectDesc,
-		ManifestAnnotations: annotations,
+		ManifestAnnotations: map[string]string{},
 	}
 
 	pack := func() (ocispec.Descriptor, error) {
@@ -67,8 +56,6 @@ func Push(reference, base string, fileRefs []string, dryRun bool) error {
 	}
 
 	copyOptions := oras.DefaultCopyOptions
-	//copyOptions.Concurrency = opts.concurrency
-	//updateDisplayOption(&copyOptions.CopyGraphOptions, store, packOpts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
 		if tag := dst.Reference.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, store, dst, root, copyOptions.CopyGraphOptions)

@@ -26,7 +26,6 @@ func Pull(reference, target string) (string, error) {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	//copyOptions.Concurrency = opts.concurrency
 	configPath, configMediaType := parseFileReference("", "") // opts.ManifestConfigRef, "")
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
@@ -97,10 +96,7 @@ func Pull(reference, target string) (string, error) {
 	}
 
 	appFile := ""
-	// ctx, _ := opts.SetLoggerLevel()
 	var dst = file.New(target)
-	// dst.AllowPathTraversalOnWrite = opts.PathTraversal
-	// dst.DisableOverwrite = opts.KeepOldFiles
 
 	pulledEmpty := true
 	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
