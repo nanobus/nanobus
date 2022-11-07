@@ -400,7 +400,7 @@ func (t *Rest) Listen() error {
 	t.log.Info("REST server listening", "address", t.address)
 
 	handler := otelhttp.NewHandler(t.router, "rest")
-	handler = cors.Default().Handler(handler)
+	handler = cors.AllowAll().Handler(handler)
 	return http.Serve(ln, handler)
 }
 
