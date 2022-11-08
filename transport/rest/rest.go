@@ -129,6 +129,12 @@ type CorsConfig struct {
 	OptionsSuccessStatus int `mapstructure:"optionsSuccessStatus"`
 	// Debugging flag adds additional output to debug server side CORS issues
 	Debug bool `mapstructure:"debug"`
+
+	// DevMode forces AllowedOrigins to *, AllowCredentials to true, and allows reflection
+	// of the request Origin header. This works around a security protection embedded into
+	// the standard that makes clients to refuse such configuration.
+	// Obviously, this setting being set to true is only intended for development.
+	DevMode bool `mapstructure:"devMode"`
 }
 
 type Documentation struct {
@@ -259,6 +265,12 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 		OptionsPassthrough:   config.Cors.OptionsPassthrough,
 		OptionsSuccessStatus: config.Cors.OptionsSuccessStatus,
 		Debug:                config.Cors.Debug,
+	}
+
+	if config.Cors.DevMode {
+		corsOptions.AllowedOrigins = []string{"*"}
+		corsOptions.AllowCredentials = true
+		corsOptions.AllowOriginFunc = func(origin string) bool { return true }
 	}
 
 	rest := Rest{
