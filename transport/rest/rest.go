@@ -40,6 +40,7 @@ type Rest struct {
 	invoker       transport.Invoker
 	errorResolver errorz.Resolver
 	codecs        map[string]channel.Codec
+	corsOptions   cors.Options
 	filters       []filter.Filter
 	router        *mux.Router
 	ln            net.Listener
@@ -90,8 +91,44 @@ func WithRoutes(r ...routes.AddRoutes) Option {
 type Configuration struct {
 	Address       string        `mapstructure:"address" validate:"required"`
 	Static        []StaticPath  `mapstructure:"static"`
+	Cors          CorsConfig    `mapstructure:"cors"`
 	Routes        []Route       `mapstructure:"routes"`
 	Documentation Documentation `mapstructure:"documentation"`
+}
+
+type CorsConfig struct {
+	// AllowedOrigins is a list of origins a cross-domain request can be executed from.
+	// If the special "*" value is present in the list, all origins will be allowed.
+	// An origin may contain a wildcard (*) to replace 0 or more characters
+	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penalty.
+	// Only one wildcard can be used per origin.
+	// Default value is ["*"]
+	AllowedOrigins []string `mapstructure:"allowedOrigins"`
+	// AllowedMethods is a list of methods the client is allowed to use with
+	// cross-domain requests. Default value is simple methods (HEAD, GET and POST).
+	AllowedMethods []string `mapstructure:"allowedMethods"`
+	// AllowedHeaders is list of non simple headers the client is allowed to use with
+	// cross-domain requests.
+	// If the special "*" value is present in the list, all headers will be allowed.
+	// Default value is [] but "Origin" is always appended to the list.
+	AllowedHeaders []string `mapstructure:"allowedHeaders"`
+	// ExposedHeaders indicates which headers are safe to expose to the API of a CORS
+	// API specification
+	ExposedHeaders []string `mapstructure:"exposedHeaders"`
+	// MaxAge indicates how long (in seconds) the results of a preflight request
+	// can be cached
+	MaxAge int `mapstructure:"maxAge"`
+	// AllowCredentials indicates whether the request can include user credentials like
+	// cookies, HTTP authentication or client side SSL certificates.
+	AllowCredentials bool `mapstructure:"allowCredentials"`
+	// OptionsPassthrough instructs preflight to let other potential next handlers to
+	// process the OPTIONS method. Turn this on if your application handles OPTIONS.
+	OptionsPassthrough bool `mapstructure:"optionsPassthrough"`
+	// Provides a status code to use for successful OPTIONS requests.
+	// Default value is http.StatusNoContent (204).
+	OptionsSuccessStatus int `mapstructure:"optionsSuccessStatus"`
+	// Debugging flag adds additional output to debug server side CORS issues
+	Debug bool `mapstructure:"debug"`
 }
 
 type Documentation struct {
@@ -138,7 +175,15 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		return nil, err
 	}
 
-	var c Configuration
+	// Defaults
+	c := Configuration{
+		Cors: CorsConfig{
+			AllowedOrigins: []string{"*"},
+			// "PUT", "PATCH", "DELETE" are commonly needed in REST APIs however
+			// the defaults are aligned with the cors library defaults.
+			AllowedMethods: []string{"HEAD", "GET", "POST"},
+		},
+	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -204,6 +249,18 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 		}
 	}
 
+	corsOptions := cors.Options{
+		AllowedOrigins:       config.Cors.AllowedOrigins,
+		AllowedMethods:       config.Cors.AllowedMethods,
+		AllowedHeaders:       config.Cors.AllowedHeaders,
+		ExposedHeaders:       config.Cors.ExposedHeaders,
+		MaxAge:               config.Cors.MaxAge,
+		AllowCredentials:     config.Cors.AllowCredentials,
+		OptionsPassthrough:   config.Cors.OptionsPassthrough,
+		OptionsSuccessStatus: config.Cors.OptionsSuccessStatus,
+		Debug:                config.Cors.Debug,
+	}
+
 	rest := Rest{
 		log:           log,
 		tracer:        tracer,
@@ -212,6 +269,7 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 		invoker:       invoker,
 		errorResolver: errorResolver,
 		codecs:        codecMap,
+		corsOptions:   corsOptions,
 		filters:       opts.filters,
 		router:        r,
 	}
@@ -400,7 +458,7 @@ func (t *Rest) Listen() error {
 	t.log.Info("REST server listening", "address", t.address)
 
 	handler := otelhttp.NewHandler(t.router, "rest")
-	handler = cors.AllowAll().Handler(handler)
+	handler = cors.New(t.corsOptions).Handler(handler)
 	return http.Serve(ln, handler)
 }
 
