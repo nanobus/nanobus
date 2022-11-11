@@ -17,7 +17,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/trace"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/nanobus/nanobus/transport"
 	"github.com/nanobus/nanobus/transport/filter"
 	"github.com/nanobus/nanobus/transport/httpresponse"
+	"github.com/nanobus/nanobus/transport/middleware"
 	"github.com/nanobus/nanobus/transport/routes"
 )
 
@@ -40,7 +40,7 @@ type Rest struct {
 	invoker       transport.Invoker
 	errorResolver errorz.Resolver
 	codecs        map[string]channel.Codec
-	corsOptions   cors.Options
+	middlewares   []middleware.Middleware
 	filters       []filter.Filter
 	router        *mux.Router
 	ln            net.Listener
@@ -56,9 +56,10 @@ type queryParam struct {
 }
 
 type optionsHolder struct {
-	codecs  []channel.Codec
-	filters []filter.Filter
-	routes  []routes.AddRoutes
+	codecs      []channel.Codec
+	middlewares []middleware.Middleware
+	filters     []filter.Filter
+	routes      []routes.AddRoutes
 }
 
 var rePathParams = regexp.MustCompile(`(?m)\{([^\}]*)\}`)
@@ -73,6 +74,12 @@ type Option func(opts *optionsHolder)
 func WithCodecs(codecs ...channel.Codec) Option {
 	return func(opts *optionsHolder) {
 		opts.codecs = codecs
+	}
+}
+
+func WithMiddleware(middlewares ...middleware.Middleware) Option {
+	return func(opts *optionsHolder) {
+		opts.middlewares = middlewares
 	}
 }
 
@@ -91,50 +98,8 @@ func WithRoutes(r ...routes.AddRoutes) Option {
 type Configuration struct {
 	Address       string        `mapstructure:"address" validate:"required"`
 	Static        []StaticPath  `mapstructure:"static"`
-	Cors          CorsConfig    `mapstructure:"cors"`
 	Routes        []Route       `mapstructure:"routes"`
 	Documentation Documentation `mapstructure:"documentation"`
-}
-
-type CorsConfig struct {
-	// AllowedOrigins is a list of origins a cross-domain request can be executed from.
-	// If the special "*" value is present in the list, all origins will be allowed.
-	// An origin may contain a wildcard (*) to replace 0 or more characters
-	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penalty.
-	// Only one wildcard can be used per origin.
-	// Default value is ["*"]
-	AllowedOrigins []string `mapstructure:"allowedOrigins"`
-	// AllowedMethods is a list of methods the client is allowed to use with
-	// cross-domain requests. Default value is simple methods (HEAD, GET and POST).
-	AllowedMethods []string `mapstructure:"allowedMethods"`
-	// AllowedHeaders is list of non simple headers the client is allowed to use with
-	// cross-domain requests.
-	// If the special "*" value is present in the list, all headers will be allowed.
-	// Default value is [] but "Origin" is always appended to the list.
-	AllowedHeaders []string `mapstructure:"allowedHeaders"`
-	// ExposedHeaders indicates which headers are safe to expose to the API of a CORS
-	// API specification
-	ExposedHeaders []string `mapstructure:"exposedHeaders"`
-	// MaxAge indicates how long (in seconds) the results of a preflight request
-	// can be cached
-	MaxAge int `mapstructure:"maxAge"`
-	// AllowCredentials indicates whether the request can include user credentials like
-	// cookies, HTTP authentication or client side SSL certificates.
-	AllowCredentials bool `mapstructure:"allowCredentials"`
-	// OptionsPassthrough instructs preflight to let other potential next handlers to
-	// process the OPTIONS method. Turn this on if your application handles OPTIONS.
-	OptionsPassthrough bool `mapstructure:"optionsPassthrough"`
-	// Provides a status code to use for successful OPTIONS requests.
-	// Default value is http.StatusNoContent (204).
-	OptionsSuccessStatus int `mapstructure:"optionsSuccessStatus"`
-	// Debugging flag adds additional output to debug server side CORS issues
-	Debug bool `mapstructure:"debug"`
-
-	// DevMode forces AllowedOrigins to *, AllowCredentials to true, and allows reflection
-	// of the request Origin header. This works around a security protection embedded into
-	// the standard that makes clients to refuse such configuration.
-	// Obviously, this setting being set to true is only intended for development.
-	DevMode bool `mapstructure:"devMode"`
 }
 
 type Documentation struct {
@@ -164,6 +129,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	var transportInvoker transport.Invoker
 	var namespaces spec.Namespaces
 	var errorResolver errorz.Resolver
+	var middlewares []middleware.Middleware
 	var filters []filter.Filter
 	var log logr.Logger
 	var tracer trace.Tracer
@@ -174,6 +140,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		"transport:invoker", &transportInvoker,
 		"spec:namespaces", &namespaces,
 		"errors:resolver", &errorResolver,
+		"middleware:lookup", &middlewares,
 		"filter:lookup", &filters,
 		"system:logger", &log,
 		"system:tracer", &tracer,
@@ -182,14 +149,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	}
 
 	// Defaults
-	c := Configuration{
-		Cors: CorsConfig{
-			AllowedOrigins: []string{"*"},
-			// "PUT", "PATCH", "DELETE" are commonly needed in REST APIs however
-			// the defaults are aligned with the cors library defaults.
-			AllowedMethods: []string{"HEAD", "GET", "POST"},
-		},
-	}
+	c := Configuration{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -205,6 +165,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	}
 
 	return New(log, tracer, c, namespaces, transportInvoker, errorResolver,
+		WithMiddleware(middlewares...),
 		WithFilters(filters...),
 		WithCodecs(jsoncodec, msgpackcodec),
 		WithRoutes(routes...))
@@ -255,24 +216,6 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 		}
 	}
 
-	corsOptions := cors.Options{
-		AllowedOrigins:       config.Cors.AllowedOrigins,
-		AllowedMethods:       config.Cors.AllowedMethods,
-		AllowedHeaders:       config.Cors.AllowedHeaders,
-		ExposedHeaders:       config.Cors.ExposedHeaders,
-		MaxAge:               config.Cors.MaxAge,
-		AllowCredentials:     config.Cors.AllowCredentials,
-		OptionsPassthrough:   config.Cors.OptionsPassthrough,
-		OptionsSuccessStatus: config.Cors.OptionsSuccessStatus,
-		Debug:                config.Cors.Debug,
-	}
-
-	if config.Cors.DevMode {
-		corsOptions.AllowedOrigins = []string{"*"}
-		corsOptions.AllowCredentials = true
-		corsOptions.AllowOriginFunc = func(origin string) bool { return true }
-	}
-
 	rest := Rest{
 		log:           log,
 		tracer:        tracer,
@@ -281,7 +224,7 @@ func New(log logr.Logger, tracer trace.Tracer, config Configuration, namespaces 
 		invoker:       invoker,
 		errorResolver: errorResolver,
 		codecs:        codecMap,
-		corsOptions:   corsOptions,
+		middlewares:   opts.middlewares,
 		filters:       opts.filters,
 		router:        r,
 	}
@@ -469,8 +412,15 @@ func (t *Rest) Listen() error {
 	t.ln = ln
 	t.log.Info("REST server listening", "address", t.address)
 
-	handler := otelhttp.NewHandler(t.router, "rest")
-	handler = cors.New(t.corsOptions).Handler(handler)
+	// Apply middleware in reverse order.
+	var handler http.Handler = t.router
+	if len(t.middlewares) > 0 {
+		for i := len(t.middlewares) - 1; i >= 0; i-- {
+			handler = t.middlewares[i](handler)
+		}
+	}
+
+	handler = otelhttp.NewHandler(handler, "rest")
 	return http.Serve(ln, handler)
 }
 
