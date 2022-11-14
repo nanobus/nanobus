@@ -329,7 +329,7 @@ func Start(info *Info) error {
 		loader, ok := specRegistry[spec.Uses]
 		if !ok {
 			log.Error(nil, "Could not find spec", "type", spec.Uses)
-			return errors.New("Could not find spec")
+			return errors.New("could not find spec")
 		}
 		nss, err := loader(ctx, spec.With, resolveAs)
 		if err != nil {

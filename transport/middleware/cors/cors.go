@@ -81,7 +81,7 @@ func CorsLoader(ctx context.Context, with interface{}, resolver resolve.ResolveA
 	}
 
 	if c.DevMode {
-		corsOptions.AllowedOrigins = []string{"*"}
+		corsOptions.AllowedOrigins = []string{}
 		corsOptions.AllowCredentials = true
 
 		// Documentation from github.com/rs/cors
