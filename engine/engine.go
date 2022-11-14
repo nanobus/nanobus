@@ -618,7 +618,7 @@ func Start(info *Info) error {
 			middlewares = append(middlewares, middleware)
 		}
 	}
-	dependencies["middleare:lookup"] = middlewares
+	dependencies["middleware:lookup"] = middlewares
 
 	translateError := func(err error) *errorz.Error {
 		if errz, ok := err.(*errorz.Error); ok {
