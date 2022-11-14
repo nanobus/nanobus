@@ -54,7 +54,7 @@ type CorsConfig struct {
 
 // Cors is the NamedLoader for the cors middleware.
 func Cors() (string, middleware.Loader) {
-	return "cors/v1", CorsLoader
+	return "cors/v0", CorsLoader
 }
 
 func CorsLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (middleware.Middleware, error) {
