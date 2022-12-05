@@ -1,0 +1,53 @@
+spec: ../../../specs/initialize/migrate/postgres.axdl
+generates:
+  migrate_postgres.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/cors.axdl
+generates:
+  transport_cors.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/oauth2.axdl
+generates:
+  transport_oauth2.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/rest.axdl
+generates:
+  transport_rest.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/router.axdl
+generates:
+  transport_router.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/server.axdl
+generates:
+  transport_server.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/http/static.axdl
+generates:
+  transport_static.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/actions/core.axdl
+generates:
+  actions_core.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/actions/postgres.axdl
+generates:
+  actions_postgres.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor

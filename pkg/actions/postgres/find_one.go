@@ -22,26 +22,6 @@ import (
 	"github.com/nanobus/nanobus/pkg/spec"
 )
 
-type FindOneConfig struct {
-	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource" validate:"required"`
-	// Namespace is the type namespace to load.
-	Namespace string `mapstructure:"namespace" validate:"required"`
-	// Type is the type name to load.
-	Type string `mapstructure:"type" validate:"required"`
-	// Preload lists the relationship to expand/load.
-	Preload []Preload `mapstructure:"preload"`
-	// Where list the parts of the where clause.
-	Where []Where `mapstructure:"where"`
-	// NotFoundError is the error to return if the key is not found.
-	NotFoundError string `mapstructure:"notFoundError"`
-}
-
-// FindOne is the NamedLoader for the invoke action.
-func FindOne() (string, actions.Loader) {
-	return "@postgres/find_one", FindOneLoader
-}
-
 func FindOneLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := FindOneConfig{}
 	if err := config.Decode(with, &c); err != nil {

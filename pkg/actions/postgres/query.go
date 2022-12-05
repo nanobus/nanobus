@@ -20,27 +20,10 @@ import (
 
 	"github.com/nanobus/nanobus/pkg/actions"
 	"github.com/nanobus/nanobus/pkg/config"
-	"github.com/nanobus/nanobus/pkg/expr"
 	"github.com/nanobus/nanobus/pkg/resolve"
 	"github.com/nanobus/nanobus/pkg/resource"
 	"github.com/nanobus/nanobus/pkg/stream"
 )
-
-type QueryConfig struct {
-	// Resource is the name of the connection resource to use.
-	Resource string `mapstructure:"resource" validate:"required"`
-	// SQL is the SQL query to execute.
-	SQL string `mapstructure:"sql" validate:"required"`
-	// Args are the evaluations to use as arguments for the SQL query.
-	Args []*expr.ValueExpr `mapstructure:"args"`
-	// Single indicates a single row should be returned if found.
-	Single bool `mapstructure:"single"`
-}
-
-// Query is the NamedLoader for the invoke action.
-func Query() (string, actions.Loader) {
-	return "@postgres/query", QueryLoader
-}
 
 func QueryLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
 	c := QueryConfig{}
