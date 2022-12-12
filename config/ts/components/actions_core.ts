@@ -11,7 +11,7 @@ import {
 export interface AssignConfig {
   value?: ValueExpr;
   data?: ValueExpr;
-  to: string;
+  to?: string;
 }
 
 export class Assign implements Component<AssignConfig> {

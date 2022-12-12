@@ -65,30 +65,33 @@ type step struct {
 }
 
 func NewProcessor(ctx context.Context, log logr.Logger, tracer trace.Tracer, configuration *BusConfig, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
-	timeouts := make(map[string]time.Duration, len(configuration.Resiliency.Timeouts))
-	for name, d := range configuration.Resiliency.Timeouts {
-		timeouts[name] = time.Duration(d)
-	}
+	timeouts := make(map[string]time.Duration)
+	retries := make(map[string]*retry.Config)
+	circuitBreakers := make(map[string]*breaker.CircuitBreaker)
 
-	retries := make(map[string]*retry.Config, len(configuration.Resiliency.Retries))
-	for name, retryMap := range configuration.Resiliency.Retries {
-		retryConfig, err := retry.DecodeConfig(retryMap)
-		if err != nil {
-			return nil, err
+	if configuration.Resiliency != nil {
+		for name, d := range configuration.Resiliency.Timeouts {
+			timeouts[name] = time.Duration(d)
 		}
-		retries[name] = &retryConfig
-	}
 
-	circuitBreakers := make(map[string]*breaker.CircuitBreaker, len(configuration.Resiliency.CircuitBreakers))
-	for name, circuitBreaker := range configuration.Resiliency.CircuitBreakers {
-		cb := breaker.CircuitBreaker{
-			Name: name,
+		for name, retryMap := range configuration.Resiliency.Retries {
+			retryConfig, err := retry.DecodeConfig(retryMap)
+			if err != nil {
+				return nil, err
+			}
+			retries[name] = &retryConfig
 		}
-		if err := config.Decode(circuitBreaker, &cb); err != nil {
-			return nil, err
+
+		for name, circuitBreaker := range configuration.Resiliency.CircuitBreakers {
+			cb := breaker.CircuitBreaker{
+				Name: name,
+			}
+			if err := config.Decode(circuitBreaker, &cb); err != nil {
+				return nil, err
+			}
+			cb.Initialize(log)
+			circuitBreakers[name] = &cb
 		}
-		cb.Initialize(log)
-		circuitBreakers[name] = &cb
 	}
 
 	p := Processor{

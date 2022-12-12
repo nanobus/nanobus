@@ -185,11 +185,15 @@ func Start(info *Info) error {
 		return err
 	}
 
+	var resourcesConfig *runtime.ResourcesConfig
 	// Load the resources configuration
-	resourcesConfig, err := loadResourcesConfig(info.ResourcesFile, log)
-	if err != nil {
-		log.Error(err, "could not load configuration", "file", info.BusFile)
-		return err
+	_, err = os.Stat(info.ResourcesFile)
+	if err == nil {
+		resourcesConfig, err = loadResourcesConfig(info.ResourcesFile, log)
+		if err != nil {
+			log.Error(err, "could not load configuration", "file", info.ResourcesFile)
+			return err
+		}
 	}
 
 	// Transport registration
@@ -407,21 +411,23 @@ func Start(info *Info) error {
 	}
 
 	resources := resource.Resources{}
-	for name, component := range resourcesConfig.Resources {
-		log.Info("Initializing resource", "name", name)
+	if resourcesConfig != nil {
+		for name, component := range resourcesConfig.Resources {
+			log.Info("Initializing resource", "name", name)
 
-		loader, ok := resourceRegistry[component.Uses]
-		if !ok {
-			log.Error(nil, "Could not find resource", "type", component.Uses)
-			return err
-		}
-		c, err := loader(ctx, component.With, resolveAs)
-		if err != nil {
-			log.Error(err, "Error loading resource", "type", component.Uses)
-			return err
-		}
+			loader, ok := resourceRegistry[component.Uses]
+			if !ok {
+				log.Error(nil, "Could not find resource", "type", component.Uses)
+				return err
+			}
+			c, err := loader(ctx, component.With, resolveAs)
+			if err != nil {
+				log.Error(err, "Error loading resource", "type", component.Uses)
+				return err
+			}
 
-		resources[name] = c
+			resources[name] = c
+		}
 	}
 	dependencies["resource:lookup"] = resources
 

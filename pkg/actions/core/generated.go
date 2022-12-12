@@ -15,7 +15,7 @@ import (
 type AssignConfig struct {
 	Value *expr.ValueExpr `json:"value,omitempty" yaml:"value,omitempty" msgpack:"value,omitempty" mapstructure:"value"`
 	Data  *expr.DataExpr  `json:"data,omitempty" yaml:"data,omitempty" msgpack:"data,omitempty" mapstructure:"data"`
-	To    string          `json:"to" yaml:"to" msgpack:"to" mapstructure:"to" validate:"required"`
+	To    *string         `json:"to,omitempty" yaml:"to,omitempty" msgpack:"to,omitempty" mapstructure:"to"`
 }
 
 func Assign() (string, actions.Loader) {

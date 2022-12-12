@@ -102,7 +102,8 @@ func (c *runCmd) Run() error {
 type invokeCmd struct {
 	DeveloperMode bool `name:"developer-mode" help:"Enables developer mode."`
 	// BusFile is the application configuration (not an OCI image reference).
-	BusFile string `arg:"" required:"" help:"The NanoBus application configuration"`
+	BusFile       string `arg:"" required:"" help:"The NanoBus application configuration"`
+	ResourcesFile string `arg:"" default:"resources.yaml" help:"The resources configuration"`
 	// Interface is the operation's interface.
 	Interface string `required:"" help:"The namespace of the operation to invoke"`
 	// Operation is the operation name.
@@ -137,6 +138,7 @@ func (c *invokeCmd) Run() error {
 	info := engine.Info{
 		Mode:          engine.ModeInvoke,
 		BusFile:       c.BusFile,
+		ResourcesFile: c.ResourcesFile,
 		Interface:     c.Interface,
 		Operation:     c.Operation,
 		EntityID:      c.EntityID,

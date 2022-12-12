@@ -44,8 +44,8 @@ func AssignAction(
 			}
 		}
 
-		if config.To != "" {
-			data[config.To] = output
+		if config.To != nil {
+			data[*config.To] = output
 		}
 
 		return output, nil

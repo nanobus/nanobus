@@ -16,7 +16,7 @@ alias Step = any
 type AssignConfig @action("assign") {
   value: ValueExpr?
   data:  DataExpr?
-  to:    string
+  to:    string?
 }
 
 type AuthorizeConfig @action("authorize") {

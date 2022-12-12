@@ -450,6 +450,19 @@ export interface Authorization {
   rules?: [Component<unknown>];
 }
 
+export function step(
+  name: string,
+  // deno-lint-ignore no-explicit-any
+  comp: Component<any>,
+  options: Partial<Step> = {}
+): Step {
+  return {
+    ...options,
+    name,
+    ...comp,
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 export type Step = StepT<any>;
 
