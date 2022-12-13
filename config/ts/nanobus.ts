@@ -326,7 +326,7 @@ export class Application {
   asYAML(): string {
     const r = this.config as unknown as Record<string, unknown>;
     removeUndefined(r);
-    return YAML.stringify(r).trim();
+    return YAML.stringify(r, {noRefs: true}).trim();
   }
 
   emit(): void {
