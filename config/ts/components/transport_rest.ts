@@ -12,14 +12,13 @@ export interface RestV1Config {
   documentation: Documentation;
 }
 
-export class RestV1 implements Component<RestV1Config> {
-  readonly uses: string = "nanobus.transport.http.rest/v1";
-  readonly with: RestV1Config;
-
-  constructor(config: RestV1Config) {
-    this.with = config;
-  }
+export function RestV1(config: RestV1Config): Component<RestV1Config> {
+  return {
+    uses: "nanobus.transport.http.rest/v1",
+    with: config
+  };
 }
+
 export interface Documentation {
   swaggerUI?: boolean;
   postman?: boolean;

@@ -40,11 +40,9 @@ export interface CorsV0Config {
   optionsSuccessStatus: number;
 }
 
-export class CorsV0 implements Component<CorsV0Config> {
-  readonly uses: string = "nanobus.transport.http.cors/v0";
-  readonly with: CorsV0Config;
-
-  constructor(config: CorsV0Config) {
-    this.with = config;
-  }
+export function CorsV0(config: CorsV0Config): Component<CorsV0Config> {
+  return {
+    uses: "nanobus.transport.http.cors/v0",
+    with: config
+  };
 }

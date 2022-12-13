@@ -1,4 +1,4 @@
-spec: ../../../specs/initialize/migrate/postgres.axdl
+spec: ../../../specs/initialize/postgres.axdl
 generates:
   migrate_postgres.ts:
     module: ../../../codegen/config.ts

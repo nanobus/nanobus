@@ -12,14 +12,13 @@ export interface StaticV1Config {
   paths: StaticPath[];
 }
 
-export class StaticV1 implements Component<StaticV1Config> {
-  readonly uses: string = "nanobus.transport.http.static/v1";
-  readonly with: StaticV1Config;
-
-  constructor(config: StaticV1Config) {
-    this.with = config;
-  }
+export function StaticV1(config: StaticV1Config): Component<StaticV1Config> {
+  return {
+    uses: "nanobus.transport.http.static/v1",
+    with: config
+  };
 }
+
 export interface StaticPath {
   dir: string;
   path: string;

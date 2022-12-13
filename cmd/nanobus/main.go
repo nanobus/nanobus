@@ -64,7 +64,8 @@ func (c *defaultRunCmd) Run() error {
 type runCmd struct {
 	DeveloperMode bool `name:"developer-mode" help:"Enables developer mode."`
 	// BusFile of the application as a configuration file or OCI image reference.
-	BusFile       string `arg:"" default:"bus.yaml" help:"The application configuration or OCI image reference"`
+	BusFile string `arg:"" default:"bus.yaml" help:"The application configuration or OCI image reference"`
+	// ResourcesFile is the resources configuration (e.g. databases, message brokers).
 	ResourcesFile string `arg:"" default:"resources.yaml" help:"The resources configuration"`
 	// Args are arguments passed to the application.
 	Args []string `arg:"" optional:"" help:"Arguments to pass to the application"`
@@ -102,7 +103,8 @@ func (c *runCmd) Run() error {
 type invokeCmd struct {
 	DeveloperMode bool `name:"developer-mode" help:"Enables developer mode."`
 	// BusFile is the application configuration (not an OCI image reference).
-	BusFile       string `arg:"" required:"" help:"The NanoBus application configuration"`
+	BusFile string `arg:"" default:"bus.yaml" help:"The NanoBus application configuration"`
+	// ResourcesFile is the resources configuration (e.g. databases, message brokers).
 	ResourcesFile string `arg:"" default:"resources.yaml" help:"The resources configuration"`
 	// Interface is the operation's interface.
 	Interface string `required:"" help:"The namespace of the operation to invoke"`

@@ -14,11 +14,11 @@ export interface HttpServerV1Config {
   middleware?: Component<any>[];
 }
 
-export class HttpServerV1 implements Component<HttpServerV1Config> {
-  readonly uses: string = "nanobus.transport.http.server/v1";
-  readonly with: HttpServerV1Config;
-
-  constructor(config: HttpServerV1Config) {
-    this.with = config;
-  }
+export function HttpServerV1(
+  config: HttpServerV1Config
+): Component<HttpServerV1Config> {
+  return {
+    uses: "nanobus.transport.http.server/v1",
+    with: config
+  };
 }

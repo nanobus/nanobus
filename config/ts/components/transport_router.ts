@@ -10,14 +10,13 @@ import {
 
 export type RouterV1Config = Array<AddRoute>;
 
-export class RouterV1 implements Component<RouterV1Config> {
-  readonly uses: string = "nanobus.transport.http.router/v1";
-  readonly with: RouterV1Config;
-
-  constructor(config: RouterV1Config) {
-    this.with = config;
-  }
+export function RouterV1(config: RouterV1Config): Component<RouterV1Config> {
+  return {
+    uses: "nanobus.transport.http.router/v1",
+    with: config
+  };
 }
+
 export interface AddRoute {
   methods: string;
   uri: string;

@@ -89,15 +89,12 @@ export class ComponentsVisitor extends BaseVisitor {
         const comp = a.convert<ComponentDirective>();
 
         this.write(`
-export class ${name} implements Component<${named.name}> {
-  readonly uses: string = "${comp.value}";
-  readonly with: ${named.name};
-
-  constructor(config: ${named.name}) {
-    this.with = config;
+export function ${name}(config: ${named.name}): Component<${named.name}> {
+  return {
+    uses: "${comp.value}",
+    with: config,
   }
-}
-      `);
+}\n\n`);
       }
     );
   }

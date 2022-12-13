@@ -19,14 +19,13 @@ export interface ExecConfig {
   args?: ValueExpr[];
 }
 
-export class Exec implements Component<ExecConfig> {
-  readonly uses: string = "@postgres/exec";
-  readonly with: ExecConfig;
-
-  constructor(config: ExecConfig) {
-    this.with = config;
-  }
+export function Exec(config: ExecConfig): Component<ExecConfig> {
+  return {
+    uses: "@postgres/exec",
+    with: config
+  };
 }
+
 export interface ExecMultiConfig {
   // Resource is the name of the connection resource to use.
   resource: ResourceRef;
@@ -34,14 +33,13 @@ export interface ExecMultiConfig {
   statements: Statement[];
 }
 
-export class ExecMulti implements Component<ExecMultiConfig> {
-  readonly uses: string = "@postgres/exec_multi";
-  readonly with: ExecMultiConfig;
-
-  constructor(config: ExecMultiConfig) {
-    this.with = config;
-  }
+export function ExecMulti(config: ExecMultiConfig): Component<ExecMultiConfig> {
+  return {
+    uses: "@postgres/exec_multi",
+    with: config
+  };
 }
+
 export interface Statement {
   // Data is the input bindings sent.
   data?: DataExpr;
@@ -66,14 +64,13 @@ export interface FindOneConfig {
   notFoundError: string;
 }
 
-export class FindOne implements Component<FindOneConfig> {
-  readonly uses: string = "@postgres/find_one";
-  readonly with: FindOneConfig;
-
-  constructor(config: FindOneConfig) {
-    this.with = config;
-  }
+export function FindOne(config: FindOneConfig): Component<FindOneConfig> {
+  return {
+    uses: "@postgres/find_one",
+    with: config
+  };
 }
+
 export interface Preload {
   field: string;
   preload: Preload[];
@@ -103,14 +100,13 @@ export interface FindConfig {
   limit?: ValueExpr;
 }
 
-export class Find implements Component<FindConfig> {
-  readonly uses: string = "@postgres/find";
-  readonly with: FindConfig;
-
-  constructor(config: FindConfig) {
-    this.with = config;
-  }
+export function Find(config: FindConfig): Component<FindConfig> {
+  return {
+    uses: "@postgres/find",
+    with: config
+  };
 }
+
 export interface Pagination {
   pageIndex?: string;
   pageCount?: string;
@@ -136,14 +132,13 @@ export interface LoadConfig {
   notFoundError?: string;
 }
 
-export class Load implements Component<LoadConfig> {
-  readonly uses: string = "@postgres/load";
-  readonly with: LoadConfig;
-
-  constructor(config: LoadConfig) {
-    this.with = config;
-  }
+export function Load(config: LoadConfig): Component<LoadConfig> {
+  return {
+    uses: "@postgres/load",
+    with: config
+  };
 }
+
 export interface QueryConfig {
   // Resource is the name of the connection resource to use.
   resource: ResourceRef;
@@ -155,11 +150,9 @@ export interface QueryConfig {
   single?: boolean;
 }
 
-export class Query implements Component<QueryConfig> {
-  readonly uses: string = "@postgres/query";
-  readonly with: QueryConfig;
-
-  constructor(config: QueryConfig) {
-    this.with = config;
-  }
+export function Query(config: QueryConfig): Component<QueryConfig> {
+  return {
+    uses: "@postgres/query",
+    with: config
+  };
 }

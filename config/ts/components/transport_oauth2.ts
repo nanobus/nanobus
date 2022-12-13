@@ -19,14 +19,13 @@ export interface OAuth2V1Config {
   handler?: Handler;
 }
 
-export class OAuth2V1 implements Component<OAuth2V1Config> {
-  readonly uses: string = "nanobus.transport.http.oauth2/v1";
-  readonly with: OAuth2V1Config;
-
-  constructor(config: OAuth2V1Config) {
-    this.with = config;
-  }
+export function OAuth2V1(config: OAuth2V1Config): Component<OAuth2V1Config> {
+  return {
+    uses: "nanobus.transport.http.oauth2/v1",
+    with: config
+  };
 }
+
 export interface Endpoint {
   authUrl: string;
   tokenUrl: string;

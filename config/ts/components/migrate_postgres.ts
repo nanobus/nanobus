@@ -16,11 +16,11 @@ export interface MigratePostgresV1Config {
   sourceUrl?: string;
 }
 
-export class MigratePostgresV1 implements Component<MigratePostgresV1Config> {
-  readonly uses: string = "nanobus.migrate.postgres/v1";
-  readonly with: MigratePostgresV1Config;
-
-  constructor(config: MigratePostgresV1Config) {
-    this.with = config;
-  }
+export function MigratePostgresV1(
+  config: MigratePostgresV1Config
+): Component<MigratePostgresV1Config> {
+  return {
+    uses: "nanobus.migrate.postgres/v1",
+    with: config
+  };
 }
