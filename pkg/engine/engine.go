@@ -218,13 +218,17 @@ func (e *Engine) LoadConfig(busConfig *runtime.BusConfig) error {
 		return err
 	}
 
+	// TODO: Figure out how to remove this
+	for k, v := range processor.GetProviders() {
+		e.allNamespaces[k] = v
+	}
 	for k, v := range processor.GetInterfaces() {
 		e.allNamespaces[k] = v
 	}
 
 	// TODO: Lock down proivders
-	e.m.Link(runtime.NewInvoker(e.log, processor.GetInterfaces(), e.codec))
 	e.m.Link(runtime.NewInvoker(e.log, processor.GetProviders(), e.codec))
+	e.m.Link(runtime.NewInvoker(e.log, processor.GetInterfaces(), e.codec))
 
 	return nil
 }
@@ -256,6 +260,10 @@ func Start(info *Info) error {
 	// }
 	// zapLog := zap.NewExample()
 	log := zapr.NewLogger(zapLog)
+
+	if info.DeveloperMode && info.Mode == ModeService {
+		log.Info("Running in Developer Mode!")
+	}
 
 	// NanoBus flags
 

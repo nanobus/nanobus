@@ -41,7 +41,6 @@ type Config struct {
 	HMACSecretKeyBase64  bool   `mapstructure:"hmacSecretKeyBase64"`
 	HMACSecretKeyString  string `mapstructure:"hmacSecretKeyString"`
 	JWKSURL              string `mapstructure:"jwksUrl"`
-	Debug                bool   `mapstructure:"debug"`
 }
 
 type Settings struct {
@@ -64,14 +63,16 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 		return nil, err
 	}
 
-	settings := Settings{
-		Debug: c.Debug,
+	var logger logr.Logger
+	var developerMode bool
+	if err := resolve.Resolve(resolver,
+		"system:logger", &logger,
+		"developerMode", &developerMode); err != nil {
+		return nil, err
 	}
 
-	var logger logr.Logger
-	if err := resolve.Resolve(resolver,
-		"system:logger", &logger); err != nil {
-		return nil, err
+	settings := Settings{
+		Debug: developerMode,
 	}
 
 	if c.JWKSURL != "" {
@@ -189,6 +190,7 @@ func Filter(log logr.Logger, settings *Settings) filter.Filter {
 			return ctx, nil
 		}
 
+		fmt.Println(tokenString)
 		token, err := jwt.Parse(tokenString, settings.KeyFunc)
 		if err != nil {
 			return nil, errorz.Wrap(err, errorz.Unauthenticated, err.Error())
@@ -201,6 +203,7 @@ func Filter(log logr.Logger, settings *Settings) filter.Filter {
 
 				if settings.Debug {
 					log.Info("Claims debug info [TURN OFF FOR PRODUCTION]",
+						"component", "jwt",
 						"claims", c)
 				}
 			}

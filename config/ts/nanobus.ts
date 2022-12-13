@@ -132,6 +132,7 @@ interface AppConfig {
   readonly resiliency: Resiliency;
   readonly initializers: { [key: string]: Component<unknown> };
   readonly transports: { [key: string]: Component<unknown> };
+  readonly filters: Component<unknown>[];
   readonly preauth: { [key: string]: Pipelines };
   readonly authorization: { [key: string]: Authorizations };
   readonly postauth: { [key: string]: Pipelines };
@@ -163,6 +164,7 @@ export class Application {
       },
       initializers: {},
       transports: {},
+      filters: [],
       preauth: {},
       authorization: {},
       postauth: {},
@@ -321,6 +323,11 @@ export class Application {
 
   error(name: string, template: ErrorTemplate): Application {
     this.config.errors[name] = template;
+    return this;
+  }
+
+  filters(...comps: Component<unknown>[]): Application {
+    this.config.filters.push(...comps);
     return this;
   }
 

@@ -76,6 +76,16 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 		return nil, err
 	}
 
+	scopes := make([]string, 0, len(c.Scopes))
+	for _, s := range c.Scopes {
+		for _, s := range strings.Split(s, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				scopes = append(scopes, s)
+			}
+		}
+	}
+
 	config := &oauth2.Config{
 		ClientID:     c.ClientID,
 		ClientSecret: c.ClientSecret,
@@ -85,7 +95,7 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 			AuthStyle: oauth2.AuthStyle(c.Endpoint.AuthStyle),
 		},
 		RedirectURL: c.RedirectURL,
-		Scopes:      c.Scopes,
+		Scopes:      scopes,
 	}
 
 	oauth := Auth{
@@ -123,7 +133,7 @@ func (o *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	oauthState, _ := r.Cookie("oauthstate")
 
 	if oauthState == nil || r.FormValue("state") != oauthState.Value {
-		o.log.Error(nil, "invalid oauth google state")
+		o.log.Error(nil, "Invalid oauth state")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -161,7 +171,7 @@ func (o *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		}
 		_, ok, err := o.processor.Invoke(r.Context(), o.handler.Interface, o.handler.Operation, data)
 		if !ok {
-			o.log.Error(err, "could not find handler %s::%s", o.handler.Interface, o.handler.Operation)
+			o.log.Error(err, "could not find handler", "handler", o.handler)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
