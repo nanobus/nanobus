@@ -13,6 +13,6 @@ alias FilePath = string
 type MigratePostgresV1Config @initializer("nanobus.migrate.postgres/v1") {
 	name:       string
 	dataSource: string
-	directory:  FilePath? @validate("required_without=SourceURL")
+	directory:  string? @validate("required_without=SourceURL")
 	sourceUrl:  string? @rename({ go: "SourceURL" }) @validate("required_without=Directory")
 }

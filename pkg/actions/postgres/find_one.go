@@ -36,7 +36,7 @@ func FindOneLoader(ctx context.Context, with interface{}, resolver resolve.Resol
 		return nil, err
 	}
 
-	poolI, ok := resources[c.Resource]
+	poolI, ok := resources[string(c.Resource)]
 	if !ok {
 		return nil, fmt.Errorf("resource %q is not registered", c.Resource)
 	}
@@ -47,7 +47,7 @@ func FindOneLoader(ctx context.Context, with interface{}, resolver resolve.Resol
 
 	ns, ok := namespaces[c.Namespace]
 	if !ok {
-		return nil, fmt.Errorf("namespace %q is not found", c.Namespace)
+		return nil, fmt.Errorf("3namespace %q is not found", c.Namespace)
 	}
 	t, ok := ns.Type(c.Type)
 	if !ok {

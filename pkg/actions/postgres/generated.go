@@ -7,11 +7,13 @@ import (
 	"github.com/nanobus/nanobus/pkg/expr"
 )
 
+type ResourceRef string
+
 type ExecConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// Data is the input bindings sent.
-	Data *expr.DataExpr `json:"Data,omitempty" yaml:"Data,omitempty" msgpack:"Data,omitempty" mapstructure:"Data"`
+	Data *expr.DataExpr `json:"data,omitempty" yaml:"data,omitempty" msgpack:"data,omitempty" mapstructure:"data"`
 	// SQL is the SQL query to execute.
 	SQL string `json:"sql" yaml:"sql" msgpack:"sql" mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
@@ -24,7 +26,7 @@ func Exec() (string, actions.Loader) {
 
 type ExecMultiConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// Statements are the statements to execute within a single transaction.
 	Statements []Statement `json:"statements" yaml:"statements" msgpack:"statements" mapstructure:"statements" validate:"required"`
 }
@@ -44,7 +46,7 @@ type Statement struct {
 
 type FindOneConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// Namespace is the type namespace to load.
 	Namespace string `json:"namespace" yaml:"namespace" msgpack:"namespace" mapstructure:"namespace" validate:"required"`
 	// Type is the type name to load.
@@ -73,7 +75,7 @@ type Where struct {
 
 type FindConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// Namespace is the type namespace to load.
 	Namespace string `json:"namespace" yaml:"namespace" msgpack:"namespace" mapstructure:"namespace" validate:"required"`
 	// Type is the type name to load.
@@ -106,7 +108,7 @@ type Pagination struct {
 
 type LoadConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// Namespace is the type namespace to load.
 	Namespace string `json:"namespace" yaml:"namespace" msgpack:"namespace" mapstructure:"namespace" validate:"required"`
 	// Type is the type name to load.
@@ -125,13 +127,13 @@ func Load() (string, actions.Loader) {
 
 type QueryConfig struct {
 	// Resource is the name of the connection resource to use.
-	Resource string `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
 	// SQL is the SQL query to execute.
 	SQL string `json:"sql" yaml:"sql" msgpack:"sql" mapstructure:"sql" validate:"required"`
 	// Args are the evaluations to use as arguments for the SQL query.
 	Args []*expr.ValueExpr `json:"args,omitempty" yaml:"args,omitempty" msgpack:"args,omitempty" mapstructure:"args"`
 	// Single indicates a single row should be returned if found.
-	Single bool `json:"single" yaml:"single" msgpack:"single" mapstructure:"single" validate:"required"`
+	Single bool `json:"single" yaml:"single" msgpack:"single" mapstructure:"single"`
 }
 
 func Query() (string, actions.Loader) {

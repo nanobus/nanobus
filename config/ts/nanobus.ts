@@ -1,3 +1,11 @@
+/*
+ * Copyright 2022 The NanoBus Authors.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 import * as YAML from "https://deno.land/std@0.167.0/encoding/yaml.ts";
 import { Duration as Dur } from "https://deno.land/x/durationjs@v4.0.0/mod.ts";
 
@@ -239,12 +247,12 @@ export class Application {
     return name as CircuitBreakerRef;
   }
 
-  include<T>(iota: Iota<T>, options: UseOptions = {}): T {
+  include(ref: string, options: UseOptions = {}): Application {
     this.config.includes.push({
-      ref: iota.$ref,
+      ref,
       ...options,
     });
-    return iota.interfaces;
+    return this;
   }
 
   initializer(name: string, comp: Component<unknown>): Application {
@@ -457,9 +465,9 @@ export function step(
   options: Partial<Step> = {}
 ): Step {
   return {
-    ...options,
     name,
     ...comp,
+    ...options,
   };
 }
 

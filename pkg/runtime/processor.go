@@ -32,7 +32,6 @@ type Processor struct {
 	ctx             context.Context
 	log             logr.Logger
 	tracer          trace.Tracer
-	config          *BusConfig
 	registry        actions.Registry
 	resolver        resolve.DependencyResolver
 	resolveAs       resolve.ResolveAs
@@ -45,6 +44,21 @@ type Processor struct {
 
 type Namespaces map[string]Functions
 type Functions map[string]Runnable
+
+func (ns Namespaces) Invoke(ctx context.Context, name, operation string, data actions.Data) (interface{}, bool, error) {
+	s, ok := ns[name]
+	if !ok {
+		return nil, false, nil
+	}
+
+	pl, ok := s[operation]
+	if !ok {
+		return nil, false, nil
+	}
+
+	output, err := pl(ctx, data)
+	return output, true, err
+}
 
 type Runnable func(ctx context.Context, data actions.Data) (interface{}, error)
 
@@ -64,45 +78,21 @@ type step struct {
 	onError        Runnable
 }
 
-func NewProcessor(ctx context.Context, log logr.Logger, tracer trace.Tracer, configuration *BusConfig, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
+func NewProcessor(ctx context.Context, log logr.Logger, tracer trace.Tracer, registry actions.Registry, resolver resolve.DependencyResolver) (*Processor, error) {
 	timeouts := make(map[string]time.Duration)
 	retries := make(map[string]*retry.Config)
 	circuitBreakers := make(map[string]*breaker.CircuitBreaker)
-
-	if configuration.Resiliency != nil {
-		for name, d := range configuration.Resiliency.Timeouts {
-			timeouts[name] = time.Duration(d)
-		}
-
-		for name, retryMap := range configuration.Resiliency.Retries {
-			retryConfig, err := retry.DecodeConfig(retryMap)
-			if err != nil {
-				return nil, err
-			}
-			retries[name] = &retryConfig
-		}
-
-		for name, circuitBreaker := range configuration.Resiliency.CircuitBreakers {
-			cb := breaker.CircuitBreaker{
-				Name: name,
-			}
-			if err := config.Decode(circuitBreaker, &cb); err != nil {
-				return nil, err
-			}
-			cb.Initialize(log)
-			circuitBreakers[name] = &cb
-		}
-	}
 
 	p := Processor{
 		ctx:             ctx,
 		log:             log,
 		tracer:          tracer,
-		config:          configuration,
 		timeouts:        timeouts,
 		retries:         retries,
 		circuitBreakers: circuitBreakers,
 		registry:        registry,
+		interfaces:      make(Namespaces),
+		providers:       make(Namespaces),
 	}
 
 	p.resolver = func(name string) (interface{}, bool) {
@@ -115,6 +105,10 @@ func NewProcessor(ctx context.Context, log logr.Logger, tracer trace.Tracer, con
 	p.resolveAs = resolve.ToResolveAs(p.resolver)
 
 	return &p, nil
+}
+
+func (p *Processor) GetInterfaces() Namespaces {
+	return p.interfaces
 }
 
 func (p *Processor) Interface(ctx context.Context, name, operation string, data actions.Data) (interface{}, bool, error) {
@@ -151,12 +145,46 @@ func (p *Processor) Provider(ctx context.Context, name, operation string, data a
 	return output, true, err
 }
 
-func (p *Processor) Initialize() (err error) {
-	if p.interfaces, err = p.loadInterfaces(p.config.Interfaces); err != nil {
+func (p *Processor) Initialize(configuration *BusConfig) (err error) {
+	if configuration.Resiliency != nil {
+		for name, d := range configuration.Resiliency.Timeouts {
+			p.timeouts[name] = time.Duration(d)
+		}
+
+		for name, retryMap := range configuration.Resiliency.Retries {
+			retryConfig, err := retry.DecodeConfig(retryMap)
+			if err != nil {
+				return err
+			}
+			p.retries[name] = &retryConfig
+		}
+
+		for name, circuitBreaker := range configuration.Resiliency.CircuitBreakers {
+			cb := breaker.CircuitBreaker{
+				Name: name,
+			}
+			if err := config.Decode(circuitBreaker, &cb); err != nil {
+				return err
+			}
+			cb.Initialize(p.log)
+			p.circuitBreakers[name] = &cb
+		}
+	}
+
+	providers, err := p.loadInterfaces(configuration.Providers)
+	if err != nil {
 		return err
 	}
-	if p.providers, err = p.loadInterfaces(p.config.Providers); err != nil {
+	for k, v := range providers {
+		p.providers[k] = v
+	}
+
+	interfaces, err := p.loadInterfaces(configuration.Interfaces)
+	if err != nil {
 		return err
+	}
+	for k, v := range interfaces {
+		p.interfaces[k] = v
 	}
 
 	return nil

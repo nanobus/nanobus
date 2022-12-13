@@ -188,8 +188,9 @@ func SpecToOpenAPI3(namespaces spec.Namespaces) ([]byte, error) {
 					}
 				} else {
 					responses = openapi3.NewResponses()
-					emptyBodyResponse := responses.Get(204)
-					emptyBodyResponse.Value = openapi3.NewResponse().WithDescription(("Success"))
+					responses["204"] = &openapi3.ResponseRef{
+						Value: openapi3.NewResponse().WithDescription(("Success")),
+					}
 				}
 
 				params, rb := parameters(p, service, oper)

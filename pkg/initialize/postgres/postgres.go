@@ -55,7 +55,7 @@ func Migrate(log logr.Logger, c *MigratePostgresV1Config) initialize.Initializer
 		if c.SourceURL != nil {
 			sourceURL = *c.SourceURL
 		} else if c.Directory != nil {
-			sourceURL = "file://" + c.Directory.Relative()
+			sourceURL = "file://" + *c.Directory
 		}
 
 		m, err := migrate.NewWithDatabaseInstance(

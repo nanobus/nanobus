@@ -41,11 +41,13 @@ import (
 	// COMPONENT MODEL / PLUGGABLE COMPONENTS
 
 	// NANOBUS CORE
+	"github.com/nanobus/nanobus/pkg/channel"
 	"github.com/nanobus/nanobus/pkg/coalesce"
 	"github.com/nanobus/nanobus/pkg/errorz"
 	"github.com/nanobus/nanobus/pkg/handler"
 	"github.com/nanobus/nanobus/pkg/initialize"
 	"github.com/nanobus/nanobus/pkg/mesh"
+	"github.com/nanobus/nanobus/pkg/oci"
 	"github.com/nanobus/nanobus/pkg/resolve"
 	"github.com/nanobus/nanobus/pkg/resource"
 	"github.com/nanobus/nanobus/pkg/runtime"
@@ -118,7 +120,7 @@ type Runtime struct {
 	log        logr.Logger
 	config     *runtime.BusConfig
 	namespaces spec.Namespaces
-	processor  *runtime.Processor
+	processor  runtime.Namespaces
 	resolver   resolve.DependencyResolver
 	resolveAs  resolve.ResolveAs
 	env        runtime.Environment
@@ -146,6 +148,85 @@ type Info struct {
 	Operation string
 	Input     any
 	Output    any
+}
+
+type Engine struct {
+	ctx            context.Context
+	log            logr.Logger
+	tracer         trace.Tracer
+	actionRegistry actions.Registry
+	resolver       resolve.DependencyResolver
+	resolveAs      resolve.ResolveAs
+	namespaces     spec.Namespaces
+	m              *mesh.Mesh
+	allNamespaces  runtime.Namespaces
+	codec          channel.Codec
+}
+
+func (e *Engine) LoadConfig(busConfig *runtime.BusConfig) error {
+	// Create processor
+	processor, err := runtime.NewProcessor(e.ctx, e.log, e.tracer, e.actionRegistry, e.resolver)
+	if err != nil {
+		e.log.Error(err, "Could not create NanoBus runtime")
+		return err
+	}
+
+	if busConfig.Spec != "" {
+		e.log.Info("Loading interface specification", "filename", busConfig.Spec)
+		interfaceExt := filepath.Ext(busConfig.Spec)
+		var nss []*spec.Namespace
+		switch interfaceExt {
+		case ".apex", ".axdl", ".aidl", ".apexlang":
+			nss, err = spec_apex.Loader(e.ctx, map[string]interface{}{
+				"filename": busConfig.Spec,
+			}, e.resolveAs)
+		default:
+			e.log.Error(err, "Unknown spec type", "filename", busConfig.Spec)
+			return err
+		}
+		if err != nil {
+			e.log.Error(err, "Error loading spec", "filename", busConfig.Spec)
+			return err
+		}
+		for _, ns := range nss {
+			e.namespaces[ns.Name] = ns
+		}
+	}
+
+	if busConfig.Main != "" {
+		var computeInvoker compute.Invoker
+		mainExt := filepath.Ext(busConfig.Main)
+		e.log.Info("Loading main program", "filename", busConfig.Main)
+		switch mainExt {
+		case ".wasm":
+			computeInvoker, err = compute_wasmrs.Loader(e.ctx, map[string]interface{}{
+				"filename": busConfig.Main,
+			}, e.resolveAs)
+		default:
+			e.log.Error(err, "Unknown program type", "filename", busConfig.Main)
+			return err
+		}
+		if err != nil {
+			e.log.Error(err, "Error loading program", "filename", busConfig.Main)
+			return err
+		}
+		e.m.Link(computeInvoker)
+	}
+
+	if err = processor.Initialize(busConfig); err != nil {
+		e.log.Error(err, "Could not initialize processor")
+		return err
+	}
+
+	for k, v := range processor.GetInterfaces() {
+		e.allNamespaces[k] = v
+	}
+
+	// TODO: Lock down proivders
+	e.m.Link(runtime.NewInvoker(e.log, processor.GetInterfaces(), e.codec))
+	e.m.Link(runtime.NewInvoker(e.log, processor.GetProviders(), e.codec))
+
+	return nil
 }
 
 func Start(info *Info) error {
@@ -431,87 +512,93 @@ func Start(info *Info) error {
 	}
 	dependencies["resource:lookup"] = resources
 
-	// Create processor
-	processor, err := runtime.NewProcessor(ctx, log, tracer, busConfig, actionRegistry, resolver)
-	if err != nil {
-		log.Error(err, "Could not create NanoBus runtime")
-		return err
-	}
-	dependencies["system:processor"] = processor
-
-	rt := Runtime{
-		log:        log,
-		config:     busConfig,
-		namespaces: namespaces,
-		processor:  processor,
-		resolver:   resolver,
-		resolveAs:  resolveAs,
-		env:        env,
-	}
 	dependencies["state:invoker"] = func(ctx context.Context, namespace, id, key string) ([]byte, error) {
 		// TODO: Retrieve state
 		return []byte{}, nil
 	}
 
 	m := mesh.New(tracer)
-
-	if busConfig.Spec != "" {
-		log.Info("Loading interface specification", "filename", busConfig.Spec)
-		interfaceExt := filepath.Ext(busConfig.Spec)
-		var nss []*spec.Namespace
-		switch interfaceExt {
-		case ".apex", ".axdl", ".aidl", ".apexlang":
-			nss, err = spec_apex.Loader(ctx, map[string]interface{}{
-				"filename": busConfig.Spec,
-			}, resolveAs)
-		default:
-			log.Error(err, "Unknown spec type", "filename", busConfig.Spec)
-			return err
-		}
-		if err != nil {
-			log.Error(err, "Error loading spec", "filename", busConfig.Spec)
-			return err
-		}
-		for _, ns := range nss {
-			namespaces[ns.Name] = ns
-		}
-	}
-	interfaces := namespaces.ToInterfaces()
-
-	if busConfig.Main != "" {
-		var computeInvoker compute.Invoker
-		mainExt := filepath.Ext(busConfig.Main)
-		log.Info("Loading main program", "filename", busConfig.Main)
-		switch mainExt {
-		case ".wasm":
-			computeInvoker, err = compute_wasmrs.Loader(ctx, map[string]interface{}{
-				"filename": busConfig.Main,
-			}, resolveAs)
-		default:
-			log.Error(err, "Unknown program type", "filename", busConfig.Main)
-			return err
-		}
-		if err != nil {
-			log.Error(err, "Error loading program", "filename", busConfig.Main)
-			return err
-		}
-		m.Link(computeInvoker)
-	}
 	dependencies["compute:mesh"] = m
 
-	if err = processor.Initialize(); err != nil {
-		log.Error(err, "Could not initialize processor")
+	allNamespaces := make(runtime.Namespaces)
+	dependencies["system:interfaces"] = allNamespaces
+
+	rt := Runtime{
+		log:        log,
+		config:     busConfig,
+		namespaces: namespaces,
+		processor:  allNamespaces,
+		resolver:   resolver,
+		resolveAs:  resolveAs,
+		env:        env,
+	}
+
+	e := Engine{
+		ctx:            ctx,
+		log:            log,
+		tracer:         tracer,
+		actionRegistry: actionRegistry,
+		resolver:       resolver,
+		resolveAs:      resolveAs,
+		namespaces:     namespaces,
+		m:              m,
+		allNamespaces:  allNamespaces,
+		codec:          msgpackcodec,
+	}
+
+	if err := e.LoadConfig(busConfig); err != nil {
 		return err
 	}
 
-	m.Link(runtime.NewInvoker(log, processor.GetProviders(), msgpackcodec))
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	for _, include := range busConfig.Includes {
+		if oci.IsImageReference(include.Ref) {
+			return errors.New("references not currently supported")
+		}
+		path := filepath.Join(dir, include.Ref)
+		var busFile, parentDir string
+		info, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			parentDir = path
+			busFile = filepath.Join(path, "bus.yaml")
+		} else {
+			busFile = path
+			parentDir = filepath.Dir(path)
+		}
+		if err := os.Chdir(parentDir); err != nil {
+			return err
+		}
+
+		// Load the bus configuration
+		includedConfig, err := loadBusConfig(busFile, log)
+		if err != nil {
+			log.Error(err, "could not load configuration", "file", busFile)
+			return err
+		}
+
+		if err := e.LoadConfig(includedConfig); err != nil {
+			return err
+		}
+
+		if err := os.Chdir(dir); err != nil {
+			return err
+		}
+	}
+
+	interfaces := namespaces.ToInterfaces()
 
 	// Check for unsatified imports
 	ops := m.Unsatisfied()
 	if len(ops) > 0 {
 		log.Error(nil, "Halting due to unsatified imports", "count", len(ops))
 		for _, op := range ops {
-			log.Error(nil, "Missing import", "namespace", op.Namespace, "operation", op.Operation)
+			log.Error(nil, "Missing import", "interface", op.Namespace, "operation", op.Operation)
 		}
 		return errors.New("halting due to unsatified imports")
 	}
@@ -628,9 +715,8 @@ func Start(info *Info) error {
 			Operation: fn,
 		})
 
-		// TODO: Check authorization rules here
-
-		response, ok, err := rt.processor.Interface(ctx, iface, fn, data)
+		// TODO: Use merged map of interfaces here
+		response, ok, err := allNamespaces.Invoke(ctx, iface, fn, data)
 		if err != nil {
 			return nil, translateError(err)
 		}

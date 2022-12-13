@@ -4,14 +4,13 @@ package postgres
 
 import (
 	"github.com/nanobus/nanobus/pkg/initialize"
-	"github.com/nanobus/nanobus/pkg/runtime"
 )
 
 type MigratePostgresV1Config struct {
-	Name       string            `json:"name" yaml:"name" msgpack:"name" mapstructure:"name" validate:"required"`
-	DataSource string            `json:"dataSource" yaml:"dataSource" msgpack:"dataSource" mapstructure:"dataSource" validate:"required"`
-	Directory  *runtime.FilePath `json:"directory,omitempty" yaml:"directory,omitempty" msgpack:"directory,omitempty" mapstructure:"directory" validate:"required_without=SourceURL"`
-	SourceURL  *string           `json:"sourceUrl,omitempty" yaml:"sourceUrl,omitempty" msgpack:"sourceUrl,omitempty" mapstructure:"sourceUrl" validate:"required_without=Directory"`
+	Name       string  `json:"name" yaml:"name" msgpack:"name" mapstructure:"name" validate:"required"`
+	DataSource string  `json:"dataSource" yaml:"dataSource" msgpack:"dataSource" mapstructure:"dataSource" validate:"required"`
+	Directory  *string `json:"directory,omitempty" yaml:"directory,omitempty" msgpack:"directory,omitempty" mapstructure:"directory" validate:"required_without=SourceURL"`
+	SourceURL  *string `json:"sourceUrl,omitempty" yaml:"sourceUrl,omitempty" msgpack:"sourceUrl,omitempty" mapstructure:"sourceUrl" validate:"required_without=Directory"`
 }
 
 func MigratePostgresV1() (string, initialize.Loader) {

@@ -33,7 +33,7 @@ func ExecMultiLoader(ctx context.Context, with interface{}, resolver resolve.Res
 		return nil, err
 	}
 
-	poolI, ok := resources[c.Resource]
+	poolI, ok := resources[string(c.Resource)]
 	if !ok {
 		return nil, fmt.Errorf("resource %q is not registered", c.Resource)
 	}

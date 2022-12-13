@@ -50,7 +50,7 @@ type Auth struct {
 	callbackPath string
 	config       *oauth2.Config
 	userInfoURL  string
-	processor    Processor
+	processor    runtime.Namespaces
 	handler      *handler.Handler
 	debug        bool
 }
@@ -65,12 +65,12 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 	}
 
 	var logger logr.Logger
-	var processor Processor
+	var processor runtime.Namespaces
 	var httpClient HTTPClient
 	var developerMode bool
 	if err := resolve.Resolve(resolver,
 		"system:logger", &logger,
-		"system:processor", &processor,
+		"system:interfaces", &processor,
 		"client:http", &httpClient,
 		"developerMode", &developerMode); err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (o *Auth) callback(w http.ResponseWriter, r *http.Request) {
 			"expiry":        token.Expiry,
 			"refresh_token": token.RefreshToken,
 		}
-		_, ok, err := o.processor.Interface(r.Context(), o.handler.Interface, o.handler.Operation, data)
+		_, ok, err := o.processor.Invoke(r.Context(), o.handler.Interface, o.handler.Operation, data)
 		if !ok {
 			o.log.Error(err, "could not find handler %s::%s", o.handler.Interface, o.handler.Operation)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
