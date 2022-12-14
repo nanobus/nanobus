@@ -15,42 +15,42 @@ type CorsV0Config @middleware("nanobus.transport.http.cors/v0") {
   Only one wildcard can be used per origin.
   Default value is ["*"]
   """
-  allowedOrigins: [string]
+  allowedOrigins: [string]?
   """
   AllowedMethods is a list of methods the client is allowed to use with
   cross-domain requests. Default value is simple methods (HEAD, GET and POST).
   """
-  allowedMethods: [string]
+  allowedMethods: [string]?
   """
   AllowedHeaders is list of non simple headers the client is allowed to use with
   cross-domain requests.
   If the special "*" value is present in the list, all headers will be allowed.
   Default value is [] but "Origin" is always appended to the list.
   """
-  allowedHeaders: [string]
+  allowedHeaders: [string]?
   """
   ExposedHeaders indicates which headers are safe to expose to the API of a CORS
   API specification
   """
-  exposedHeaders: [string]
+  exposedHeaders: [string]?
   """
   MaxAge indicates how long (in seconds) the results of a preflight request
   can be cached
   """
-  maxAge: u32
+  maxAge: u32?
   """
   AllowCredentials indicates whether the request can include user credentials like
   cookies, HTTP authentication or client side SSL certificates.
   """
-  allowCredentials: bool
+  allowCredentials: bool = false
   """
   OptionsPassthrough instructs preflight to let other potential next handlers to
   process the OPTIONS method. Turn this on if your application handles OPTIONS.
   """
-  optionsPassthrough: bool
+  optionsPassthrough: bool = false
   """
   Provides a status code to use for successful OPTIONS requests.
   Default value is http.StatusNoContent (204).
   """
-  optionsSuccessStatus: u32
+  optionsSuccessStatus: u32 = 204
 }

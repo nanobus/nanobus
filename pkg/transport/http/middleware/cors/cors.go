@@ -37,12 +37,17 @@ func CorsV0Loader(ctx context.Context, with interface{}, resolver resolve.Resolv
 		return nil, err
 	}
 
+	maxAge := int(0)
+	if c.MaxAge != nil {
+		maxAge = int(*c.MaxAge)
+	}
+
 	corsOptions := cors.Options{
 		AllowedOrigins:       c.AllowedOrigins,
 		AllowedMethods:       c.AllowedMethods,
 		AllowedHeaders:       c.AllowedHeaders,
 		ExposedHeaders:       c.ExposedHeaders,
-		MaxAge:               int(c.MaxAge),
+		MaxAge:               maxAge,
 		AllowCredentials:     c.AllowCredentials,
 		OptionsPassthrough:   c.OptionsPassthrough,
 		OptionsSuccessStatus: int(c.OptionsSuccessStatus),
