@@ -66,6 +66,12 @@ class ComponentImportsVisitor extends ImportsVisitor {
         import: "github.com/nanobus/nanobus/pkg/transport/http/middleware",
       });
     });
+    annotated.annotation("filter", (_a) => {
+      this.addType("filter", {
+        type: "filter",
+        import: "github.com/nanobus/nanobus/pkg/transport/filter",
+      });
+    });
     annotated.annotation("action", (_a) => {
       this.addType("action", {
         type: "actions",
@@ -154,6 +160,14 @@ func ${name}() (string, router.Loader) {
       const component = a.convert<Component>();
       this.write(`
 func ${name}() (string, middleware.Loader) {
+  return "${component.value}", ${name}Loader
+}\n\n`);
+    });
+
+    annotated.annotation("filter", (a) => {
+      const component = a.convert<Component>();
+      this.write(`
+func ${name}() (string, filter.Loader) {
   return "${component.value}", ${name}Loader
 }\n\n`);
     });

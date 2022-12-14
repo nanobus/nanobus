@@ -15,4 +15,8 @@ export * from "./transport_rest.ts";
 export * from "./transport_router.ts";
 export * from "./transport_server.ts";
 export * from "./transport_static.ts";
+export * from "./transport_jwt.ts";
+export * from "./transport_paseto.ts";
+export * from "./transport_session.ts";
+export * from "./transport_userinfo.ts";
 export * from "./modules.ts";

@@ -40,6 +40,30 @@ generates:
     module: ../../../codegen/config.ts
     visitorClass: ComponentsVisitor
 ---
+spec: ../../../specs/transport/filter/jwt.axdl
+generates:
+  transport_jwt.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/filter/paseto.axdl
+generates:
+  transport_paseto.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/filter/session.axdl
+generates:
+  transport_session.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
+spec: ../../../specs/transport/filter/userinfo.axdl
+generates:
+  transport_userinfo.ts:
+    module: ../../../codegen/config.ts
+    visitorClass: ComponentsVisitor
+---
 spec: ../../../specs/actions/core.axdl
 generates:
   actions_core.ts:

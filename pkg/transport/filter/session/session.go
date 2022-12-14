@@ -16,15 +16,10 @@ import (
 
 	"github.com/nanobus/nanobus/pkg/actions"
 	"github.com/nanobus/nanobus/pkg/config"
-	"github.com/nanobus/nanobus/pkg/handler"
 	"github.com/nanobus/nanobus/pkg/resolve"
 	"github.com/nanobus/nanobus/pkg/runtime"
 	"github.com/nanobus/nanobus/pkg/transport/filter"
 )
-
-type Config struct {
-	Handler handler.Handler `mapstructure:"handler" validate:"required"`
-}
 
 type Processor interface {
 	LoadPipeline(pl *runtime.Pipeline) (runtime.Runnable, error)
@@ -33,13 +28,8 @@ type Processor interface {
 	Event(ctx context.Context, name string, data actions.Data) (interface{}, error)
 }
 
-// Session is the NamedLoader for the session filter.
-func Session() (string, filter.Loader) {
-	return "session", Loader
-}
-
-func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
-	var c Config
+func SessionV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
+	var c SessionV1Config
 	err := config.Decode(with, &c)
 	if err != nil {
 		return nil, err
@@ -58,7 +48,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	return Filter(logger, processor, &c, developerMode), nil
 }
 
-func Filter(log logr.Logger, processor runtime.Namespaces, config *Config, developerMode bool) filter.Filter {
+func Filter(log logr.Logger, processor runtime.Namespaces, config *SessionV1Config, developerMode bool) filter.Filter {
 	return func(ctx context.Context, header filter.Header) (context.Context, error) {
 		cookieHeader := header.Get("Cookie")
 		hdr := http.Header{}

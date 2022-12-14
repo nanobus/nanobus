@@ -69,7 +69,7 @@ import { Component, DataExpr, Handler, ResourceRef, Step, ValueExpr } from "../n
   }
 
   doClass(named: Named, annotated: Annotated): void {
-    ["initializer", "transport", "router", "middleware", "action"].forEach(
+    ["initializer", "transport", "router", "middleware", "filter", "action"].forEach(
       (componentType) => {
         const a = annotated.annotation(componentType);
         if (!a) {
@@ -105,7 +105,7 @@ export class InterfaceVisitor extends BaseVisitor {
     super.triggerTypeField(context);
     const { type, field } = context;
     // Name is automatically passed in.
-    const comp = ["initializer", "transport", "router", "middleware", "action"].find(
+    const comp = ["initializer", "transport", "router", "middleware", "filter", "action"].find(
       (componentType) => {
         return type.annotation(componentType) != undefined;
       });

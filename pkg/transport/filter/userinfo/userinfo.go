@@ -27,17 +27,8 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Config struct {
-	UserInfoURL string `mapstructure:"userInfoUrl"`
-}
-
-// UserInfo is the NamedLoader for the UserInfo filter.
-func UserInfo() (string, filter.Loader) {
-	return "userinfo", Loader
-}
-
-func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
-	var c Config
+func UserInfoV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (filter.Filter, error) {
+	var c UserInfoV1Config
 	err := config.Decode(with, &c)
 	if err != nil {
 		return nil, err
@@ -56,7 +47,7 @@ func Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (
 	return Filter(logger, httpClient, &c, developerMode), nil
 }
 
-func Filter(log logr.Logger, httpClient HTTPClient, config *Config, developerMode bool) filter.Filter {
+func Filter(log logr.Logger, httpClient HTTPClient, config *UserInfoV1Config, developerMode bool) filter.Filter {
 	return func(ctx context.Context, header filter.Header) (context.Context, error) {
 		if config.UserInfoURL == "" {
 			return ctx, nil

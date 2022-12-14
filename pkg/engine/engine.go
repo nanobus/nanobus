@@ -101,6 +101,7 @@ import (
 	// TRANSPORT - FILTERS
 	"github.com/nanobus/nanobus/pkg/transport/filter"
 	"github.com/nanobus/nanobus/pkg/transport/filter/jwt"
+	"github.com/nanobus/nanobus/pkg/transport/filter/paseto"
 	"github.com/nanobus/nanobus/pkg/transport/filter/session"
 	"github.com/nanobus/nanobus/pkg/transport/filter/userinfo"
 
@@ -302,9 +303,10 @@ func Start(info *Info) error {
 	// Filter registration
 	filterRegistry := filter.Registry{}
 	filterRegistry.Register(
-		jwt.JWT,           // TODO
-		session.Session,   // TODO
-		userinfo.UserInfo, // TODO
+		jwt.JWTV1,
+		paseto.PasetoV1,
+		session.SessionV1,
+		userinfo.UserInfoV1,
 	)
 
 	// Router registration
