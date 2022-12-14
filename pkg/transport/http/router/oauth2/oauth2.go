@@ -49,6 +49,7 @@ type Auth struct {
 	loginPath    string
 	callbackPath string
 	config       *oauth2.Config
+	redirectURL  string
 	userInfoURL  string
 	processor    runtime.Namespaces
 	handler      *handler.Handler
@@ -59,6 +60,7 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 	c := OAuth2V1Config{
 		LoginPath:    "/oauth/login",
 		CallbackPath: "/oauth/callback",
+		RedirectURL:  "/",
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
@@ -94,7 +96,7 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 			TokenURL:  c.Endpoint.TokenURL,
 			AuthStyle: oauth2.AuthStyle(c.Endpoint.AuthStyle),
 		},
-		RedirectURL: c.RedirectURL,
+		RedirectURL: c.CallbackURL,
 		Scopes:      scopes,
 	}
 
@@ -104,6 +106,7 @@ func OAuth2V1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 		loginPath:    c.LoginPath,
 		callbackPath: c.CallbackPath,
 		config:       config,
+		redirectURL:  c.RedirectURL,
 		userInfoURL:  c.Endpoint.UserInfoURL,
 		processor:    processor,
 		handler:      c.Handler,
@@ -134,21 +137,21 @@ func (o *Auth) callback(w http.ResponseWriter, r *http.Request) {
 
 	if oauthState == nil || r.FormValue("state") != oauthState.Value {
 		o.log.Error(nil, "Invalid oauth state")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
 	token, err := o.config.Exchange(r.Context(), r.FormValue("code"))
 	if err != nil {
 		o.log.Error(err, "could not exchange authorization code")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
 	claims, err := o.getClaims(token)
 	if err != nil {
 		o.log.Error(err, "could not parse claims")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -172,18 +175,18 @@ func (o *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		_, ok, err := o.processor.Invoke(r.Context(), o.handler.Interface, o.handler.Operation, data)
 		if !ok {
 			o.log.Error(err, "could not find handler", "handler", o.handler)
-			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 			return
 		}
 		if err != nil {
 			o.log.Error(err, "could not process authentication pipeline")
-			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 			return
 		}
 	}
 
 	setSessionCookie(w, token, claims)
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, o.redirectURL, http.StatusTemporaryRedirect)
 }
 
 func (o *Auth) getClaims(token *oauth2.Token) (map[string]any, error) {

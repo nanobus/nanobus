@@ -16,6 +16,7 @@ type OAuth2V1Config struct {
 	ClientID     string           `json:"clientId" yaml:"clientId" msgpack:"clientId" mapstructure:"clientId" validate:"required"`
 	ClientSecret string           `json:"clientSecret" yaml:"clientSecret" msgpack:"clientSecret" mapstructure:"clientSecret" validate:"required"`
 	Endpoint     Endpoint         `json:"endpoint" yaml:"endpoint" msgpack:"endpoint" mapstructure:"endpoint" validate:"required"`
+	CallbackURL  string           `json:"callbackUrl" yaml:"callbackUrl" msgpack:"callbackUrl" mapstructure:"callbackUrl" validate:"required"`
 	RedirectURL  string           `json:"redirectUrl" yaml:"redirectUrl" msgpack:"redirectUrl" mapstructure:"redirectUrl" validate:"required"`
 	Scopes       []string         `json:"scopes,omitempty" yaml:"scopes,omitempty" msgpack:"scopes,omitempty" mapstructure:"scopes"`
 	Handler      *handler.Handler `json:"handler,omitempty" yaml:"handler,omitempty" msgpack:"handler,omitempty" mapstructure:"handler"`

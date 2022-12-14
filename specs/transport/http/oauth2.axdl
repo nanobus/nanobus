@@ -14,7 +14,8 @@ type OAuth2V1Config @router("nanobus.transport.http.oauth2/v1") {
   clientId:     string
   clientSecret: string
   endpoint:     Endpoint
-  redirectUrl:  string
+  callbackUrl:  string
+  redirectUrl:  string = "/"
   scopes:       [string]?
   handler:      Handler?
 }

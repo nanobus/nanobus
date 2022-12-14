@@ -16,7 +16,8 @@ export interface OAuth2V1Config {
   clientId: string;
   clientSecret: string;
   endpoint: Endpoint;
-  redirectUrl: string;
+  callbackUrl: string;
+  redirectUrl?: string;
   scopes?: string[];
   handler?: Handler;
 }
