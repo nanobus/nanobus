@@ -22,7 +22,8 @@ export function StaticV1(config: StaticV1Config): Component<StaticV1Config> {
 }
 
 export interface StaticPath {
-  dir: string;
   path: string;
+  dir?: string;
+  file?: string;
   strip?: string;
 }

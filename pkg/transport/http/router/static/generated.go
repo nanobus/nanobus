@@ -15,7 +15,8 @@ func StaticV1() (string, router.Loader) {
 }
 
 type StaticPath struct {
-	Dir   string  `json:"dir" yaml:"dir" msgpack:"dir" mapstructure:"dir" validate:"required"`
 	Path  string  `json:"path" yaml:"path" msgpack:"path" mapstructure:"path" validate:"required"`
+	Dir   *string `json:"dir,omitempty" yaml:"dir,omitempty" msgpack:"dir,omitempty" mapstructure:"dir"`
+	File  *string `json:"file,omitempty" yaml:"file,omitempty" msgpack:"file,omitempty" mapstructure:"file"`
 	Strip *string `json:"strip,omitempty" yaml:"strip,omitempty" msgpack:"strip,omitempty" mapstructure:"strip"`
 }

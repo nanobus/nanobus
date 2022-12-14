@@ -11,7 +11,8 @@ type StaticV1Config @router("nanobus.transport.http.static/v1") {
 }
 
 type StaticPath {
-  dir:   string
   path:  string
+  dir:   string?  
+  file:  string?
   strip: string?
 }
