@@ -25,7 +25,8 @@ func CorsV0Loader(ctx context.Context, with interface{}, resolver resolve.Resolv
 		AllowedOrigins: []string{"*"},
 		// "PUT", "PATCH", "DELETE" are commonly needed in REST APIs however
 		// the defaults are aligned with the cors library defaults.
-		AllowedMethods: []string{"HEAD", "GET", "POST"},
+		AllowedMethods:       []string{"HEAD", "GET", "POST"},
+		OptionsSuccessStatus: 204,
 	}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
