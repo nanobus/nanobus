@@ -12,8 +12,8 @@ import {
 
 export interface HttpServerV1Config {
   address: string;
-  routes?: Component<any>[];
   middleware?: Component<any>[];
+  routes?: Component<any>[];
 }
 
 export function HttpServerV1(

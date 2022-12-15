@@ -7,12 +7,12 @@ import (
 	"github.com/nanobus/nanobus/pkg/transport"
 )
 
-type ServerV1Config struct {
+type HttpServerV1Config struct {
 	Address    string              `json:"address" yaml:"address" msgpack:"address" mapstructure:"address" validate:"required"`
-	Routes     []runtime.Component `json:"routes,omitempty" yaml:"routes,omitempty" msgpack:"routes,omitempty" mapstructure:"routes"`
 	Middleware []runtime.Component `json:"middleware,omitempty" yaml:"middleware,omitempty" msgpack:"middleware,omitempty" mapstructure:"middleware"`
+	Routes     []runtime.Component `json:"routes,omitempty" yaml:"routes,omitempty" msgpack:"routes,omitempty" mapstructure:"routes"`
 }
 
-func ServerV1() (string, transport.Loader) {
-	return "nanobus.transport.http.server/v1", ServerV1Loader
+func HttpServerV1() (string, transport.Loader) {
+	return "nanobus.transport.http.server/v1", HttpServerV1Loader
 }

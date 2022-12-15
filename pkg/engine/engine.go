@@ -289,7 +289,7 @@ func Start(info *Info) error {
 	// Transport registration
 	transportRegistry := transport.Registry{}
 	transportRegistry.Register(
-		transport_http.ServerV1,
+		transport_http.HttpServerV1,
 		transport_httprpc.Load,
 		transport_nats.Load,
 	)
@@ -568,6 +568,7 @@ func Start(info *Info) error {
 		if oci.IsImageReference(include.Ref) {
 			return errors.New("references not currently supported")
 		}
+		log.Info("Loading include", "ref", include.Ref)
 		path := filepath.Join(dir, include.Ref)
 		var busFile, parentDir string
 		info, err := os.Stat(path)

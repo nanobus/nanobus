@@ -267,28 +267,32 @@ export class Application {
     return this;
   }
 
-  authorizations(...rules: AuthRule[]) {
-    for (const rule of rules) {
-      const [iface, operation] = rule.handler.split("::");
+  authorizations(rules: Record<Handler, Authorization>) {
+    for (const handler of Object.keys(rules)) {
+      const rule = rules[handler as Handler];
+      const [iface, operation] = handler.split("::");
       let exsting = this.config.authorization[iface];
       if (!exsting) {
         exsting = {};
         this.config.authorization[iface] = exsting;
       }
-      exsting[operation] = rule.rule;
+      exsting[operation] = rule;
     }
   }
 
-  intercept(handler: Handler, steps: Step[]): Application {
-    const [iface, oper] = handler.split("::");
-    let pipelines = this.config.interfaces[iface];
-    if (!pipelines) {
-      pipelines = {};
-      this.config.interfaces[iface] = pipelines;
+  implement(handlers: Record<Handler, Step[]>): Application {
+    for (const handler of Object.keys(handlers)) {
+      const steps = handlers[handler as Handler];
+      const [iface, oper] = handler.split("::");
+      let pipelines = this.config.interfaces[iface];
+      if (!pipelines) {
+        pipelines = {};
+        this.config.interfaces[iface] = pipelines;
+      }
+      pipelines[oper] = {
+        steps: steps,
+      };
     }
-    pipelines[oper] = {
-      steps: steps,
-    };
     return this;
   }
 
@@ -432,34 +436,16 @@ export interface ResiliencyGroup {
   circuitBreaker?: CircuitBreakerRef;
 }
 
-export interface AuthRule {
-  handler: Handler;
-  rule: Unauthenticated | Authorization;
-}
+export const unauthenticated: Unauthenticated = { unauthenticated: true };
 
-export function unauthenticated(handler: Handler): AuthRule {
-  return {
-    handler,
-    rule: {
-      unauthenticated: true,
-    },
-  };
-}
+export type Authorization = Unauthenticated | Secured;
+export type Authorizations = { [key: string]: Authorization };
 
-export function secured(handler: Handler, auth: Authorization): AuthRule {
-  return {
-    handler,
-    rule: auth,
-  };
-}
-
-export type Authorizations = { [key: string]: Unauthenticated | Authorization };
-
-interface Unauthenticated {
+export interface Unauthenticated {
   unauthenticated: boolean;
 }
 
-export interface Authorization {
+export interface Secured {
   has?: string[];
   checks?: { [variable: string]: unknown };
   rules?: [Component<unknown>];

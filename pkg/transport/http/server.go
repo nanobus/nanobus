@@ -53,7 +53,7 @@ func WithRoutes(r ...router.Router) Option {
 	}
 }
 
-func ServerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
+func HttpServerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
 	var log logr.Logger
 	var tracer trace.Tracer
 	var routerRegistry router.Registry
@@ -67,7 +67,7 @@ func ServerV1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 	}
 
 	// Defaults
-	c := ServerV1Config{}
+	c := HttpServerV1Config{}
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func ServerV1Loader(ctx context.Context, with interface{}, resolver resolve.Reso
 		WithRoutes(routers...))
 }
 
-func NewServer(log logr.Logger, tracer trace.Tracer, config ServerV1Config, options ...Option) (*Server, error) {
+func NewServer(log logr.Logger, tracer trace.Tracer, config HttpServerV1Config, options ...Option) (*Server, error) {
 	var opts optionsHolder
 
 	for _, opt := range options {

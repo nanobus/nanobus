@@ -86,8 +86,8 @@ export class RestModule implements Module {
       "http",
       HttpServerV1({
         address: this.address,
-        routes: routes,
         middleware: middleware,
+        routes: routes,
       }),
     );
 
