@@ -50,8 +50,9 @@ func NewV1(log logr.Logger, config StaticV1Config) router.Router {
 		})
 		for _, path := range config.Paths {
 			log.Info("Serving static files",
-				"dir", path.Dir,
 				"path", path.Path,
+				"dir", path.Dir,
+				"file", path.File,
 				"strip", path.Strip)
 			var handler http.Handler
 			if path.Dir != nil {
