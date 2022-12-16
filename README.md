@@ -24,9 +24,42 @@ curl -fsSL https://raw.githubusercontent.com/nanobus/nanobus/main/install/instal
 powershell -Command "iwr -useb https://raw.githubusercontent.com/nanobus/nanobus/main/install/install.ps1 | iex"
 ```
 
-**Note**: Updates to PATH might not be visible until you restart your terminal application.
+> **Note**: Updates to PATH might not be visible until you restart your terminal application.
 
-## Create a NanoBus Application
+**Manually** - Select your architecture from [releases](https://github.com/nanobus/nanobus/releases).
+
+## Create a Simple Application
+
+Create a file called `bus.yaml` with the following contents:
+
+```yaml
+id: hello-world
+version: 0.0.1
+# All operations are authorized before execution
+# and are denied by default.
+authorization:
+  Greeter:
+    sayHello:
+      unauthenticated: true
+interfaces:
+  Greeter:
+    sayHello:
+      steps:
+        - name: Return greeting message
+          # assign will evaluate a value and assign it
+          # to output.
+          uses: assign
+          with:
+            value: '"Hello, " + input.name'
+```
+
+Then run this command from your terminal:
+
+```shell
+echo '{"name": "World!"}' | nanobus invoke --interface Greeter --operation sayHello
+```
+
+This should return `Hello, World!` is returned as a JSON string. The JSON data returned by NanoBus applications can be piped to other utilities such as [jq](https://stedolan.github.io/jq/).
 
 ## Developer Setup
 
@@ -39,7 +72,7 @@ To setup a local development environment
 | [go]       | $ go version     | Go compiler.  Ensure $HOME/go/bin is in PATH. |
 | [just]     | $ just --version | Like Makefile [just] runs the needed commands |
 
-### Install from source
+### Install from Source
 
 ```shell
 git clone https://github.com/nanobus/nanobus.git
