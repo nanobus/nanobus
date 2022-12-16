@@ -7,6 +7,7 @@ imperative and declarative code.
 ## As a developer, SRE or tech lead I want to...
 
 PubSub / Input Bindings
+
 * publish and consume events encoded in [Avro](https://avro.apache.org) + [Confluent Schema Registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
 * use [CloudEvents](https://cloudevents.io) encoded with Avro or Protobuf
 * send different versions of events to different handlers
@@ -16,10 +17,12 @@ PubSub / Input Bindings
 * easily build materialized views from event data
 
 Output Bindings
+
 * map application data to match the expected input of an input binding (portability)
 * swap out different component types (state store -> RDBMS)
 
 Resiliency
+
 * apply timeouts to an operation
 * apply retries to an operation
 * apply circuit breakers to an operation
@@ -27,10 +30,12 @@ Resiliency
 * inject faults (chaos testing)
 
 Security
+
 * authorize users using a protocol agnostic policy
 * control data encryption and tokenization policies for entire records or specific fields that are sensitive
 
 Dev Experience / Efficiency
+
 * reduce or eliminate boilerplate code
 * reduce the number of dependencies my application has (SBOM)
 * receive data that is already validated
@@ -43,9 +48,11 @@ Dev Experience / Efficiency
 * share API specs with partner teams prior to implementation (API-first)
 
 Integration w/ non-Dapr apps
+
 * invoke endpoints w/ custom TLS config/certificates
 
 ## As a product/marketing manager I want to...
 
 Product/Marketing management
+
 * create A/B tests for specific users / personas
