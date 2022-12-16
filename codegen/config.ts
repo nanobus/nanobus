@@ -12,9 +12,9 @@ import {
   BaseVisitor,
   Context,
   Kind,
-  Named,
-  Map,
   List,
+  Map,
+  Named,
   Optional,
 } from "./deps/core.ts";
 import { AliasVisitor, translations } from "./deps/typescript.ts";
@@ -69,28 +69,29 @@ import { Component, DataExpr, Handler, ResourceRef, Step, ValueExpr } from "../n
   }
 
   doClass(named: Named, annotated: Annotated): void {
-    ["initializer", "transport", "router", "middleware", "filter", "action"].forEach(
-      (componentType) => {
-        const a = annotated.annotation(componentType);
-        if (!a) {
-          return;
-        }
+    ["initializer", "transport", "router", "middleware", "filter", "action"]
+      .forEach(
+        (componentType) => {
+          const a = annotated.annotation(componentType);
+          if (!a) {
+            return;
+          }
 
-        const name = named.name.replaceAll(
-          /(Config|Configuration|Settings)$/g,
-          ""
-        );
-        const comp = a.convert<ComponentDirective>();
+          const name = named.name.replaceAll(
+            /(Config|Configuration|Settings)$/g,
+            "",
+          );
+          const comp = a.convert<ComponentDirective>();
 
-        this.write(`
+          this.write(`
 export function ${name}(config: ${named.name}): Component<${named.name}> {
   return {
     uses: "${comp.value}",
     with: config,
   }
 }\n\n`);
-      }
-    );
+        },
+      );
   }
 }
 
@@ -105,10 +106,18 @@ export class InterfaceVisitor extends BaseVisitor {
     super.triggerTypeField(context);
     const { type, field } = context;
     // Name is automatically passed in.
-    const comp = ["initializer", "transport", "router", "middleware", "filter", "action"].find(
+    const comp = [
+      "initializer",
+      "transport",
+      "router",
+      "middleware",
+      "filter",
+      "action",
+    ].find(
       (componentType) => {
         return type.annotation(componentType) != undefined;
-      });
+      },
+    );
     if (comp && field.name == "name") {
       return;
     }
@@ -145,7 +154,7 @@ class EnumVisitor extends BaseVisitor {
     this.write(
       `\  ${pascalCase(enumValue.name)} = "${
         enumValue.display || enumValue.name
-      }",\n`
+      }",\n`,
     );
     super.triggerTypeField(context);
   }
@@ -179,10 +188,12 @@ const expandType = (type: AnyType, useOptional: boolean): string => {
       return namedValue;
     }
     case Kind.Map:
-      return `{ [key: ${expandType((type as Map).keyType, true)}]: ${expandType(
-        (type as Map).valueType,
-        true
-      )} }`;
+      return `{ [key: ${expandType((type as Map).keyType, true)}]: ${
+        expandType(
+          (type as Map).valueType,
+          true,
+        )
+      } }`;
     case Kind.List:
       return `${expandType((type as List).type, true)}[]`;
     case Kind.Optional: {

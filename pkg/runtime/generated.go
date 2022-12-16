@@ -47,8 +47,8 @@ type BusConfig struct {
 	// Resources are externally configured sources and receivers of data (DB, REST
 	// endpoint).
 	Resources []string `json:"resources" yaml:"resources" msgpack:"resources" mapstructure:"resources" validate:"required"`
-	// Other Iotas that this Iota depends on.
-	Includes []Reference `json:"includes" yaml:"includes" msgpack:"includes" mapstructure:"includes" validate:"required"`
+	// Other Iotas that this Iota depends on using.
+	Includes map[string]Reference `json:"includes" yaml:"includes" msgpack:"includes" mapstructure:"includes" validate:"required"`
 	// Tracing configures an Open Telemetry span exporter.
 	Tracing *Component  `json:"tracing,omitempty" yaml:"tracing,omitempty" msgpack:"tracing,omitempty" mapstructure:"tracing"`
 	Specs   []Component `json:"specs" yaml:"specs" msgpack:"specs" mapstructure:"specs" validate:"required"`
@@ -171,7 +171,7 @@ type CircuitBreaker struct {
 type Authorization struct {
 	// This flag must be explicitly set to `true` if unauthenticated/anonymous access
 	// is allowed.
-	Unauthenticated bool                   `json:"unauthenticated" yaml:"unauthenticated" msgpack:"unauthenticated" mapstructure:"unauthenticated" validate:"required"`
+	Unauthenticated bool                   `json:"unauthenticated" yaml:"unauthenticated" msgpack:"unauthenticated" mapstructure:"unauthenticated"`
 	Has             []string               `json:"has" yaml:"has" msgpack:"has" mapstructure:"has" validate:"required"`
 	Checks          map[string]interface{} `json:"checks" yaml:"checks" msgpack:"checks" mapstructure:"checks" validate:"required"`
 	Rules           []Component            `json:"rules" yaml:"rules" msgpack:"rules" mapstructure:"rules" validate:"required"`

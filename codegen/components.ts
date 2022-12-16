@@ -7,13 +7,13 @@
  */
 
 import {
+  Annotated,
   Context,
   Kind,
-  Writer,
   Named,
-  Annotated,
   Primitive,
   PrimitiveName,
+  Writer,
 } from "./deps/core.ts";
 import {
   ImportsVisitor,

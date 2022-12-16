@@ -90,7 +90,7 @@ export const codecs: { [name: string]: CodecRef } = {
   CloudEventsJSON: "cloudevents+json" as CodecRef,
 };
 
-export interface UseOptions {
+export interface IncludeOptions {
   resourceLinks?: { [key: string]: ResourceRef };
 }
 
@@ -100,7 +100,7 @@ export interface Iota<T> {
 }
 
 // For YAML serialization
-interface Ref extends UseOptions {
+interface Ref extends IncludeOptions {
   ref: string;
 }
 
@@ -128,7 +128,7 @@ interface AppConfig {
   main?: string;
   package?: Package;
   readonly resources: ResourceRef[];
-  readonly includes: Ref[];
+  readonly includes: { [key: string]: Ref };
   readonly resiliency: Resiliency;
   readonly initializers: { [key: string]: Component<unknown> };
   readonly transports: { [key: string]: Component<unknown> };
@@ -156,7 +156,7 @@ export class Application {
       main: undefined,
       package: undefined,
       resources: [],
-      includes: [],
+      includes: {},
       resiliency: {
         timeouts: {},
         retries: {},
@@ -249,12 +249,16 @@ export class Application {
     return name as CircuitBreakerRef;
   }
 
-  include(ref: string, options: UseOptions = {}): Application {
-    this.config.includes.push({
-      ref,
+  include<T>(
+    instanceId: string,
+    iota: Iota<T>,
+    options: IncludeOptions = {},
+  ): T {
+    this.config.includes[instanceId] = {
+      ref: iota.$ref,
       ...options,
-    });
-    return this;
+    };
+    return iota.interfaces;
   }
 
   initializer(name: string, comp: Component<unknown>): Application {
@@ -344,12 +348,28 @@ export class Application {
 
   asYAML(): string {
     const r = this.config as unknown as Record<string, unknown>;
+    removeEmpty(this.config.resiliency as unknown as Record<string, unknown>);
     removeUndefined(r);
-    return YAML.stringify(r, {noRefs: true}).trim();
+    removeEmpty(r);
+    return YAML.stringify(r, { noRefs: true }).trim();
   }
 
   emit(): void {
     console.log(this.asYAML());
+  }
+}
+
+function removeEmpty(rec: Record<string, unknown>) {
+  for (const key of Object.keys(rec)) {
+    const val = rec[key];
+    if (
+      val instanceof Object &&
+      Object.keys(val as Record<string, unknown>).length == 0
+    ) {
+      delete rec[key];
+    } else if (val instanceof Array && (val as Array<unknown>).length == 0) {
+      delete rec[key];
+    }
   }
 }
 
@@ -377,7 +397,7 @@ type Backoff = ConstantBackoffWrapper | ExponentialBackoffWrapper;
 
 export function constantBackoff(
   dur: string,
-  maxRetries?: number
+  maxRetries?: number,
 ): ConstantBackoffWrapper {
   return {
     constant: {
@@ -392,7 +412,7 @@ interface ConstantBackoffWrapper {
 }
 
 export function exponentialBackoff(
-  config: ExponentialBackoff
+  config: ExponentialBackoff,
 ): ExponentialBackoffWrapper {
   return {
     exponential: config,
@@ -455,7 +475,7 @@ export function step(
   name: string,
   // deno-lint-ignore no-explicit-any
   comp: Component<any>,
-  options: Partial<Step> = {}
+  options: Partial<Step> = {},
 ): Step {
   return {
     name,

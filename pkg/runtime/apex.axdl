@@ -35,8 +35,8 @@ type BusConfig {
   package: Package?
   "Resources are externally configured sources and receivers of data (DB, REST endpoint)."
   resources: [string]
-  "Other Iotas that this Iota depends on."
-  includes: [Reference]
+  "Other Iotas that this Iota depends on using."
+  includes: { string: Reference }
   "Tracing configures an Open Telemetry span exporter."
   tracing: Component?
   specs: [Component]

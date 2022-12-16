@@ -564,11 +564,11 @@ func Start(info *Info) error {
 	if err != nil {
 		return err
 	}
-	for _, include := range busConfig.Includes {
+	for instanceID, include := range busConfig.Includes {
 		if oci.IsImageReference(include.Ref) {
 			return errors.New("references not currently supported")
 		}
-		log.Info("Loading include", "ref", include.Ref)
+		log.Info("Loading include", "name", instanceID, "ref", include.Ref)
 		path := filepath.Join(dir, include.Ref)
 		var busFile, parentDir string
 		info, err := os.Stat(path)
