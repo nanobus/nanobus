@@ -125,6 +125,19 @@ func Load() (string, actions.Loader) {
 	return "@postgres/load", LoadLoader
 }
 
+type QueryOneConfig struct {
+	// Resource is the name of the connection resource to use.
+	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
+	// SQL is the SQL query to execute.
+	SQL string `json:"sql" yaml:"sql" msgpack:"sql" mapstructure:"sql" validate:"required"`
+	// Args are the evaluations to use as arguments for the SQL query.
+	Args []*expr.ValueExpr `json:"args,omitempty" yaml:"args,omitempty" msgpack:"args,omitempty" mapstructure:"args"`
+}
+
+func QueryOne() (string, actions.Loader) {
+	return "@postgres/query_one", QueryOneLoader
+}
+
 type QueryConfig struct {
 	// Resource is the name of the connection resource to use.
 	Resource ResourceRef `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
