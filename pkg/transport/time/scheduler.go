@@ -73,7 +73,7 @@ func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, con
 func (t *Scheduler) Listen() error {
 	var input map[string]interface{}
 	s := gocron.NewScheduler(time.UTC)
-	transport, err := t.invoker(t.ctx, "Scheduler", t.id, t.handler.Operation, input, transport.BypassAuthorization)
+	transport, err := t.invoker(t.ctx, t.handler.Interface, t.id, t.handler.Operation, input, transport.BypassAuthorization)
 	s.Cron(t.schedule).Do(transport)
 	s.StartAsync()
 
