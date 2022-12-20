@@ -69,12 +69,15 @@ require (
 	oras.land/oras-go/v2 v2.0.0-rc.6
 )
 
+require github.com/robfig/cron/v3 v3.0.1 // indirect
+
 require (
 	github.com/CosmWasm/tinyjson v0.9.0 // indirect
 	github.com/Workiva/go-datastructures v1.0.53 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/go-co-op/gocron v1.18.0
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
