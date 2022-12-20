@@ -17,8 +17,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nanobus/nanobus/pkg/config"
+	"github.com/nanobus/nanobus/pkg/handler"
 	"github.com/nanobus/nanobus/pkg/resolve"
-	"github.com/nanobus/nanobus/pkg/runtime"
 	"github.com/nanobus/nanobus/pkg/transport"
 
 	"github.com/go-co-op/gocron"
@@ -33,7 +33,8 @@ type Scheduler struct {
 	daemon      *gocron.Scheduler
 	lastruntime time.Time
 	numruns     int
-	handler     transport.Transport.Handler
+	invoker     transport.Invoker
+	handler     handler.Handler
 }
 
 func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
@@ -70,14 +71,16 @@ func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, con
 }
 
 func (t *Scheduler) Listen() error {
+	var input map[string]interface{}
 	s := gocron.NewScheduler(time.UTC)
-	s.Cron(t.schedule).Do(transport.Invoker(t.ctx, "scheduler", t.id))
+	transport, err := t.invoker(t.ctx, "Scheduler", t.id, t.handler.Operation, input)
+	s.Cron(t.schedule).Do(transport)
 	s.StartAsync()
 
 	t.daemon = s
 	t.log.Info("Schedule Deamon Started", "schedule", t.schedule)
 
-	return nil
+	return err
 }
 
 func (t *Scheduler) Close() (err error) {
