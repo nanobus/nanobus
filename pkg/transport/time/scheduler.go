@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nanobus/nanobus/pkg/config"
@@ -24,13 +25,15 @@ import (
 )
 
 type Scheduler struct {
+	id          string
+	ctx         context.Context
 	log         logr.Logger
 	tracer      trace.Tracer
 	schedule    string
 	daemon      *gocron.Scheduler
 	lastruntime time.Time
 	numruns     int
-	action      []runtime.Component
+	handler     transport.Transport.Handler
 }
 
 func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
@@ -49,24 +52,26 @@ func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resol
 		return nil, err
 	}
 
-	return NewScheduler(log, tracer, c)
+	return NewScheduler(ctx, log, tracer, c)
 }
 
-func NewScheduler(log logr.Logger, tracer trace.Tracer, config TimeSchedulerV1Config) (*Scheduler, error) {
+func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, config TimeSchedulerV1Config) (*Scheduler, error) {
 	return &Scheduler{
+		id:          uuid.New().String(),
+		ctx:         ctx,
 		log:         log,
 		tracer:      tracer,
 		daemon:      nil,
 		schedule:    config.Schedule,
 		lastruntime: time.Time{},
 		numruns:     0,
-		action:      config.Action,
+		handler:     config.Handler,
 	}, nil
 }
 
 func (t *Scheduler) Listen() error {
 	s := gocron.NewScheduler(time.UTC)
-	s.Cron("*/1 * * * *").Do(true)
+	s.Cron(t.schedule).Do(transport.Invoker(t.ctx, "scheduler", t.id))
 	s.StartAsync()
 
 	t.daemon = s

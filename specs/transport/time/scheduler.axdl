@@ -7,8 +7,9 @@
 namespace "nanobus.transport.time"
 
 alias Component = any
+alias Handler = string
 
 type TimeSchedulerV1Config @transport("nanobus.transport.time.scheduler/v1") {
   schedule:    string
-  action:     [Component]?
+  handler:    Handler
 }
