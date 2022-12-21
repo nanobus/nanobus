@@ -74,15 +74,21 @@ func (t *Scheduler) Listen() error {
 	s := gocron.NewScheduler(time.UTC)
 
 	for _, sched := range t.schedules {
-		t.log.Info("Scheduling", "schedule", sched.Schedule, "handler", sched.Handler)
-		_, err := s.Cron(sched.Schedule).Do(func() {
-			_, err := t.invoker(t.ctx, sched.Handler.Interface, t.id, sched.Handler.Operation, input, transport.BypassAuthorization)
+		if err := func(sched Schedule) error {
+			t.log.Info("Scheduling", "schedule", sched.Schedule, "handler", sched.Handler)
+			_, err := s.Cron(sched.Schedule).Do(func() {
+				_, err := t.invoker(t.ctx, sched.Handler.Interface, t.id, sched.Handler.Operation, input, transport.BypassAuthorization)
+				if err != nil {
+					t.log.Error(err, "Error in %q", sched.Handler)
+				}
+			})
 			if err != nil {
-				t.log.Error(err, "Error in %q", sched.Handler)
+				t.log.Error(err, "Could not schedule", "schedule", sched.Schedule)
+				return err
 			}
-		})
-		if err != nil {
-			t.log.Error(err, "Could not schedule", "schedule", sched.Schedule)
+
+			return nil
+		}(sched); err != nil {
 			return err
 		}
 	}
