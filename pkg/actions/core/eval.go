@@ -17,17 +17,22 @@ import (
 	"github.com/nanobus/nanobus/pkg/resolve"
 )
 
-func AssignLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c AssignConfig
+// Backward compatability with `assign`
+func Assign() (string, actions.Loader) {
+	return "assign", EvalLoader
+}
+
+func EvalLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	var c EvalConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
 
-	return AssignAction(&c), nil
+	return EvalAction(&c), nil
 }
 
-func AssignAction(
-	config *AssignConfig) actions.Action {
+func EvalAction(
+	config *EvalConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
 		if config.Value != nil {
 			output, err = config.Value.Eval(data)
