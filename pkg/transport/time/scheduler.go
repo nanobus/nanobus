@@ -40,7 +40,9 @@ type Scheduler struct {
 func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
 	var log logr.Logger
 	var tracer trace.Tracer
+	var transportInvoker transport.Invoker
 	if err := resolve.Resolve(resolver,
+		"transport:invoker", &transportInvoker,
 		"system:logger", &log,
 		"system:tracer", &tracer,
 	); err != nil {
@@ -53,10 +55,10 @@ func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resol
 		return nil, err
 	}
 
-	return NewScheduler(ctx, log, tracer, c)
+	return NewScheduler(ctx, log, tracer, transportInvoker, c)
 }
 
-func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, config TimeSchedulerV1Config) (*Scheduler, error) {
+func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, transportInvoker transport.Invoker, config TimeSchedulerV1Config) (*Scheduler, error) {
 	return &Scheduler{
 		id:          uuid.New().String(),
 		ctx:         ctx,
@@ -66,6 +68,7 @@ func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, con
 		schedule:    config.Schedule,
 		lastruntime: time.Time{},
 		numruns:     0,
+		invoker:     transportInvoker,
 		handler:     config.Handler,
 	}, nil
 }

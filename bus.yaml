@@ -1,0 +1,17 @@
+id: hello-world
+version: 0.0.1
+transports:
+  schedule:
+    uses: nanobus.transport.time.scheduler/v1
+    with:
+      handler: "log::helloWorld"
+      schedule: "* * * * *"
+
+interfaces:
+  log:
+    helloWorld:
+      steps:
+        - name: log hello world
+          uses: "log"
+          with:
+            format: "Hello World"
