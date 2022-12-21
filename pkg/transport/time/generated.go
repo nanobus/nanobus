@@ -8,10 +8,14 @@ import (
 )
 
 type TimeSchedulerV1Config struct {
-	Schedule string          `json:"schedule" yaml:"schedule" msgpack:"schedule" mapstructure:"schedule" validate:"required"`
-	Handler  handler.Handler `json:"handler" yaml:"handler" msgpack:"handler" mapstructure:"handler" validate:"required"`
+	Schedules []Schedule `json:"schedules" yaml:"schedules" msgpack:"schedules" mapstructure:"schedules" validate:"required"`
 }
 
 func TimeSchedulerV1() (string, transport.Loader) {
 	return "nanobus.transport.time.scheduler/v1", TimeSchedulerV1Loader
+}
+
+type Schedule struct {
+	Schedule string          `json:"schedule" yaml:"schedule" msgpack:"schedule" mapstructure:"schedule" validate:"required"`
+	Handler  handler.Handler `json:"handler" yaml:"handler" msgpack:"handler" mapstructure:"handler" validate:"required"`
 }
