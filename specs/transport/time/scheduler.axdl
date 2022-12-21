@@ -10,6 +10,10 @@ alias Component = any
 alias Handler = string
 
 type TimeSchedulerV1Config @transport("nanobus.transport.time.scheduler/v1") {
+  schedules: [Schedule]
+}
+
+type Schedule {
   schedule:    string
   handler:    Handler
 }

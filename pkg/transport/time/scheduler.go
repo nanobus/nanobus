@@ -18,7 +18,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nanobus/nanobus/pkg/config"
-	"github.com/nanobus/nanobus/pkg/handler"
 	"github.com/nanobus/nanobus/pkg/resolve"
 	"github.com/nanobus/nanobus/pkg/transport"
 )
@@ -28,12 +27,11 @@ type Scheduler struct {
 	ctx         context.Context
 	log         logr.Logger
 	tracer      trace.Tracer
-	schedule    string
 	daemon      *gocron.Scheduler
 	lastruntime time.Time
 	numruns     int
 	invoker     transport.Invoker
-	handler     handler.Handler
+	schedules   []Schedule
 }
 
 func TimeSchedulerV1Loader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (transport.Transport, error) {
@@ -64,27 +62,34 @@ func NewScheduler(ctx context.Context, log logr.Logger, tracer trace.Tracer, tra
 		log:         log,
 		tracer:      tracer,
 		daemon:      nil,
-		schedule:    config.Schedule,
 		lastruntime: time.Time{},
 		numruns:     0,
 		invoker:     transportInvoker,
-		handler:     config.Handler,
+		schedules:   config.Schedules,
 	}, nil
 }
 
 func (t *Scheduler) Listen() error {
 	input := map[string]interface{}{}
 	s := gocron.NewScheduler(time.UTC)
-	s.Cron(t.schedule).Do(func() {
-		_, err := t.invoker(t.ctx, t.handler.Interface, t.id, t.handler.Operation, input, transport.BypassAuthorization)
+
+	for _, sched := range t.schedules {
+		t.log.Info("Scheduling", "schedule", sched.Schedule, "handler", sched.Handler)
+		_, err := s.Cron(sched.Schedule).Do(func() {
+			_, err := t.invoker(t.ctx, sched.Handler.Interface, t.id, sched.Handler.Operation, input, transport.BypassAuthorization)
+			if err != nil {
+				t.log.Error(err, "Error in %q", sched.Handler)
+			}
+		})
 		if err != nil {
-			t.log.Error(err, "Error in %q", t.handler)
+			t.log.Error(err, "Could not schedule", "schedule", sched.Schedule)
+			return err
 		}
-	})
+	}
 
 	t.daemon = s
 
-	t.log.Info("Schedule Deamon Started", "schedule", t.schedule)
+	t.log.Info("Schedule Deamon Started")
 	s.StartBlocking()
 
 	return nil

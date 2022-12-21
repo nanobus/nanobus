@@ -4,8 +4,11 @@ transports:
   schedule:
     uses: nanobus.transport.time.scheduler/v1
     with:
-      handler: "log::helloWorld"
-      schedule: "* * * * *"
+      schedules:
+        - handler: "log::helloWorld"
+          schedule: "*/1 * * * *"
+        - handler: "log::helloMoon"
+          schedule: "*/2 * * * *"
 
 interfaces:
   log:
@@ -15,3 +18,9 @@ interfaces:
           uses: "log"
           with:
             format: "Hello World"
+    helloMoon:
+      steps:
+        - name: log hello moon
+          uses: "log"
+          with:
+            format: "Hello Moon"
