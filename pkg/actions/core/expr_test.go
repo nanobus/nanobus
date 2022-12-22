@@ -23,7 +23,7 @@ import (
 func TestExpr(t *testing.T) {
 	ctx := context.Background()
 	name, loader := core.Expr()
-	assert.Equal(t, "eval", name)
+	assert.Equal(t, "expr", name)
 
 	tests := []struct {
 		name string
