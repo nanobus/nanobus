@@ -16,7 +16,7 @@ export interface JWTV1Config {
   ecdsaPublicKeyFile?: string;
   ecdsaPublicKeyString?: string;
   hmacSecretKeyFile?: string;
-  hmacSecretKeyBase64?: boolean;
+  hmacSecretKeyBase64: boolean;
   hmacSecretKeyString?: string;
   jwksUrl?: string;
 }

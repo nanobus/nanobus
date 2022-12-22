@@ -10,20 +10,20 @@ import {
   ValueExpr
 } from "../nanobus.ts";
 
-export interface RouterV1Config {
-  routes: AddRoute[];
+export interface TimeSchedulerV1Config {
+  schedules: Schedule[];
 }
 
-export function RouterV1(config: RouterV1Config): Component<RouterV1Config> {
+export function TimeSchedulerV1(
+  config: TimeSchedulerV1Config
+): Component<TimeSchedulerV1Config> {
   return {
-    uses: "nanobus.transport.http.router/v1",
+    uses: "nanobus.transport.time.scheduler/v1",
     with: config
   };
 }
 
-export interface AddRoute {
-  method: string;
-  uri: string;
-  encoding?: string;
+export interface Schedule {
+  schedule: string;
   handler: Handler;
 }

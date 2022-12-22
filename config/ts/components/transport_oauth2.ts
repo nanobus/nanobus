@@ -11,13 +11,13 @@ import {
 } from "../nanobus.ts";
 
 export interface OAuth2V1Config {
-  loginPath?: string;
-  callbackPath?: string;
+  loginPath: string;
+  callbackPath: string;
   clientId: string;
   clientSecret: string;
   endpoint: Endpoint;
   callbackUrl: string;
-  redirectUrl?: string;
+  redirectUrl: string;
   scopes?: string[];
   handler?: Handler;
 }
@@ -35,7 +35,7 @@ export interface Endpoint {
   userInfoUrl: string;
   // AuthStyle optionally specifies how the endpoint wants the client ID & client
   // secret sent.
-  authStyle?: AuthStyle;
+  authStyle: AuthStyle;
 }
 
 // AuthStyle represents how requests for tokens are authenticated to the server.

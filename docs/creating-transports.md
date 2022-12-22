@@ -11,4 +11,5 @@ Creating Transports
 - based on the complexity of the interface, there will be different needs but the whole point is to call the `transport.Invoker` method on the `interface` and `operation (pipeline)` that was sent as part of the `handler` config.
 - register the transport in `pkg/engine/engine.go`.  Look for `// Transport registration` comment.
 - run `just build`
+- update `config/ts/components/apex.yaml` to add the new transport. Run `apex generate` to update the ts files.
 - test using a bus.yaml

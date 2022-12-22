@@ -33,13 +33,13 @@ export interface CorsV0Config {
   maxAge?: number;
   // AllowCredentials indicates whether the request can include user credentials like
   // cookies, HTTP authentication or client side SSL certificates.
-  allowCredentials?: boolean;
+  allowCredentials: boolean;
   // OptionsPassthrough instructs preflight to let other potential next handlers to
   // process the OPTIONS method. Turn this on if your application handles OPTIONS.
-  optionsPassthrough?: boolean;
+  optionsPassthrough: boolean;
   // Provides a status code to use for successful OPTIONS requests. Default value is
   // http.StatusNoContent (204).
-  optionsSuccessStatus?: number;
+  optionsSuccessStatus: number;
 }
 
 export function CorsV0(config: CorsV0Config): Component<CorsV0Config> {

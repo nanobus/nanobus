@@ -28,7 +28,7 @@ export interface AuthorizeConfig {
   condition?: ValueExpr;
   has?: string[];
   check?: { [key: string]: any };
-  error?: string;
+  error: string;
 }
 
 export function Authorize(config: AuthorizeConfig): Component<AuthorizeConfig> {
@@ -173,7 +173,7 @@ export interface JQConfig {
   // Data is the optional data expression to pass to jq.
   data?: DataExpr;
   // Single, if true, returns the first result.
-  single?: boolean;
+  single: boolean;
   // Var, if set, is the variable that is set with the result.
   var?: string;
 }
@@ -199,10 +199,10 @@ export function Log(config: LogConfig): Component<LogConfig> {
 }
 
 export interface ReCaptchaConfig {
-  siteVerifyUrl?: string;
+  siteVerifyUrl: string;
   secret: string;
   response: ValueExpr;
-  score?: number;
+  score: number;
   action?: string;
 }
 
@@ -215,7 +215,7 @@ export function ReCaptcha(config: ReCaptchaConfig): Component<ReCaptchaConfig> {
 
 export interface RouteConfig {
   // Selection defines the selection mode: single or multi.
-  selection?: SelectionMode;
+  selection: SelectionMode;
   // Routes are the possible runnable routes which conditions for selection.
   routes: RouteCondition[];
 }

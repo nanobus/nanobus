@@ -131,7 +131,7 @@ export interface LoadConfig {
   // Preload lists the relationship to expand/load.
   preload?: Preload[];
   // NotFoundError is the error to return if the key is not found.
-  notFoundError?: string;
+  notFoundError: string;
 }
 
 export function Load(config: LoadConfig): Component<LoadConfig> {
@@ -149,7 +149,7 @@ export interface QueryConfig {
   // Args are the evaluations to use as arguments for the SQL query.
   args?: ValueExpr[];
   // Single indicates a single row should be returned if found.
-  single?: boolean;
+  single: boolean;
 }
 
 export function Query(config: QueryConfig): Component<QueryConfig> {
