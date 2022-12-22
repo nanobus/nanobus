@@ -48,7 +48,6 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/wapc/wapc-go v0.5.6
-	github.com/wasmerio/wasmer-go v1.0.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
 	go.opentelemetry.io/otel v1.11.2
