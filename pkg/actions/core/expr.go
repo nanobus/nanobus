@@ -19,11 +19,11 @@ import (
 
 // Backward compatability with `assign`
 func Assign() (string, actions.Loader) {
-	return "assign", EvalLoader
+	return "assign", ExprLoader
 }
 
-func EvalLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
-	var c EvalConfig
+func ExprLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (actions.Action, error) {
+	var c ExprConfig
 	if err := config.Decode(with, &c); err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func EvalLoader(ctx context.Context, with interface{}, resolver resolve.ResolveA
 }
 
 func EvalAction(
-	config *EvalConfig) actions.Action {
+	config *ExprConfig) actions.Action {
 	return func(ctx context.Context, data actions.Data) (output interface{}, err error) {
 		if config.Value != nil {
 			output, err = config.Value.Eval(data)

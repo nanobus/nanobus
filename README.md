@@ -42,7 +42,7 @@ interfaces:
         - name: Return greeting message
           # assign will evaluate a value and assign it
           # to output.
-          uses: eval
+          uses: expr
           with:
             # $ or pipe represent the input data
             # for this step.

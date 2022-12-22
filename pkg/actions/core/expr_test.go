@@ -20,9 +20,9 @@ import (
 	"github.com/nanobus/nanobus/pkg/resolve"
 )
 
-func TestEval(t *testing.T) {
+func TestExpr(t *testing.T) {
 	ctx := context.Background()
-	name, loader := core.Eval()
+	name, loader := core.Expr()
 	assert.Equal(t, "eval", name)
 
 	tests := []struct {

@@ -38,7 +38,7 @@ type DecodeConfig @action("decode") {
   codecArgs: [any]?
 }
 
-type EvalConfig @action("eval") {
+type ExprConfig @action("expr") {
   value: ValueExpr? @validate("required_without=Data")
   data:  DataExpr?  @validate("required_without=Value")
   to:    string?

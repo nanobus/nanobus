@@ -53,14 +53,14 @@ func Decode() (string, actions.Loader) {
 	return "decode", DecodeLoader
 }
 
-type EvalConfig struct {
+type ExprConfig struct {
 	Value *expr.ValueExpr `json:"value,omitempty" yaml:"value,omitempty" msgpack:"value,omitempty" mapstructure:"value" validate:"required_without=Data"`
 	Data  *expr.DataExpr  `json:"data,omitempty" yaml:"data,omitempty" msgpack:"data,omitempty" mapstructure:"data" validate:"required_without=Value"`
 	To    *string         `json:"to,omitempty" yaml:"to,omitempty" msgpack:"to,omitempty" mapstructure:"to"`
 }
 
-func Eval() (string, actions.Loader) {
-	return "eval", EvalLoader
+func Expr() (string, actions.Loader) {
+	return "expr", ExprLoader
 }
 
 type FilterConfig struct {

@@ -23,7 +23,7 @@ var All = []actions.NamedLoader{
 	CallInterface,
 	CallProvider,
 	Decode,
-	Eval,
+	Expr,
 	Filter,
 	HTTP,
 	HTTPResponse,
