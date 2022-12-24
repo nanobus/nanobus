@@ -2,8 +2,5 @@
 /dist
 /lib
 *.pem
-<<<<<<< Updated upstream
 go.work.sum
-=======
 /archive
->>>>>>> Stashed changes
