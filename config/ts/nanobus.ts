@@ -160,13 +160,14 @@ class FlowBuilder<T> {
 
   then<O>(
     name: string,
-    fn: ($: T) => Component<unknown>,
+    fn: ($: T) => Partial<ComponentWithOutput<unknown, O>>,
     ...options: Partial<StepOptionsT<O>>[]
   ): FlowBuilder<O> {
     const c = fn(propertyProxy.$ as T);
-    const s: Step = {
+    const component = c as Component<unknown>;
+    const s: StepT<unknown> = {
       name,
-      ...c,
+      ...component,
     };
     for (const opt of options) {
       if (opt.timeout) {
@@ -598,6 +599,10 @@ export interface StepT<T> extends Component<T>, ResiliencyGroup {
 export interface Component<T> {
   uses: string;
   with?: T;
+}
+
+export interface ComponentWithOutput<T, O> extends Component<T> {
+  returns?: O;
 }
 
 export function component(uses: string, config: unknown): Component<unknown> {
