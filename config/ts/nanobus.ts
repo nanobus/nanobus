@@ -161,14 +161,27 @@ class FlowBuilder<T> {
   then<O>(
     name: string,
     fn: ($: T) => Component<unknown>,
-    options: StepOptions = {},
+    ...options: Partial<StepOptionsT<O>>[]
   ): FlowBuilder<O> {
     const c = fn(propertyProxy.$ as T);
     const s: Step = {
       name,
       ...c,
-      ...options,
     };
+    for (const opt of options) {
+      if (opt.timeout) {
+        s.timeout = opt.timeout;
+      }
+      if (opt.retry) {
+        s.retry = opt.retry;
+      }
+      if (opt.circuitBreaker) {
+        s.circuitBreaker = opt.circuitBreaker;
+      }
+      if (opt.returns) {
+        s.returns = opt.returns as string;
+      }
+    }
     return new FlowBuilder<O>([...this.steps, s]);
   }
 
@@ -546,8 +559,18 @@ export interface ResiliencyGroup {
   circuitBreaker?: CircuitBreakerRef;
 }
 
+export interface StepOptionsT<T> extends ResiliencyGroup {
+  returns?: T;
+}
+
 export interface StepOptions extends ResiliencyGroup {
   returns?: any;
+}
+
+export function returns<T>(value: T): Partial<StepOptionsT<T>> {
+  return {
+    returns: value,
+  };
 }
 
 export const unauthenticated: Unauthenticated = { unauthenticated: true };
