@@ -147,7 +147,41 @@ export interface Module {
   initialize(app: Application): void;
 }
 
-export type Flow<T> = (data: Data<T>, vars: any) => Step[];
+export interface FlowClass {
+  done(): Step[];
+}
+
+class FlowBuilder<T> {
+  private steps: Step[] = [];
+
+  constructor(steps: Step[] = []) {
+    this.steps = steps;
+  }
+
+  then<O>(
+    name: string,
+    fn: ($: T) => Component<unknown>,
+    options: StepOptions = {},
+  ): FlowBuilder<O> {
+    const c = fn(propertyProxy.$ as T);
+    const s: Step = {
+      name,
+      ...c,
+      ...options,
+    };
+    return new FlowBuilder<O>([...this.steps, s]);
+  }
+
+  done(): Step[] {
+    return this.steps;
+  }
+}
+
+export function given<T>(_input: T): FlowBuilder<T> {
+  return new FlowBuilder<T>();
+}
+
+export type Flow<T> = (data: Context<T>, vars: any) => Step[] | FlowClass;
 
 export class Application {
   readonly config: AppConfig;
@@ -561,6 +595,10 @@ export interface Data<T> {
   [variable: string]: any;
 }
 
+export interface Context<T> extends Data<T> {
+  flow: FlowBuilder<T>;
+}
+
 const handler = {
   get(target: any, prop: any, _receiver: unknown): unknown {
     const value = target[prop];
@@ -686,8 +724,17 @@ export function step<T>(
   return builder;
 }
 
-export function getSteps(f: (data: any, vars: any) => Step[]): Step[] {
-  const steps = f(propertyProxy, propertyProxy);
+export function getSteps(f: Flow<unknown>): Step[] {
+  const context = new Proxy({
+    flow: new FlowBuilder<unknown>(),
+  }, handler) as Context<unknown>;
+  const stepsOrFlow = f(context, propertyProxy);
+  let steps: Step[];
+  if (stepsOrFlow instanceof FlowBuilder) {
+    steps = (stepsOrFlow as FlowClass).done();
+  } else {
+    steps = stepsOrFlow as Step[];
+  }
   for (let i = 0; i < steps.length; i++) {
     steps[i] = { ...steps[i] };
     scrub(steps[i]);
