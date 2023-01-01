@@ -26,6 +26,7 @@ func Authorize() (string, actions.Loader) {
 
 type CallInterfaceConfig struct {
 	Handler handler.Handler `json:"handler" yaml:"handler" msgpack:"handler" mapstructure:"handler" validate:"required"`
+	Input   *expr.DataExpr  `json:"input,omitempty" yaml:"input,omitempty" msgpack:"input,omitempty" mapstructure:"input"`
 }
 
 func CallInterface() (string, actions.Loader) {
@@ -34,6 +35,7 @@ func CallInterface() (string, actions.Loader) {
 
 type CallProviderConfig struct {
 	Handler handler.Handler `json:"handler" yaml:"handler" msgpack:"handler" mapstructure:"handler" validate:"required"`
+	Input   *expr.DataExpr  `json:"input,omitempty" yaml:"input,omitempty" msgpack:"input,omitempty" mapstructure:"input"`
 }
 
 func CallProvider() (string, actions.Loader) {

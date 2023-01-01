@@ -1,4 +1,4 @@
-import { Component, Handler } from "../nanobus.ts";
+import { Component, DataExpr, Handler } from "../nanobus.ts";
 import {
   CallInterface,
   CallInterfaceConfig,
@@ -17,14 +17,20 @@ export function log(format: string, ...args: unknown[]): Component<LogConfig> {
 
 export function callInterface(
   handler: Handler,
+  input?: DataExpr,
 ): Component<CallInterfaceConfig> {
   return CallInterface({
     handler,
+    input,
   });
 }
 
-export function callProvider(handler: Handler): Component<CallProviderConfig> {
+export function callProvider(
+  handler: Handler,
+  input?: DataExpr,
+): Component<CallProviderConfig> {
   return CallProvider({
     handler,
+    input,
   });
 }

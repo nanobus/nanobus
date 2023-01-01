@@ -605,6 +605,8 @@ export interface ComponentWithOutput<T, O> extends Component<T> {
   returns?: O;
 }
 
+export type Response<T> = ComponentWithOutput<unknown, T>
+
 export function component(uses: string, config: unknown): Component<unknown> {
   return {
     uses: uses,
@@ -655,7 +657,7 @@ const handler = {
   },
 };
 
-class DynamicProperty {
+export class DynamicProperty {
   prop: string[];
 
   constructor(prop: string[]) {
@@ -768,6 +770,21 @@ export function getSteps(f: Flow<unknown>): Step[] {
     scrub(steps[i]);
   }
   return steps;
+}
+
+export function toExpr(input: unknown): string {
+  if (input instanceof DynamicProperty) {
+    input = (input as DynamicProperty).toString();
+  }
+  return input as string || "nil";
+}
+
+export function toDataExpr(input: unknown): string {
+  let str = toExpr(input);
+  if (str.startsWith("$.")) {
+    str = "pipe" + str.substring(1);
+  }
+  return str;
 }
 
 export function scrub(data: unknown): void {
