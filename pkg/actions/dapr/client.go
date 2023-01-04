@@ -26,7 +26,7 @@ type ClientConfig struct {
 
 // Connection is the NamedLoader for a postgres connection.
 func Client() (string, resource.Loader) {
-	return "dapr/client.v1", ClientLoader
+	return "nanobus.resource.dapr/v1", ClientLoader
 }
 
 func ClientLoader(ctx context.Context, with interface{}, resolver resolve.ResolveAs) (interface{}, error) {
