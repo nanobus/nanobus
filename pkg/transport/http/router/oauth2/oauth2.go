@@ -127,6 +127,11 @@ func (o *Auth) AddRoutes(r *mux.Router, address string) error {
 
 func (o *Auth) login(w http.ResponseWriter, r *http.Request) {
 	domain := r.Host
+	//set domain to just the domain name without the port
+	if strings.Contains(domain, ":") {
+		domain = strings.Split(domain, ":")[0]
+	}
+
 	if o.cookieDomain != nil {
 		domain = *o.cookieDomain
 	}
