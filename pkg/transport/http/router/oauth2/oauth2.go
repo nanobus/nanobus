@@ -15,7 +15,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -23,6 +25,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"golang.org/x/net/idna"
 	"golang.org/x/oauth2"
 
 	"github.com/nanobus/nanobus/pkg/actions"
@@ -127,16 +130,26 @@ func (o *Auth) AddRoutes(r *mux.Router, address string) error {
 
 func (o *Auth) login(w http.ResponseWriter, r *http.Request) {
 	domain := r.Host
-	//set domain to just the domain name without the port
-	if strings.Contains(domain, ":") {
-		domain = strings.Split(domain, ":")[0]
-	}
-
 	if o.cookieDomain != nil {
 		domain = *o.cookieDomain
 	}
+
+	// Parse the input hostname
+	hostname, err := idna.Lookup.ToASCII(domain)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Split the hostname and port
+	host, _, err := net.SplitHostPort(hostname)
+	if err != nil {
+		// If there is no port, the host is returned as the first value
+		host = hostname
+	}
+
 	// Create oauthState cookie
-	oauthState := generateStateOauthCookie(w, domain)
+	oauthState := generateStateOauthCookie(w, host)
 
 	u := o.config.AuthCodeURL(oauthState)
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
