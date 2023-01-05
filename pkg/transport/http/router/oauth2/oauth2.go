@@ -15,7 +15,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -25,7 +24,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"golang.org/x/net/idna"
 	"golang.org/x/oauth2"
 
 	"github.com/nanobus/nanobus/pkg/actions"
@@ -134,18 +132,11 @@ func (o *Auth) login(w http.ResponseWriter, r *http.Request) {
 		domain = *o.cookieDomain
 	}
 
-	// Parse the input hostname
-	hostname, err := idna.Lookup.ToASCII(domain)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	// Split the hostname and port
-	host, _, err := net.SplitHostPort(hostname)
+	host, _, err := net.SplitHostPort(domain)
 	if err != nil {
 		// If there is no port, the host is returned as the first value
-		host = hostname
+		host = domain
 	}
 
 	// Create oauthState cookie
