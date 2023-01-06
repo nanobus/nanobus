@@ -79,7 +79,12 @@ func (c *defaultRunCmd) Run() error {
 		// Error is logged in `Start`.
 		os.Exit(1)
 	}
-	defer e.Stop()
+	defer func() {
+		err = e.Stop()
+		if err != nil {
+			logger.Error(err.Error())
+		}
+	}()
 
 	return nil
 }
@@ -128,7 +133,12 @@ func (c *runCmd) Run() error {
 		// Error is logged in `Start`.
 		os.Exit(1)
 	}
-	defer e.Stop()
+	defer func() {
+		err = e.Stop()
+		if err != nil {
+			logger.Error(err.Error())
+		}
+	}()
 
 	return nil
 }
@@ -193,7 +203,12 @@ func (c *invokeCmd) Run() error {
 		os.Exit(1)
 		return nil
 	}
-	defer e.Stop()
+	defer func() {
+		err = e.Stop()
+		if err != nil {
+			logger.Error(err.Error())
+		}
+	}()
 
 	var result any
 	result, err = e.InvokeUnsafe(h, input)
