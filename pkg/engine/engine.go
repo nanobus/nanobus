@@ -246,7 +246,13 @@ func (e *Engine) LoadConfig(busConfig *runtime.BusConfig) error {
 }
 
 func Start(info *Info) (*Engine, error) {
+	keepContext := false
 	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		if !keepContext {
+			cancel()
+		}
+	}()
 
 	// If there is a `.env` file, load its environment variables.
 	if err := godotenv.Load(); err != nil {
@@ -828,6 +834,8 @@ func Start(info *Info) (*Engine, error) {
 				log.Error(err, "unexpected error")
 			}
 		}
+	} else {
+		keepContext = true
 	}
 
 	return &e, nil
