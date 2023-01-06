@@ -68,16 +68,19 @@ func (c *defaultRunCmd) Run() error {
 	if c.Debug {
 		level = zapcore.DebugLevel
 	}
-	if _, err := engine.Start(&engine.Info{
+	e, err := engine.Start(&engine.Info{
 		Mode:          engine.ModeService,
 		BusFile:       "bus.yaml",
 		ResourcesFile: "resources.yaml",
 		LogLevel:      level,
 		DeveloperMode: c.DeveloperMode,
-	}); err != nil {
+	})
+	if err != nil {
 		// Error is logged in `Start`.
 		os.Exit(1)
 	}
+	defer e.Stop()
+
 	return nil
 }
 
@@ -113,17 +116,20 @@ func (c *runCmd) Run() error {
 		level = zapcore.DebugLevel
 	}
 
-	if _, err := engine.Start(&engine.Info{
+	e, err := engine.Start(&engine.Info{
 		Mode:          engine.ModeService,
 		BusFile:       location,
 		LogLevel:      level,
 		ResourcesFile: c.ResourcesFile,
 		Process:       c.Args,
 		DeveloperMode: c.DeveloperMode,
-	}); err != nil {
+	})
+	if err != nil {
 		// Error is logged in `Start`.
 		os.Exit(1)
 	}
+	defer e.Stop()
+
 	return nil
 }
 
@@ -187,6 +193,8 @@ func (c *invokeCmd) Run() error {
 		os.Exit(1)
 		return nil
 	}
+	defer e.Stop()
+
 	var result any
 	result, err = e.InvokeUnsafe(h, input)
 	if err != nil {
