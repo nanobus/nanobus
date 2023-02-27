@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	aidanwoods.dev/go-paseto v1.2.0
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.3.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.3.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.2.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.6.1
 	github.com/MicahParks/keyfunc v1.9.0

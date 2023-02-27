@@ -7,8 +7,7 @@ sidebar_position: 5
 NanoBus has a built-in command in the CLI, `nanobus push` that packages all the 
 information needed to run a NanoBus application for distribution. This is based on existing 
 OCI registry architecture and standards. Any standards-compliant OCI registry is able to support 
-NanoBus application packages. For anyone without access to a standards-compliant OCI registry, Candle
-offers a free NanoBus compatible registry at https://reg.candle.run.
+NanoBus application packages.
 
 ## Package Spec
 
@@ -16,12 +15,12 @@ The package details are defined in the bus.yaml file of the application.
 
 ```
 package:
-  registry: reg.candle.run    #or your own registry
-  org: myorg                  #this is the registry project/organization that will host the NanoBus package
-  add:                        #the bus.yaml, apex.axdl, and referenced local WASM Iota are automatically added
-    - ui/dist/                #Any static served files need to be in the `add` section
-    - resources.yaml          #Any resource files need to be in the `add` section
-    - migrations/sql          #Any initializers / migration files need to be in the `add` section.
+  registry: reg.mycorp.com    # or your own registry
+  org: myorg                  # this is the registry project/organization that will host the NanoBus package
+  add:                        # the bus.yaml, apex.axdl, and referenced local WASM Iota are automatically added
+    - ui/dist/                # Any static served files need to be in the `add` section
+    - resources.yaml          # Any resource files need to be in the `add` section
+    - migrations/sql          # Any initializers / migration files need to be in the `add` section.
 ```
 
 ## Credentials / Pushing
@@ -33,7 +32,7 @@ NanoBus will by default read the credentials if any are stored in your `$HOME/.d
 If there are any credentials stored in the config file, they will be used first.  If you want to override the config file, you can set the following environment variables:
 ```
 export OCI_REGISTRIES=MYREG
-export MYREG_HOSTNAME=reg.candle.run
+export MYREG_HOSTNAME=reg.mycorp.com
 export MYREG_USERNAME=<your registry username>
 export MYREG_PASSWORD=<your registry password>
 ```
@@ -45,7 +44,7 @@ Then just run `nanobus push` and it will package all the files and upload them t
 ```
 If the `id` of an app was `example` and `version` was `0.1.0`, and contained the `package` values as defined above, it would be uploaded to:
 ```
-reg.candle.run/myorg/example:0.1.0
+reg.mycorp.com/myorg/example:0.1.0
 ```
 
 ## Push GitHub action

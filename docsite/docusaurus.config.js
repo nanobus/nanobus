@@ -52,7 +52,7 @@ const config = {
           customCss: require.resolve('./src/css/custom.css'),
         },
         gtag: {
-          trackingID: 'G-C9M5WKQG59',
+          trackingID: 'G-QGKD59KLR2',
           anonymizeIP: true,
         },
       }),
@@ -82,12 +82,6 @@ const config = {
             label: 'Components',
           },
           {
-            href: 'https://discord.gg/candle',
-            className: 'header-discord-link',
-            position: 'right',
-            'aria-label': 'Discord server',
-          },
-          {
             href: 'https://twitter.com/nanobusdev',
             className: 'header-twitter-link',
             position: 'right',
@@ -103,7 +97,7 @@ const config = {
       },
       footer: {
         style: 'dark',
-        copyright: `Copyright © ${new Date().getFullYear()} Candle Corporation. All rights reserved.`,
+        copyright: `Copyright © ${new Date().getFullYear()} NanoBus contributors. All rights reserved.`,
       },
       prism: {
         theme: lightCodeTheme,

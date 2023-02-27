@@ -41,22 +41,22 @@ services:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: candle-site
-  namespace: candle-site
+  name: myapp
+  namespace: myapp
 spec:
   selector:
     matchLabels:
-      app: candle-site
+      app: myapp
   replicas: 2
   template:
     metadata:
       labels:
-        app: candle-site
+        app: myapp
     spec:
       nodeSelector:
         agentpool: platpool
       containers:
-        - name: candle-site
+        - name: myapp
           resources:
             limits:
               memory: "128Mi"
@@ -64,7 +64,7 @@ spec:
           image: nanobus/nanobus:v0.0.16
           args:
             - "run"
-            - "reg.candle.run/candlecorp/candle-site:0.0.0"
+            - "reg.mycorp.com/myproject/myapp:0.0.0"
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

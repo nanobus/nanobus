@@ -71,7 +71,6 @@ This should return `Hello, World!` as a JSON string. The JSON data returned by N
 
 For additional help, you can use one of these channels to ask a question:
 
-- [Discord](https://discord.gg/candle) - Discussions with the community and the team.
 - [GitHub](https://github.com/nanobus/nanobus/issues) - For bug reports and feature requests.
 - [Twitter](https://twitter.com/nanobusdev) - Get the product updates easily.
 

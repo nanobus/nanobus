@@ -24,7 +24,7 @@ func Get() (string, actions.Loader) {
 	return "@redis/get", GetLoader
 }
 
-// Encodes data and writes it to a Blob store.
+// Encodes data and writes it to a Redis store.
 type SetConfig struct {
 	// The redis store resource to write.
 	Resource resource.Ref `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
@@ -42,6 +42,7 @@ func Set() (string, actions.Loader) {
 	return "@redis/set", SetLoader
 }
 
+// Removes data from a Redis store.
 type RemoveConfig struct {
 	// Resource is the name of the connection resource to use.
 	Resource resource.Ref `json:"resource" yaml:"resource" msgpack:"resource" mapstructure:"resource" validate:"required"`
