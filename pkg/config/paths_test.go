@@ -40,6 +40,12 @@ func TestAbsoluteUrl(t *testing.T) {
 	assert.Equal(t, "file:///here.txt", url)
 }
 
+func TestLocal(t *testing.T) {
+	url, err := NormalizeUrl("apex.axdl", "/test/import/iotas/reg_candle_run_examples_url-shortener_0_0_1")
+	assert.Nil(t, err)
+	assert.Equal(t, "file:///test/import/iotas/reg_candle_run_examples_url-shortener_0_0_1/apex.axdl", url)
+}
+
 func TestHttpUrl(t *testing.T) {
 	url, err := NormalizeUrl("http://this.com/that.txt", "/dev/src")
 	assert.Nil(t, err)
