@@ -58,7 +58,7 @@ require (
 	github.com/spf13/cast v1.5.0
 	github.com/stretchr/testify v1.8.2
 	github.com/vmihailenco/msgpack/v5 v5.3.5
-	github.com/wapc/wapc-go v0.5.8
+	github.com/wapc/wapc-go v0.6.0
 	github.com/wasmerio/wasmer-go v1.0.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.40.0
@@ -77,8 +77,8 @@ require (
 	google.golang.org/genproto v0.0.0-20230323212658-478b75c54725
 	google.golang.org/grpc v1.54.0
 	gopkg.in/yaml.v3 v3.0.1
-	gorm.io/driver/postgres v1.5.0
-	gorm.io/gorm v1.24.7-0.20230306060331-85eaf9eeda11
+	gorm.io/driver/postgres v1.4.8
+	gorm.io/gorm v1.24.6
 	oras.land/oras-go/v2 v2.0.2
 )
 
